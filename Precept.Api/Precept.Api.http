@@ -1,0 +1,6 @@
+@Precept.Api_HostAddress = http://localhost:5177
+
+GET {{Precept.Api_HostAddress}}/
+Accept: application/json
+
+###

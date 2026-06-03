@@ -1,0 +1,60 @@
+## Build Results & Artifacts
+[Db]in/
+[Ob]j/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+*.suo
+*.suo.tmp
+
+## Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+
+## Rider / IntelliJ
+.idea/
+*.sln.iml
+
+## OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+## SQLite Databases (Local Dev)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+## User/Local Secrets & Configuration
+*.local.json
+secrets.json
+.env
+.env.*
+!.env.example
+
+appsettings.*.json
+!appsettings.json
+
+Migrations/
+
+.vscode/*
+
