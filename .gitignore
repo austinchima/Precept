@@ -56,5 +56,5 @@ appsettings.*.json
 
 Migrations/
 
-.vscode/*
+.vscode/
 
