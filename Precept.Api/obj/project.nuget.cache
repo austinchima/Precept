@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "Ty3JpSVINuk=",
+  "dgSpecHash": "voMohdOdfbc=",
   "success": true,
-  "projectFilePath": "e:\\Personal Projects\\Precept\\Precept.Api\\Precept.Api.csproj",
+  "projectFilePath": "E:\\Personal Projects\\Precept\\Precept.Api\\Precept.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\austi\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\austi\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\10.0.8\\microsoft.aspnetcore.authentication.jwtbearer.10.0.8.nupkg.sha512",

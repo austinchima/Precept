@@ -8,11 +8,11 @@ public class ApplicationUser : IdentityUser
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // I can generate many stories from job descriptions
-    public ICollection<Story> Stories { get; set; } = new List<Story>();
+    public ICollection<Story> Stories { get; set; } = [];
     
     // I can ingest and store many job descriptions
-    public ICollection<JobDescription> JobDescriptions { get; set; } = new List<JobDescription>();
+    public ICollection<JobDescription> JobDescriptions { get; set; } = [];
 
     // I can submit many applications
-    public ICollection<Application> Applications { get; set; } = new List<Application>();
+    public ICollection<Application> Applications { get; set; } = [];
 }
