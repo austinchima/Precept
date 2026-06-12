@@ -95,6 +95,7 @@ The system revolves around four core domain entities tailored to the engineering
 erDiagram
     ApplicationUser ||--o{ Application : submits
     ApplicationUser ||--o{ Story : authors
+    ApplicationUser ||--o{ BehavioralStory : authors
     ApplicationUser ||--o{ Skill : possesses
     ApplicationUser ||--o{ JobDescription : tracks
 
@@ -114,13 +115,30 @@ erDiagram
     }
 
     Story {
-        string Id PK
+        Guid Id PK
+        string UserId FK
+        string Title
+        string CodeSnippet
+        string Explanation
+        string SourceProject
+        Category Category
+        ConfidenceLevel ConfidenceLevel
+        DateTime CreatedAt
+        DateTime UpdatedAt
+        DateTime LastReviewedAt
+    }
+
+    BehavioralStory {
+        Guid Id PK
+        string UserId FK
         string Title
         string Situation
         string Task
         string Action
         string Result
         string Tags
+        DateTime CreatedAt
+        DateTime UpdatedAt
     }
 
     Skill {
@@ -168,6 +186,14 @@ Since Precept handles your personal career trajectory, security is treated as a 
 - **Stateless Authentication**: Uses stateless JWTs with short expirations and refresh token rotation.
 - **Local Isolation**: SQLite keeps your data entirely localized to your machine. No telemetry, no cloud sync unless explicitly configured.
 - **Data Export**: Built-in raw JSON payload export functionality for immediate data portability.
+
+---
+
+## 🔮 Roadmap (Future Releases)
+
+Precept is constantly evolving to better serve the engineering community. In future releases, the architecture will be expanded to include:
+- **PostgreSQL Migration**: Upgrading from SQLite to PostgreSQL to enable robust online and offline data synchronization capabilities.
+- **Cross-Platform Native Apps**: Packaging the web experience into a native **Desktop Application** and a companion **Mobile App**, giving you offline-first access to your interview stories and job pipeline anytime, anywhere.
 
 ---
 
