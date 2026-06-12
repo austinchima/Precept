@@ -7,8 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Precept.Api.Data;
+using Precept.Api.DTOs;
 using Precept.Api.Models;
-using Precept.Api.Services;
+using Precept.Api.Services.Interfaces;
 
 namespace Precept.Api.Controllers;
 
@@ -17,6 +18,7 @@ namespace Precept.Api.Controllers;
 public partial class AuthController(
     UserManager<ApplicationUser> userManager,
     ITokenService tokenService,
+    IWebHostEnvironment env,
     PreceptDbContext dbContext,
     IOptions<JwtSettings> jwtSettings,
     ILogger<AuthController> logger) : ControllerBase
@@ -46,8 +48,10 @@ public partial class AuthController(
 
         var user = new ApplicationUser
         {
-            UserName = $"{request.FirstName.Trim()} {request.LastName.Trim()}",
+            UserName = request.Email,           // This ensures that multiples users with the same name can use their name without a hassle
             Email = request.Email,
+            FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -280,13 +284,15 @@ public partial class AuthController(
     /// </summary>
     private void SetRefreshCookie(string rawToken)
     {
+        var isDev = env.IsDevelopment();
+
         Response.Cookies.Append("refreshToken", rawToken, new CookieOptions
         {
-            HttpOnly = true,     // Not accessible via JavaScript (XSS protection)
-            Secure = true,       // Only sent over HTTPS
-            SameSite = SameSiteMode.Strict, // CSRF protection
+            HttpOnly = true,                                             // Not accessible via JavaScript (XSS protection)
+            Secure = !isDev,                                             // HTTPS only in production; allow HTTP in dev
+            SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.Strict,   // Lax in dev for Scalar/Swagger testing
             Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
-            Path = "/api/auth"   // Only sent to auth endpoints (minimizes exposure)
+            Path = "/api/auth"                                           // Only sent to auth endpoints (minimizes exposure)
         });
     }
 

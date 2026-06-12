@@ -4,6 +4,14 @@ namespace Precept.Api.Models;
 
 public class ApplicationUser : IdentityUser
 {
+
+    // Primary purpose
+    public string FirstName { get; set; } = string.Empty;
+
+    public string LastName { get; set; } = string.Empty;
+
+    public string FullName => $"{FirstName.Trim()} {LastName.Trim()}";
+
     // When I created my account
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

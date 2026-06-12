@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Precept.Api.Models;
 
-namespace Precept.Api.Services;
+namespace Precept.Api.Services.Interfaces;
 
 /// <summary>
 /// Generates and validates JWT access tokens and cryptographic refresh tokens.

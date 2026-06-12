@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Precept.Api.Models;
+using Precept.Api.Services.Interfaces;
 
 namespace Precept.Api.Services;
 

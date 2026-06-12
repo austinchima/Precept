@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Precept.Api.Data;
 using Precept.Api.Models;
 using Precept.Api.Services;
+using Precept.Api.Services.Interfaces;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);

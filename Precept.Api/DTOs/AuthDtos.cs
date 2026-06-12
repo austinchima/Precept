@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Precept.Api.Models;
+namespace Precept.Api.DTOs;
 
 /// <summary>
 /// Request body for POST /api/auth/register.
