@@ -1,0 +1,310 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #5ad7e7;
+  --color-brand-primary-container: #32b9c8;
+  --color-brand-secondary: #0d141d;
+  --color-brand-surface: #151c26;
+  --color-brand-surface-high: #242a34;
+  --color-brand-text: #dce3f0;
+  --color-brand-text-muted: #bcc9cb;
+  --color-brand-border: #3d494b;
+  --radius: 0.5rem;
+  
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Template Theme Config Colors */
+  --color-tertiary-container: #a8a9a9;
+  --color-surface: #0d141d;
+  --color-on-tertiary: #2f3131;
+  --color-on-surface: #dce3f0;
+  --color-on-error: #690005;
+  --color-on-background: #dce3f0;
+  --color-inverse-primary: #006972;
+  --color-primary-fixed: #8ff2ff;
+  --color-tertiary: #c6c6c7;
+  --color-inverse-on-surface: #2a313b;
+  --color-outline-variant: #3d494b;
+  --color-on-secondary: #273234;
+  --color-on-tertiary-container: #3c3e3e;
+  --color-surface-container-lowest: #080f18;
+  --color-on-surface-variant: #bcc9cb;
+  --color-surface-bright: #333a44;
+  --color-inverse-surface: #dce3f0;
+  --color-secondary-fixed-dim: #bdc9cb;
+  --color-on-primary-container: #00454c;
+  --color-background: #0d141d;
+  --color-on-primary-fixed: #001f23;
+  --color-tertiary-fixed-dim: #c6c6c7;
+  --color-surface-container: #19202a;
+  --color-secondary-fixed: #d9e5e7;
+  --color-on-primary: #00363c;
+  --color-surface-container-low: #151c26;
+  --color-surface-tint: #5ad7e7;
+  --color-primary-fixed-dim: #5ad7e7;
+  --color-tertiary-fixed: #e2e2e2;
+  --color-surface-container-high: #242a34;
+  --color-secondary: #bdc9cb;
+  --color-error-container: #93000a;
+  --color-primary: #5ad7e7;
+  --color-on-secondary-container: #abb7ba;
+  --color-surface-dim: #0d141d;
+  --color-primary-container: #32b9c8;
+  --color-on-tertiary-fixed: #1a1c1c;
+  --color-surface-container-highest: #2e353f;
+  --color-on-error-container: #ffdad6;
+  --color-on-secondary-fixed: #121d1f;
+  --color-on-tertiary-fixed-variant: #454747;
+  --color-on-secondary-fixed-variant: #3d494b;
+  --color-surface-variant: #2e353f;
+  --color-outline: #869395;
+  --color-error: #ffb4ab;
+  --color-secondary-container: #3d494b;
+  --color-on-primary-fixed-variant: #004f56;
+
+  /* Font Families */
+  --font-h1: "Space Grotesk", sans-serif;
+  --font-h2: "Space Grotesk", sans-serif;
+  --font-h3: "Space Grotesk", sans-serif;
+  --font-body-lg: "Geist", sans-serif;
+  --font-body-md: "Geist", sans-serif;
+  --font-label-caps: "JetBrains Mono", monospace;
+  --font-code: "JetBrains Mono", monospace;
+
+  /* Spacings */
+  --spacing-md: 24px;
+  --spacing-xl: 96px;
+  --spacing-container-max: 1440px;
+  --spacing-sm: 12px;
+  --spacing-lg: 48px;
+  --spacing-margin: 64px;
+  --spacing-gutter: 24px;
+  --spacing-base: 8px;
+  --spacing-xs: 4px;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-secondary text-brand-text font-sans antialiased selection:bg-brand-primary/30;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading tracking-tight;
+  }
+
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .card-container {
+    @apply bg-brand-surface border border-brand-border rounded-lg shadow-sm;
+  }
+  .input-base {
+    @apply bg-brand-surface-high border border-brand-border rounded-md px-3 py-2 text-brand-text placeholder-brand-text-muted focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary;
+  }
+  .btn-primary {
+    @apply bg-brand-primary text-on-primary font-mono font-medium rounded-md px-4 py-2 hover:bg-brand-primary-container transition-colors;
+  }
+  .btn-secondary {
+    @apply bg-transparent border border-brand-text text-brand-text font-mono font-medium rounded-md px-4 py-2 hover:bg-brand-surface-high transition-colors;
+  }
+  .fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  .slide-in-from-right-4 {
+    animation: slideInRight 0.4s ease-out forwards;
+  }
+  .slide-in-from-bottom-4 {
+    animation: slideInBottom 0.4s ease-out forwards;
+  }
+  .slide-in-from-top-8 {
+    animation: slideInTop 0.5s ease-out forwards;
+  }
+  .zoom-in-95 {
+    animation: zoomIn 0.3s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(1rem); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInBottom {
+  from { opacity: 0; transform: translateY(1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInTop {
+  from { opacity: 0; transform: translateY(-2rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Circular Progress Chart */
+.circular-chart {
+  display: block;
+  margin: 0 auto;
+  max-width: 80%;
+  max-height: 250px;
+}
+.circle-bg {
+  fill: none;
+  stroke: #131E20;
+  stroke-width: 2.5;
+}
+.circle {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.8s ease-out;
+}
+.percentage {
+  fill: #dce3f0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.5em;
+  text-anchor: middle;
+  font-weight: 700;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0px);
+  }
+}
+
+@keyframes slideRightIn {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateX(0px);
+  }
+}
+
+@keyframes testimonialIn {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0px) scale(1);
+  }
+}
+
+@layer utilities {
+  .animate-element {
+    animation: fadeSlideIn 0.6s ease-out forwards;
+    opacity: 0;
+  }
+  .animate-slide-right {
+    animation: slideRightIn 0.8s ease-out forwards;
+    opacity: 0;
+  }
+  .animate-testimonial {
+    animation: testimonialIn 0.6s ease-out forwards;
+    opacity: 0;
+  }
+  .animate-delay-100 { animation-delay: 100ms; }
+  .animate-delay-200 { animation-delay: 200ms; }
+  .animate-delay-300 { animation-delay: 300ms; }
+  .animate-delay-400 { animation-delay: 400ms; }
+  .animate-delay-500 { animation-delay: 500ms; }
+  .animate-delay-600 { animation-delay: 600ms; }
+  .animate-delay-700 { animation-delay: 700ms; }
+  .animate-delay-800 { animation-delay: 800ms; }
+  .animate-delay-900 { animation-delay: 900ms; }
+  .animate-delay-1000 { animation-delay: 1000ms; }
+  .animate-delay-1200 { animation-delay: 1200ms; }
+  .animate-delay-1400 { animation-delay: 1400ms; }
+}
+
+@keyframes pulse-ring {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes ping-ring {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-ring {
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .animate-ping-ring {
+    animation: ping-ring 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+}
+
+@keyframes orb-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes orb-drift-reverse {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-30px, 50px) scale(1.1); }
+  66% { transform: translate(20px, -20px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@layer utilities {
+  .animate-orb-drift {
+    animation: orb-drift 15s infinite ease-in-out alternate;
+  }
+  .animate-orb-drift-reverse {
+    animation: orb-drift-reverse 18s infinite ease-in-out alternate;
+  }
+}

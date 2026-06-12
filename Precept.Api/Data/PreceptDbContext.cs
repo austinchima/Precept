@@ -7,10 +7,13 @@ namespace Precept.Api.Data
     public class PreceptDbContext(DbContextOptions<PreceptDbContext> options) : IdentityDbContext<ApplicationUser>(options)
     {
         public DbSet<Story> Stories { get; set; } = null!;
+        public DbSet<BehavioralStory> BehavioralStories { get; set; } = null!;
 
         public DbSet<JobDescription> JobDescriptions { get; set; } = null!;
 
         public DbSet<Application> Applications { get; set; } = null!;
+
+        public DbSet<Skill> Skills { get; set; } = null!;
 
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
@@ -31,6 +34,34 @@ namespace Precept.Api.Data
                     .WithMany()
                     .HasForeignKey(rt => rt.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Skill>(entity =>
+            {
+                // Cascade delete: when a user is deleted, remove all their skills
+                entity.HasOne(s => s.User)
+                    .WithMany(u => u.Skills)
+                    .HasForeignKey(s => s.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<BehavioralStory>(entity =>
+            {
+                // Cascade delete: when a user is deleted, remove all their behavioral stories
+                entity.HasOne(bs => bs.User)
+                    .WithMany(u => u.BehavioralStories)
+                    .HasForeignKey(bs => bs.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Application>(entity =>
+            {
+                // SetNull: when a JobDescription is deleted, null out the FK on Application
+                // rather than deleting the application itself (it may still be relevant)
+                entity.HasOne(a => a.JobDescription)
+                    .WithMany(jd => jd.Applications)
+                    .HasForeignKey(a => a.JobDescriptionId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
         }
     }

@@ -15,7 +15,7 @@ namespace Precept.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public partial class AuthController(
+public class AuthController(
     UserManager<ApplicationUser> userManager,
     ITokenService tokenService,
     IWebHostEnvironment env,
@@ -66,11 +66,11 @@ public partial class AuthController(
             return BadRequest(ModelState);
         }
 
-        LogUserRegistered(request.Email);
+        logger.UserRegistered(request.Email);
 
         // Generate tokens for the newly registered user
         var roles = await userManager.GetRolesAsync(user);
-        return await GenerateAuthResponse(user, roles);
+        return await GenerateAuthResponse(user, roles, true);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -100,11 +100,42 @@ public partial class AuthController(
             return Unauthorized(new { message = "Invalid credentials." });
         }
 
-        LogUserLoggedIn(request.Email);
+        logger.UserLoggedIn(request.Email);
 
         // 3. Generate tokens
         var roles = await userManager.GetRolesAsync(user);
-        return await GenerateAuthResponse(user, roles);
+        return await GenerateAuthResponse(user, roles, request.RememberMe);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  GET /api/auth/me
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Retrieves the current authenticated user's profile information.
+    /// </summary>
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentUser()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await userManager.FindByIdAsync(userId);
+        if (user == null)
+            return NotFound();
+
+        return Ok(new
+        {
+            user.Id,
+            user.Email,
+            user.FirstName,
+            user.LastName,
+            user.CreatedAt
+        });
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -139,7 +170,7 @@ public partial class AuthController(
         // 3. Reuse detection: if the token was already revoked, someone may be replaying a stolen token
         if (storedToken.IsRevoked)
         {
-            LogTokenReuseDetected(storedToken.UserId);
+            logger.TokenReuseDetected(storedToken.UserId);
 
             await RevokeAllUserTokens(storedToken.UserId);
             ClearRefreshCookie();
@@ -171,7 +202,8 @@ public partial class AuthController(
             UserId = user.Id,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
-            DeviceInfo = Request.Headers.UserAgent.ToString()
+            DeviceInfo = Request.Headers.UserAgent.ToString(),
+            RememberMe = storedToken.RememberMe
         };
 
         dbContext.RefreshTokens.Add(newRefreshToken);
@@ -182,9 +214,9 @@ public partial class AuthController(
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpiryMinutes);
 
         // Set the new refresh token cookie
-        SetRefreshCookie(newRawToken);
+        SetRefreshCookie(newRawToken, storedToken.RememberMe);
 
-        LogTokensRotated(user.Email);
+        logger.TokensRotated(user.Email);
 
         return Ok(new AuthResponse
         {
@@ -224,7 +256,7 @@ public partial class AuthController(
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                          ?? User.FindFirst("sub")?.Value;
-            LogTokenRevoked(userId);
+            logger.TokenRevoked(userId);
         }
 
         ClearRefreshCookie();
@@ -238,7 +270,7 @@ public partial class AuthController(
     /// <summary>
     /// Generates access + refresh tokens, persists the refresh token, sets the cookie, and returns the response.
     /// </summary>
-    private async Task<IActionResult> GenerateAuthResponse(ApplicationUser user, IList<string> roles)
+    private async Task<IActionResult> GenerateAuthResponse(ApplicationUser user, IList<string> roles, bool rememberMe)
     {
         // Generate tokens
         var accessToken = tokenService.GenerateAccessToken(user, roles);
@@ -252,14 +284,15 @@ public partial class AuthController(
             UserId = user.Id,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
-            DeviceInfo = Request.Headers.UserAgent.ToString()
+            DeviceInfo = Request.Headers.UserAgent.ToString(),
+            RememberMe = rememberMe
         };
 
         dbContext.RefreshTokens.Add(refreshTokenEntity);
         await dbContext.SaveChangesAsync();
 
         // Set HTTP-only secure cookie
-        SetRefreshCookie(rawRefreshToken);
+        SetRefreshCookie(rawRefreshToken, rememberMe);
 
         return Ok(new AuthResponse
         {
@@ -282,31 +315,72 @@ public partial class AuthController(
     /// <summary>
     /// Sets the refresh token as an HTTP-only secure cookie.
     /// </summary>
-    private void SetRefreshCookie(string rawToken)
+    private void SetRefreshCookie(string rawToken, bool rememberMe)
     {
         var isDev = env.IsDevelopment();
 
-        Response.Cookies.Append("refreshToken", rawToken, new CookieOptions
+        var options = new CookieOptions
         {
             HttpOnly = true,                                             // Not accessible via JavaScript (XSS protection)
             Secure = !isDev,                                             // HTTPS only in production; allow HTTP in dev
             SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.Strict,   // Lax in dev for Scalar/Swagger testing
-            Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
             Path = "/api/auth"                                           // Only sent to auth endpoints (minimizes exposure)
-        });
+        };
+
+        if (rememberMe)
+        {
+            options.Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays);
+        }
+
+        Response.Cookies.Append("refreshToken", rawToken, options);
     }
 
-    /// <summary>
-    /// Removes the refresh token cookie from the client.
-    /// </summary>
     private void ClearRefreshCookie()
     {
+        var isDev = env.IsDevelopment();
         Response.Cookies.Delete("refreshToken", new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
+            Secure = !isDev,
+            SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.Strict,
             Path = "/api/auth"
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  PUT /api/auth/profile
+    // ─────────────────────────────────────────────────────────────
+
+    [HttpPut("profile")]
+    [Authorize]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await userManager.FindByIdAsync(userId);
+        if (user == null)
+            return NotFound();
+
+        user.FirstName = request.FirstName.Trim();
+        user.LastName = request.LastName.Trim();
+
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return BadRequest(result.Errors);
+        }
+
+        return Ok(new
+        {
+            user.Id,
+            user.Email,
+            user.FirstName,
+            user.LastName
         });
     }
 
@@ -327,22 +401,22 @@ public partial class AuthController(
         await dbContext.SaveChangesAsync();
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  Source-generated log methods (high-performance logging)
-    // ─────────────────────────────────────────────────────────────
+}
 
+public static partial class AuthControllerLoggerExtensions
+{
     [LoggerMessage(Level = LogLevel.Information, Message = "User {Email} registered successfully")]
-    private partial void LogUserRegistered(string email);
+    public static partial void UserRegistered(this ILogger logger, string email);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "User {Email} logged in successfully")]
-    private partial void LogUserLoggedIn(string email);
+    public static partial void UserLoggedIn(this ILogger logger, string email);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refresh token reuse detected for user {UserId}. Revoking all tokens.")]
-    private partial void LogTokenReuseDetected(string userId);
+    public static partial void TokenReuseDetected(this ILogger logger, string userId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tokens rotated for user {Email}")]
-    private partial void LogTokensRotated(string? email);
+    public static partial void TokensRotated(this ILogger logger, string? email);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Refresh token revoked for user {UserId}")]
-    private partial void LogTokenRevoked(string? userId);
+    public static partial void TokenRevoked(this ILogger logger, string? userId);
 }

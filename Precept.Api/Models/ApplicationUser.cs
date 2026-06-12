@@ -17,10 +17,16 @@ public class ApplicationUser : IdentityUser
 
     // I can generate many stories from job descriptions
     public ICollection<Story> Stories { get; set; } = [];
+
+    // I can generate many behavioral stories
+    public ICollection<BehavioralStory> BehavioralStories { get; set; } = [];
     
     // I can ingest and store many job descriptions
     public ICollection<JobDescription> JobDescriptions { get; set; } = [];
 
     // I can submit many applications
     public ICollection<Application> Applications { get; set; } = [];
+
+    // I can manage my skills inventory
+    public ICollection<Skill> Skills { get; set; } = [];
 }

@@ -60,4 +60,6 @@ public class RefreshToken
 
     [NotMapped]
     public bool IsActive => !IsRevoked && !IsExpired;
+
+    public bool RememberMe { get; set; } = true;
 }

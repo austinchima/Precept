@@ -4,7 +4,6 @@ namespace Precept.Api.DTOs;
 
 /// <summary>
 /// Request body for POST /api/auth/register.
-/// First and last name are consolidated into UserName on the ApplicationUser.
 /// </summary>
 public class RegisterRequest
 {
@@ -29,6 +28,17 @@ public class RegisterRequest
     public string ConfirmPassword { get; set; } = string.Empty;
 }
 
+public class UpdateProfileRequest
+{
+    [Required]
+    [StringLength(50, MinimumLength = 1)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(50, MinimumLength = 1)]
+    public string LastName { get; set; } = string.Empty;
+}
+
 /// <summary>
 /// Request body for POST /api/auth/login.
 /// </summary>
@@ -40,6 +50,8 @@ public class LoginRequest
 
     [Required]
     public string Password { get; set; } = string.Empty;
+
+    public bool RememberMe { get; set; } = true;
 }
 
 /// <summary>

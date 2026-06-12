@@ -58,3 +58,20 @@ Migrations/
 
 .vscode/
 
+node_modules/
+
+dist/
+
+build/
+
+.antigravitycli/
+
+.agents/
+
+.agent/
+
+*.ps1
+
+graphify*/
+
+MASTER.md

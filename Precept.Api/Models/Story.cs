@@ -17,7 +17,13 @@ namespace Precept.Api.Models
         Ai,
         Ml,
         DevOps,
-        Frontend
+        Frontend,
+        Backend,
+        SystemDesign,
+        Security,
+        Testing,
+        Cloud,
+        Architecture
     }
 
     public class Story
@@ -47,6 +53,8 @@ namespace Precept.Api.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? LastReviewedAt { get; set; }
+
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public ConfidenceLevel ConfidenceLevel { get; set; } = ConfidenceLevel.Okay;
     }

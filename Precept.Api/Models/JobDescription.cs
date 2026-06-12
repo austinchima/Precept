@@ -9,13 +9,15 @@ namespace Precept.Api.Models
 
         public string UserId { get; set; } = string.Empty;
 
+        public string CompanyName { get; set; } = string.Empty;
+
         public string RoleTitle { get; set; } = string.Empty;
 
         public string Description { get; set; } = string.Empty;
 
-        public List<string> ExtractedKeyWords { get; set; } = new List<string>();
+        public List<string> ExtractedKeyWords { get; set; } = [];
 
-        public List<string> MissingKeyWords { get; set; } = new List<string>();
+        public List<string> MissingKeyWords { get; set; } = [];
 
         public int? YourMatchScore { get; set; }
 
@@ -34,6 +36,6 @@ namespace Precept.Api.Models
         public ApplicationUser? User { get; set; }
 
         // I can have many different applications for the same job description
-        public ICollection<Application> Applications { get; set; } = new List<Application>();
+        public ICollection<Application> Applications { get; set; } = [];
     }
 }

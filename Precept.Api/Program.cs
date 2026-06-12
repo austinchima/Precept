@@ -133,8 +133,29 @@ builder.Services.AddAuthorization();
 //  6. Application Services
 // ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IStoryService, StoryService>();
+builder.Services.AddScoped<IBehavioralStoryService, BehavioralStoryService>();
+builder.Services.AddScoped<IApplicationService, ApplicationService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ISkillService, SkillService>();
+builder.Services.AddScoped<IJobDescriptionService, JobDescriptionService>();
 
-builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowViteDev", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -142,12 +163,17 @@ var app = builder.Build();
 // ─────────────────────────────────────────────────────────────
 //  Middleware Pipeline
 // ─────────────────────────────────────────────────────────────
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+app.UseCors("AllowViteDev");
 app.UseAuthentication(); // MUST be before UseAuthorization
 app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/", () => "Precept API is running...").ExcludeFromDescription();
+app.MapGet("/api/health", () => Results.Ok(new { status = "operational" })).ExcludeFromDescription();
 
 // OpenAPI documentation (development only)
 if (app.Environment.IsDevelopment())

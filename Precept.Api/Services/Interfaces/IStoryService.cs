@@ -1,4 +1,5 @@
 using Precept.Api.DTOs;
+using Precept.Api.Models;
 
 namespace Precept.Api.Services.Interfaces;
 
@@ -9,12 +10,16 @@ public interface IStoryService
 
     Task<bool> DeleteStoryAsync(string userId, string storyId);
 
-    // Note: You'll probably want an UpdateStoryRequest later!
-    Task<StoryResponse> UpdateStoryAsync(string userId, string storyId, string content);
+    Task<StoryResponse> UpdateStoryAsync(string userId, string storyId, UpdateStoryRequest request);
+
+    Task<StoryResponse> UpdateStoryConfidenceLevelAsync(string userId, string storyId, ConfidenceLevel confidenceLevel);
 
     Task<StoryResponse> GetStoryAsync(string userId, string storyId);
 
-    Task<List<StoryResponse>> GetStoriesAsync(string userId);
+    Task<StoryResponse> GetRandomStoryAsync(string userId, Category? category = null);
 
-    Task<StoryResponse> GetRandomStoryAsync(string userId);
+    Task<StoryResponse> GetQuizStoryAsync(string userId);
+
+    Task<List<StoryResponse>> GetStoriesAsync(string userId, Category? category = null);
+
 }
