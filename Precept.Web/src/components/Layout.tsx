@@ -60,7 +60,7 @@ export default function Layout() {
             className={`w-8 h-8 rounded bg-brand-surface overflow-hidden flex items-center justify-center border border-brand-border/50 shrink-0 transition-all cursor-pointer hover:border-brand-primary/50 ${isCollapsed ? 'md:mr-0' : 'mr-3'}`}
             title="Toggle Sidebar"
           >
-            <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" />
+            <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" width={32} height={32} fetchpriority="high" />
           </button>
           <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-[200px] opacity-100'}`}>
             <span className="font-heading font-bold text-lg tracking-tight whitespace-nowrap block">Precept</span>
@@ -153,6 +153,8 @@ export default function Layout() {
                 src="https://i.pravatar.cc/100?img=33" 
                 alt="User" 
                 className="w-full h-full object-cover" 
+                width={32}
+                height={32}
               />
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HeroShader from '../components/ui/hero-shader';
+import DemoVideoSection from '../components/ui/demo-video-section';
 import { useAuth } from '../AuthContext';
 
 // Custom hook for scroll reveal animations
@@ -104,7 +105,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded overflow-hidden flex items-center justify-center bg-brand-surface border border-brand-border/50">
-              <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" />
+              <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" width={40} height={40} fetchpriority="high" />
             </div>
             <div>
               <span className="font-heading font-bold text-xl tracking-tight text-brand-text">Precept</span>
@@ -135,6 +136,9 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <HeroShader />
+
+      {/* Demo Video Section */}
+      <DemoVideoSection />
 
       {/* Trust & Security */}
       <section id="security" ref={securityReveal.ref} className={`py-12 border-y border-brand-border/30 bg-[#06101c]/50 backdrop-blur-sm transition-all duration-1000 transform ease-out relative ${securityReveal.isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
@@ -248,7 +252,7 @@ export default function HomePage() {
           <div className="flex flex-col text-left max-w-2xl">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center bg-brand-surface border border-brand-border/50">
-                <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" />
+                <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" width={32} height={32} loading="lazy" />
               </div>
               <div>
                 <span className="font-heading font-bold text-xl tracking-tight text-white">Precept</span>

@@ -5,12 +5,12 @@
 **A Private, Local-First Job-Hunting Command Center for Software Engineers**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=black)
+![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
-![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=.net&logoColor=white)
+![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=.net&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-Local_First-003B57?logo=sqlite&logoColor=white)
 
-Precept is a highly specialized, terminal-inspired Career OS designed strictly for developers. It moves beyond standard spreadsheets by introducing a localized system to manage STAR (Situation, Task, Action, Result) stories, track applications, and index technical skills—all behind a sleek, developer-first interface.
+Precept is a highly specialized, terminal-inspired Career OS designed strictly for developers. It moves beyond standard spreadsheets by introducing a localized system to manage STAR (Situation, Task, Action, Result) stories, track applications, and index technical skills, all behind a sleek, developer-first interface.
 
 </div>
 
@@ -20,11 +20,13 @@ Precept is a highly specialized, terminal-inspired Career OS designed strictly f
 
 Standard CRMs and spreadsheets are clunky and generalized. Precept was built to solve a specific pain point for software engineers: **organizing interview narratives and tracking the job hunt pipeline in an environment that feels like home.**
 
-- **STAR Story Bank**: Curate, tag, and index your interview stories using the STAR method so you never freeze during a behavioral interview.
+- **Technical Story Bank**: Catalog code snippets, explanations, and source projects by category (Auth, Database, AI/ML, DevOps, etc.) with confidence-level tracking so you can identify weak spots before an interview.
+- **Behavioral Story Bank**: Curate STAR-method narratives (Situation, Task, Action, Result) with tagging so you never freeze during a behavioral round.
+- **JD Analyzer**: Paste a job description and manually map its requirements against your stories and skills to identify coverage gaps before an interview.
 - **Pipeline Tracking**: A centralized dashboard to track active applications, follow-ups, and negotiation phases.
 - **Skills Matrix**: Keep an up-to-date inventory of your technical capabilities and proficiencies to quickly match against job descriptions.
 - **Local-First Architecture**: Your career data is highly personal. Precept leverages a local SQLite database to ensure your pipeline remains private, fast, and completely under your control.
-- **Terminal Aesthetics**: A dark-mode, command-center UI built with TailwindCSS and Framer Motion that developers actually *want* to use.
+- **Terminal Aesthetics**: A dark-mode, command-center UI built with TailwindCSS and Framer Motion that developers actually _want_ to use.
 
 ---
 
@@ -60,7 +62,7 @@ graph TD
     UI <-->|State Updates| Context
     Context -->|Trigger Requests| API_Client
     API_Client <-->|REST / JSON| Auth
-    
+
     Auth -->|Validated Requests| Controllers
     Controllers -->|DTOs| Services
     Services <-->|Entities| EFCore
@@ -70,6 +72,7 @@ graph TD
 ### Tech Stack
 
 #### Frontend (Precept.Web)
+
 - **Framework**: React 19 with TypeScript
 - **Build Tool**: Vite (Lightning fast HMR)
 - **Styling**: TailwindCSS with arbitrary custom properties
@@ -79,6 +82,7 @@ graph TD
 - **Routing**: React Router DOM
 
 #### Backend (Precept.Api)
+
 - **Framework**: ASP.NET Core Web API (.NET 10)
 - **Language**: C#
 - **ORM**: Entity Framework Core
@@ -89,7 +93,7 @@ graph TD
 
 ## 🛠️ Data Model Overview
 
-The system revolves around four core domain entities tailored to the engineering job hunt:
+The system revolves around five core domain entities tailored to the engineering job hunt:
 
 ```mermaid
 erDiagram
@@ -100,14 +104,15 @@ erDiagram
     ApplicationUser ||--o{ JobDescription : tracks
 
     ApplicationUser {
-        string Id PK
+        Guid Id PK
         string Email
         string FirstName
         string LastName
     }
 
     Application {
-        string Id PK
+        Guid Id PK
+        string UserId FK
         string CompanyName
         string RoleTitle
         string Status "e.g., Applied, Interviewing, Offer"
@@ -142,10 +147,21 @@ erDiagram
     }
 
     Skill {
-        string Id PK
+        Guid Id PK
+        string UserId FK
         string Name
         string Category
         string ProficiencyLevel
+    }
+
+    JobDescription {
+        Guid Id PK
+        string UserId FK
+        string CompanyName
+        string RoleTitle
+        string Description
+        string Requirements
+        DateTime DateApplied
     }
 ```
 
@@ -156,34 +172,41 @@ erDiagram
 To run Precept locally, you'll need [Node.js](https://nodejs.org/) and the [.NET SDK](https://dotnet.microsoft.com/download) installed.
 
 ### 1. Clone the repository
+
 ```bash
 git clone https://github.com/austinchima/precept.git
 cd precept
 ```
 
 ### 2. Start the Backend API
+
 ```bash
 cd Precept.Api
 dotnet restore
 dotnet run
 ```
-*The API will typically boot on `https://localhost:7227` or `http://localhost:5177`.*
+
+_The API will typically boot on `https://localhost:7227` or `http://localhost:5177`._
 
 ### 3. Start the Frontend Client
+
 Open a new terminal window:
+
 ```bash
 cd Precept.Web
 npm install
 npm run dev
 ```
-*The frontend will boot on `http://localhost:3000`.*
+
+_The frontend will boot on `http://localhost:3000`._
 
 ---
 
 ## 🔐 Security & Privacy
 
 Since Precept handles your personal career trajectory, security is treated as a first-class citizen:
-- **Stateless Authentication**: Uses stateless JWTs with short expirations and refresh token rotation.
+
+- **Authentication**: Short-lived JWTs paired with SHA-256-hashed refresh tokens stored exclusively in `HttpOnly`, `Secure`, `SameSite=Strict` cookies. Implements full token rotation on every refresh cycle; revoked tokens are chained to their replacements, and reuse of any revoked token triggers cascade revocation across all active sessions, forcing re-authentication.
 - **Local Isolation**: SQLite keeps your data entirely localized to your machine. No telemetry, no cloud sync unless explicitly configured.
 - **Data Export**: Built-in raw JSON payload export functionality for immediate data portability.
 
@@ -192,7 +215,8 @@ Since Precept handles your personal career trajectory, security is treated as a 
 ## 🔮 Roadmap (Future Releases)
 
 Precept is constantly evolving to better serve the engineering community. In future releases, the architecture will be expanded to include:
-- **PostgreSQL Migration**: Upgrading from SQLite to PostgreSQL to enable robust online and offline data synchronization capabilities.
+
+- **PostgreSQL Migration**: Adding PostgreSQL alongside SQLite to enable multi-device access and cloud-backed persistence.
 - **Cross-Platform Native Apps**: Packaging the web experience into a native **Desktop Application** and a companion **Mobile App**, giving you offline-first access to your interview stories and job pipeline anytime, anywhere.
 
 ---

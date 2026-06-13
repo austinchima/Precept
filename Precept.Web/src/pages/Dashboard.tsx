@@ -131,13 +131,13 @@ export default function Dashboard() {
     <div className="flex flex-col gap-xl fade-in">
       {/* Quick Actions Bento Header */}
       <section className="grid grid-cols-12 gap-gutter">
-        <div className="col-span-8 flex flex-col justify-end pb-sm">
+        <div className="col-span-12 md:col-span-8 flex flex-col justify-end pb-sm">
           <h2 className="font-h2 text-h2 text-on-surface mb-2">Overview</h2>
           <p className="font-code text-code text-on-surface-variant">
             System status: Normal. {followUps.length} pending task{followUps.length !== 1 ? 's require' : ' requires'} attention.
           </p>
         </div>
-        <div className="col-span-4 flex flex-col gap-sm justify-end">
+        <div className="col-span-12 md:col-span-4 flex flex-col gap-sm justify-end">
           <button 
             onClick={() => navigate('/story-bank/quiz')}
             className="w-full bg-surface-container border border-outline-variant text-on-surface font-code text-code py-sm px-md rounded hover:bg-surface-bright hover:border-primary transition-all flex items-center justify-between group cursor-pointer"
@@ -217,8 +217,8 @@ export default function Dashboard() {
             View All Pipeline
           </button>
         </div>
-        <div className="bg-surface-container border border-outline-variant rounded overflow-hidden">
-          <table className="w-full text-left border-collapse">
+        <div className="bg-surface-container border border-outline-variant rounded overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-max">
             <thead>
               <tr className="border-b border-outline-variant bg-surface-bright/50">
                 <th className="py-sm px-md font-label-caps text-label-caps text-on-surface-variant font-medium">Company</th>

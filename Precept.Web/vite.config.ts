@@ -11,12 +11,33 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+                return 'vendor-react';
+              }
+              if (id.includes('framer-motion') || id.includes('motion')) {
+                return 'vendor-motion';
+              }
+              if (id.includes('lucide-react')) {
+                return 'vendor-icons';
+              }
+              return 'vendor';
+            }
+          }
+        }
+      }
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâ€”file watching is disabled to prevent flickering during agent edits.
+      // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      allowedHosts: ['upgrade-finder-weekend-media.trycloudflare.com'],
       proxy: {
         '/api': {
           target: 'http://localhost:5177',

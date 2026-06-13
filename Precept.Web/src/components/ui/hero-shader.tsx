@@ -95,7 +95,7 @@ export default function HeroShader() {
           </motion.span>
         </motion.h1>
 
-        <div className="min-h-[6rem] md:min-h-[5rem] mb-12"> {/* Fixed height wrapper to prevent layout shift during typing */}
+        <div className="min-h-24 md:min-h-20 mb-12"> {/* Fixed height wrapper to prevent layout shift during typing */}
           <TypewriterText 
             text="A private, fullstack job-hunting command center for the modern developer. Master your stories, track your pipeline, and close skill gaps with precision."
             className="text-lg md:text-xl text-white/80 font-mono leading-relaxed max-w-2xl font-light block"
@@ -119,6 +119,12 @@ export default function HeroShader() {
             <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
           </motion.button>
           <motion.button 
+            onClick={() => {
+              const demoElement = document.getElementById('demo');
+              if (demoElement) {
+                demoElement.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
             className="px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-md font-medium text-lg flex items-center justify-center gap-2 cursor-pointer hover:bg-white/20 transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

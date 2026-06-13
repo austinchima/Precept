@@ -44,7 +44,7 @@ const GlassInputWrapper = ({ children, isError = false }: { children: React.Reac
 
 const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, delay: string }) => (
   <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-2xl bg-brand-surface-high/70 backdrop-blur-xl border border-brand-border p-5 w-72 shadow-lg`}>
-    <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-xl border border-brand-border" alt="avatar" />
+    <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-xl border border-brand-border" alt="avatar" width={40} height={40} loading="lazy" decoding="async" />
     <div className="text-sm leading-snug">
       <p className="flex items-center gap-1 font-heading font-bold text-brand-text">{testimonial.name}</p>
       <p className="font-mono text-xs text-brand-primary mt-0.5">{testimonial.handle}</p>
@@ -79,7 +79,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           <div className="animate-element animate-delay-100 flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-brand-surface border border-brand-border rounded-lg overflow-hidden flex items-center justify-center relative group">
-                <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" />
+                <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" width={40} height={40} fetchpriority="high" />
               </div>
               <div>
                 <span className="font-heading font-bold text-xl tracking-tight text-brand-text leading-none block">Precept</span>

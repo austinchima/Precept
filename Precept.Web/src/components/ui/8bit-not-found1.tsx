@@ -44,6 +44,8 @@ export default function NotFound1({
               height={200}
               src={imageSrc}
               width={200}
+              loading="lazy"
+              decoding="async"
             />
           </div>
         </div>
