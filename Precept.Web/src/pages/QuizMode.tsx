@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Story, ConfidenceLevel } from '../types';
 import { api } from '../api';
+import { useToast } from '../components/ui/Toast';
 
 const getIncrementedConfidence = (current: ConfidenceLevel): ConfidenceLevel => {
   switch (current) {
@@ -28,6 +29,7 @@ export default function QuizMode() {
   const [story, setStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userAnswer, setUserAnswer] = useState('');
+  const toast = useToast();
   
   // Speech Recognition state
   const [isRecording, setIsRecording] = useState(false);
@@ -87,7 +89,7 @@ export default function QuizMode() {
 
   const toggleRecording = () => {
     if (!recognitionRef.current) {
-      alert('Voice transcription is not supported in this browser. Please use Chrome/Edge.');
+      toast.warning('Voice transcription is not supported in this browser. Please use Chrome or Edge.');
       return;
     }
 
@@ -117,7 +119,7 @@ export default function QuizMode() {
       await loadNextStory();
     } catch (err) {
       console.error('Failed to submit confidence assessment:', err);
-      alert('Failed to save assessment to server.');
+      toast.error((err as Error).message || 'Failed to save assessment. Please try again.');
       setIsLoading(false);
     }
   };
@@ -182,7 +184,7 @@ export default function QuizMode() {
           {/* Phase 1 & 2 Composite Card */}
           <div className="bg-surface-container-low border border-outline-variant rounded-xl p-md md:p-lg flex flex-col gap-lg relative overflow-hidden">
             {/* Subtle Top Accent */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-container/20 via-primary-container to-primary-container/20"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-primary-container/20 via-primary-container to-primary-container/20"></div>
             
             {/* Technical Snippet Display */}
             <div className="bg-surface-container-lowest rounded-lg p-md border border-outline-variant/50 relative group">

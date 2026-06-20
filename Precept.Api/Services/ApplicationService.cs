@@ -30,7 +30,14 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
             Notes = app.Notes,
             IsRemote = app.IsRemote,
             Source = app.Source,
-            JobDescriptionId = app.JobDescriptionId?.ToString()
+            JobDescriptionId = app.JobDescriptionId?.ToString(),
+            Events = [.. app.Events.OrderBy(e => e.DateOccurred).Select(e => new ApplicationEventDto
+            {
+                Id = e.Id.ToString(),
+                Status = e.Status,
+                DateOccurred = e.DateOccurred,
+                Notes = e.Notes
+            })]
         };
     }
 
@@ -66,6 +73,15 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
         }
 
         dbContext.Applications.Add(application);
+
+        var appEvent = new ApplicationEvent
+        {
+            ApplicationId = application.Id,
+            Status = application.Status,
+            DateOccurred = DateTime.UtcNow,
+        };
+        dbContext.Set<ApplicationEvent>().Add(appEvent);
+
         await dbContext.SaveChangesAsync();
 
         logger.ApplicationCreated(application.Id);
@@ -77,7 +93,9 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
     {
         logger.ApplicationsRetrieved(userId);
 
-        var query = dbContext.Applications.Where(a => a.UserId == userId);
+        var query = dbContext.Applications
+            .Include(a => a.Events)
+            .Where(a => a.UserId == userId);
 
         if (status.HasValue)
         {
@@ -85,7 +103,7 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
         }
 
         var apps = await query.ToListAsync();
-        return apps.Select(MapToResponse).ToList();
+        return [.. apps.Select(MapToResponse)];
     }
 
     public async Task<ApplicationResponse> GetApplicationAsync(string userId, string id)
@@ -94,6 +112,7 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
             return new ApplicationResponse();
 
         var app = await dbContext.Applications
+            .Include(a => a.Events)
             .FirstOrDefaultAsync(a => a.Id == guid && a.UserId == userId);
 
         if (app == null)
@@ -112,6 +131,7 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
             return new ApplicationResponse();
 
         var app = await dbContext.Applications
+            .Include(a => a.Events)
             .FirstOrDefaultAsync(a => a.Id == guid && a.UserId == userId);
 
         if (app == null)
@@ -144,6 +164,19 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
             app.JobDescriptionId = null;
         }
 
+        if (app.Status != request.Status)
+        {
+            var appEvent = new ApplicationEvent
+            {
+                ApplicationId = app.Id,
+                Status = request.Status,
+                DateOccurred = DateTime.UtcNow,
+                Notes = "Status updated"
+            };
+            dbContext.Set<ApplicationEvent>().Add(appEvent);
+            app.Status = request.Status;
+        }
+
         await dbContext.SaveChangesAsync();
         logger.ApplicationUpdated(guid);
 
@@ -156,12 +189,25 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
             return new ApplicationResponse();
 
         var app = await dbContext.Applications
+            .Include(a => a.Events)
             .FirstOrDefaultAsync(a => a.Id == guid && a.UserId == userId);
 
         if (app == null)
         {
             logger.ApplicationNotFound(guid, userId);
             return new ApplicationResponse();
+        }
+
+        if (app.Status != status)
+        {
+            var appEvent = new ApplicationEvent
+            {
+                ApplicationId = app.Id,
+                Status = status,
+                DateOccurred = DateTime.UtcNow,
+                Notes = "Status updated"
+            };
+            dbContext.Set<ApplicationEvent>().Add(appEvent);
         }
 
         app.Status = status;
@@ -187,6 +233,12 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
         _                              => DateTime.UtcNow.AddDays(7)
     };
 
+    /// <summary>
+    /// Deletes an application by its ID.
+    /// </summary>
+    /// <param name="userId">The ID of the user who owns the application.</param>
+    /// <param name="id">The ID of the application to delete.</param>
+    /// <returns>True if the application was deleted successfully, false otherwise.</returns>
     public async Task<bool> DeleteApplicationAsync(string userId, string id)
     {
         if (!Guid.TryParse(id, out var guid))

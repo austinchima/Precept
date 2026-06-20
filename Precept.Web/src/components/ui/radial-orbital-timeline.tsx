@@ -189,7 +189,7 @@ export default function RadialOrbitalTimeline({
           }}
         >
           {/* Core Pulsing Center */}
-          <div className="absolute w-20 h-20 rounded-full bg-gradient-to-br from-brand-primary via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-10 shadow-[0_0_60px_rgba(50,185,200,0.6)]">
+          <div className="absolute w-20 h-20 rounded-full bg-linear-to-br from-brand-primary via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-10 shadow-[0_0_60px_rgba(50,185,200,0.6)]">
             <div className="absolute w-28 h-28 rounded-full border border-brand-primary/40 animate-ping opacity-70"></div>
             <div
               className="absolute w-36 h-36 rounded-full border border-brand-primary/20 animate-ping opacity-50"
@@ -314,7 +314,7 @@ export default function RadialOrbitalTimeline({
                         </div>
                         <div className="w-full h-1 bg-brand-surface-high rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-brand-primary"
+                            className="h-full bg-linear-to-r from-blue-500 to-brand-primary"
                             style={{ width: `${item.energy}%` }}
                           ></div>
                         </div>

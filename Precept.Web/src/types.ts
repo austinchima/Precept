@@ -28,7 +28,14 @@ export interface BehavioralStory {
   updatedAt: string;
 }
 
-export type ApplicationStatus = 'Applied' | 'Phone Screen' | 'Interviewing' | 'Offer' | 'Rejected' | 'Ghosted';
+export type ApplicationStatus = 'Applied' | 'PhoneScreen' | 'Interviewing' | 'Offer' | 'Rejected' | 'Ghosted';
+
+export interface ApplicationEvent {
+  id: string;
+  status: ApplicationStatus;
+  dateOccurred: string;
+  notes: string;
+}
 
 export interface Application {
   id: string;
@@ -46,6 +53,7 @@ export interface Application {
   isRemote: boolean;
   source: string;
   jobDescriptionId?: string;
+  events?: ApplicationEvent[];
 }
 
 export interface FollowUp {

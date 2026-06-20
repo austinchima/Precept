@@ -38,6 +38,8 @@ namespace Precept.Api.Models
         public Guid? JobDescriptionId { get; set; }
 
         public JobDescription? JobDescription { get; set; }
+
+        public ICollection<ApplicationEvent> Events { get; set; } = [];
     }
 
     public enum ApplicationStatus

@@ -3,17 +3,18 @@ import { useSearchParams } from 'react-router-dom';
 import { LayoutGrid, List, Plus, MoreHorizontal, Calendar, X, Trash2, Edit, Loader2, Radar, FileText, User, Code, Trophy } from 'lucide-react';
 import { Application, ApplicationStatus } from '../types';
 import { api } from '../api';
+import { useToast } from '../components/ui/Toast';
 import RadialOrbitalTimeline, { TimelineItem } from '../components/ui/radial-orbital-timeline';
 
 const COLUMNS: ApplicationStatus[] = ['Applied', 'PhoneScreen', 'Interviewing', 'Offer', 'Rejected', 'Ghosted'];
 
-const DISPLAY_STATUS: Record<ApplicationStatus, string> = {
-  Applied: 'Applied',
-  PhoneScreen: 'Phone Screen',
-  Interviewing: 'Interviewing',
-  Offer: 'Offer',
-  Rejected: 'Rejected',
-  Ghosted: 'Ghosted'
+const COLUMN_LABELS: Record<ApplicationStatus, string> = {
+  'Applied': 'Applied',
+  'PhoneScreen': 'Phone Screen',
+  'Interviewing': 'Interviewing',
+  'Offer': 'Offer',
+  'Rejected': 'Rejected',
+  'Ghosted': 'Ghosted'
 };
 
 const getStatusColor = (status: ApplicationStatus) => {
@@ -28,64 +29,99 @@ const getStatusColor = (status: ApplicationStatus) => {
 
 const generateTrajectory = (app: Application): TimelineItem[] => {
   const isRejected = app.status === 'Rejected' || app.status === 'Ghosted';
-  
-  return [
-    {
-      id: 1,
-      title: "Application Submitted",
-      date: app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'N/A',
-      content: `Submitted application for ${app.roleTitle} at ${app.companyName}.`,
-      category: "Screening",
-      icon: FileText,
-      relatedIds: [2],
-      status: "completed",
-      energy: 100,
-    },
-    {
-      id: 2,
-      title: "Recruiter Screen",
-      date: "Pending",
-      content: "Initial cultural fit and background check.",
-      category: "Screening",
-      icon: User,
-      relatedIds: [1, 3],
-      status: app.status === 'Applied' ? (isRejected ? 'pending' : 'pending') : "completed",
-      energy: app.status === 'Applied' ? 20 : 80,
-    },
-    {
-      id: 3,
-      title: "Technical Assessment",
-      date: "Pending",
-      content: "Core engineering competencies and algorithms.",
-      category: "Technical",
-      icon: Code,
-      relatedIds: [2, 4],
-      status: (app.status === 'Interviewing' || app.status === 'Offer') ? "completed" : (app.status === 'PhoneScreen' && !isRejected ? 'in-progress' : 'pending'),
-      energy: (app.status === 'Interviewing' || app.status === 'Offer') ? 90 : (app.status === 'PhoneScreen' ? 50 : 10),
-    },
-    {
-      id: 4,
-      title: "Behavioral Onsite",
-      date: "Pending",
-      content: "Leadership principles and system design.",
-      category: "Technical",
-      icon: Calendar,
-      relatedIds: [3, 5],
-      status: app.status === 'Offer' ? 'completed' : (app.status === 'Interviewing' && !isRejected ? 'in-progress' : 'pending'),
-      energy: app.status === 'Offer' ? 95 : (app.status === 'Interviewing' ? 60 : 5),
-    },
-    {
-      id: 5,
-      title: "Final Offer",
-      date: "Pending",
-      content: "Compensation negotiation and signing.",
-      category: "Offer",
-      icon: Trophy,
-      relatedIds: [4],
-      status: app.status === 'Offer' ? 'completed' : 'pending',
-      energy: app.status === 'Offer' ? 100 : 0,
+  const nodes: TimelineItem[] = [];
+  let currentId = 1;
+
+  if (app.events && app.events.length > 0) {
+    const sortedEvents = [...app.events].sort((a, b) => new Date(a.dateOccurred).getTime() - new Date(b.dateOccurred).getTime());
+
+    sortedEvents.forEach((event, index) => {
+      const isLast = index === sortedEvents.length - 1;
+      const isActive = isLast && !isRejected;
+      const isFailedNode = event.status === 'Rejected' || event.status === 'Ghosted';
+
+      let title: string = event.status;
+      let category = "Phase";
+      let icon = FileText;
+
+      switch(event.status) {
+        case 'Applied': title = 'Application Submitted'; category = 'Screening'; icon = FileText; break;
+        case 'PhoneScreen': title = 'Phone Screen'; category = 'Screening'; icon = User; break;
+        case 'Interviewing': title = 'Interviews'; category = 'Technical'; icon = Code; break;
+        case 'Offer': title = 'Offer'; category = 'Offer'; icon = Trophy; break;
+        case 'Rejected': title = 'Rejected'; category = 'Closure'; icon = FileText; break;
+        case 'Ghosted': title = 'Ghosted'; category = 'Closure'; icon = FileText; break;
+      }
+
+      nodes.push({
+        id: currentId,
+        title,
+        date: new Date(event.dateOccurred).toLocaleDateString() + " " + new Date(event.dateOccurred).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        content: event.notes || (isActive ? 'Currently active in this stage.' : (isFailedNode ? 'Pipeline closed.' : 'Successfully cleared this stage.')),
+        category,
+        icon,
+        relatedIds: currentId > 1 ? [currentId - 1] : [],
+        status: isFailedNode ? 'pending' : (isLast ? 'in-progress' : 'completed'),
+        energy: isFailedNode ? 0 : (isLast ? 50 : 100),
+      });
+
+      if (currentId > 1 && nodes[currentId - 2]) {
+        nodes[currentId - 2].relatedIds.push(currentId);
+      }
+      currentId++;
+    });
+
+    return nodes;
+  }
+
+  // 1. Always start with Application Submitted
+  nodes.push({
+    id: currentId,
+    title: "Application Submitted",
+    date: app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'N/A',
+    content: `Submitted application for ${app.roleTitle} at ${app.companyName}.`,
+    category: "Screening",
+    icon: FileText,
+    relatedIds: [],
+    status: app.status === 'Applied' && !isRejected ? 'in-progress' : 'completed',
+    energy: app.status === 'Applied' ? 50 : 100,
+  });
+
+  const pushNode = (title: string, category: string, icon: any, isActive: boolean, isPast: boolean) => {
+    currentId++;
+    nodes.push({
+      id: currentId,
+      title,
+      date: isPast ? 'Completed' : (isActive ? 'Active' : 'Pending'),
+      content: isActive ? 'Currently active in this stage.' : (isPast ? 'Successfully cleared this stage.' : ''),
+      category,
+      icon,
+      relatedIds: [currentId - 1], // link to previous
+      status: isPast ? 'completed' : (isActive && !isRejected ? 'in-progress' : 'pending'),
+      energy: isPast ? 100 : (isActive ? 50 : 0),
+    });
+    // Link previous to this
+    if (nodes[currentId - 2]) {
+      nodes[currentId - 2].relatedIds.push(currentId);
     }
-  ];
+  };
+
+  const statusHierarchy = ['Applied', 'PhoneScreen', 'Interviewing', 'Offer'];
+  const currentActualIndex = statusHierarchy.indexOf(app.status);
+
+  if (currentActualIndex >= 1 || app.status === 'PhoneScreen') {
+    pushNode("Phone Screen", "Screening", User, app.status === 'PhoneScreen', currentActualIndex > 1);
+  }
+
+  if (currentActualIndex >= 2 || app.status === 'Interviewing') {
+    pushNode("Interviews", "Technical", Code, app.status === 'Interviewing', currentActualIndex > 2);
+  }
+
+  if (currentActualIndex >= 3 || app.status === 'Offer') {
+    pushNode("Offer", "Offer", Trophy, app.status === 'Offer', false);
+  }
+
+  return nodes;
 };
 
 export default function AppTracker() {
@@ -96,6 +132,7 @@ export default function AppTracker() {
   const [isLoading, setIsLoading] = useState(true);
   const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
   const [scannerApp, setScannerApp] = useState<Application | null>(null);
+  const toast = useToast();
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -161,7 +198,7 @@ export default function AppTracker() {
         console.error('Failed to sync status drop to server:', err);
         // Rollback on error
         setApps(prev => prev.map(a => a.id === draggedAppId ? { ...a, status: targetApp.status } : a));
-        alert('Failed to update pipeline status.');
+        toast.error('Status update failed. The change has been rolled back.');
       }
     }
     setDraggedAppId(null);
@@ -243,7 +280,7 @@ export default function AppTracker() {
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
-      alert('Failed to save pipeline record.');
+      toast.error((err as Error).message || 'Failed to save pipeline record.');
     } finally {
       setIsSubmitting(false);
     }
@@ -260,7 +297,7 @@ export default function AppTracker() {
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
-      alert('Failed to delete application.');
+      toast.error((err as Error).message || 'Failed to delete application.');
     }
   };
 
@@ -311,7 +348,7 @@ export default function AppTracker() {
                   onDrop={(e) => handleDrop(e, col)}
                 >
                   <div className="flex items-center justify-between mb-4 px-1">
-                    <h3 className="font-mono text-sm uppercase text-brand-text-muted">{DISPLAY_STATUS[col]}</h3>
+                    <h3 className="font-mono text-sm uppercase text-brand-text-muted">{COLUMN_LABELS[col]}</h3>
                     <span className="text-xs font-mono bg-brand-surface-high px-2 py-0.5 rounded-full text-brand-text-muted">
                       {apps.filter(a => a.status === col).length}
                     </span>
@@ -363,7 +400,7 @@ export default function AppTracker() {
                       <td className="px-6 py-4 text-brand-text-muted text-sm">{app.roleTitle}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-2.5 py-0.5 rounded-md text-xs font-mono font-medium border ${getStatusColor(app.status)}`}>
-                          {DISPLAY_STATUS[app.status]}
+                          {COLUMN_LABELS[app.status]}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-mono text-brand-text-muted">
@@ -436,7 +473,7 @@ export default function AppTracker() {
                       onChange={(e) => setStatus(e.target.value as ApplicationStatus)}
                       className="input-base w-full text-sm"
                     >
-                      {COLUMNS.map(col => <option key={col} value={col}>{DISPLAY_STATUS[col]}</option>)}
+                      {COLUMNS.map(col => <option key={col} value={col}>{COLUMN_LABELS[col]}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1.5">
@@ -581,7 +618,7 @@ export default function AppTracker() {
 
       {/* Trajectory Scanner Overlay */}
       {scannerApp && (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-brand-secondary/95 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-100 flex flex-col bg-brand-secondary/95 backdrop-blur-md animate-in fade-in duration-300">
           <div className="flex items-center justify-between p-4 border-b border-brand-border bg-brand-surface-high/30 z-20">
             <div className="flex items-center gap-3">
               <span className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg border border-brand-primary/20">

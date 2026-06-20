@@ -100,4 +100,16 @@ public class ApplicationResponse
     public bool IsRemote { get; set; }
     public string Source { get; set; } = string.Empty;
     public string? JobDescriptionId { get; set; }
+    public List<ApplicationEventDto> Events { get; set; } = [];
+}
+
+/// <summary>
+/// DTO representing an event in the application's history.
+/// </summary>
+public class ApplicationEventDto
+{
+    public string Id { get; set; } = string.Empty;
+    public ApplicationStatus Status { get; set; }
+    public DateTime DateOccurred { get; set; }
+    public string Notes { get; set; } = string.Empty;
 }

@@ -13,7 +13,7 @@ export const BehavioralStoryCard: React.FC<BehavioralStoryCardProps> = ({ story,
   return (
     <div className="card-container p-5 bg-brand-surface border border-brand-border/50 hover:border-brand-primary/50 transition-colors flex flex-col group">
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-lg font-heading font-semibold text-brand-text break-words pr-4">{story.title}</h3>
+        <h3 className="text-lg font-heading font-semibold text-brand-text wrap-break-word pr-4">{story.title}</h3>
         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={() => onEdit(story)} className="text-brand-text-muted hover:text-brand-primary cursor-pointer transition-colors" title="Edit">
             <span className="material-symbols-outlined text-[18px]">edit</span>

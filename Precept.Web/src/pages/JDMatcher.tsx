@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import { GoogleGenAI } from '@google/genai';
+import { useToast } from '../components/ui/Toast';
 
 interface MatchResults {
   id: string;
@@ -16,6 +17,7 @@ export default function JDMatcher() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [results, setResults] = useState<MatchResults | null>(null);
+  const toast = useToast();
   
   // Input fields
   const [company, setCompany] = useState('Stripe');
@@ -98,7 +100,7 @@ export default function JDMatcher() {
       setResults(res);
     } catch (err) {
       console.error('Extraction/Match sequence failed:', err);
-      alert('Failed to execute analysis. Please check your API key or network connection.');
+      toast.error((err as Error).message || 'Analysis failed. Please check your API key or network connection.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -126,10 +128,10 @@ export default function JDMatcher() {
         source: 'JD Matcher UI',
         jobDescriptionId: results.id
       });
-      alert(`Successfully added application pipeline for ${results.companyName}!`);
+      toast.success(`Application pipeline created for ${results.companyName}!`, 'Pipeline Added');
     } catch (err) {
       console.error('Failed to create application from JD:', err);
-      alert('Failed to add to applications pipeline.');
+      toast.error((err as Error).message || 'Failed to add to applications pipeline.');
     } finally {
       setIsAdding(false);
     }
@@ -170,7 +172,7 @@ export default function JDMatcher() {
         <div>
           <div className="flex items-center gap-sm mb-xs">
             <span className="font-label-caps text-label-caps text-primary tracking-widest uppercase">Analysis Engine</span>
-            <div className="h-[1px] w-12 bg-primary/30"></div>
+            <div className="h-px w-12 bg-primary/30"></div>
           </div>
           <h2 className="font-h2 text-h2 text-on-surface">JD Matcher</h2>
           <p className="font-code text-code text-on-surface-variant mt-sm max-w-2xl">
@@ -205,7 +207,7 @@ export default function JDMatcher() {
               Input a Gemini API Key from Google AI Studio. This enables automated keyword parsing of JDs.
             </p>
             <div className="flex gap-sm">
-              <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-[1px] flex-1">
+              <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-px flex-1">
                 <input 
                   type="password" 
                   value={customApiKey}
@@ -239,7 +241,7 @@ export default function JDMatcher() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
               <div className="flex flex-col gap-xs">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">Company Name</label>
-                <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-[1px]">
+                <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-px">
                   <input 
                     type="text" 
                     value={company}
@@ -251,7 +253,7 @@ export default function JDMatcher() {
               
               <div className="flex flex-col gap-xs">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">Role Title</label>
-                <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-[1px]">
+                <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-px">
                   <input 
                     type="text" 
                     value={role}
@@ -264,7 +266,7 @@ export default function JDMatcher() {
             
             <div className="flex flex-col gap-xs">
               <label className="font-label-caps text-label-caps text-on-surface-variant">Job URL (Optional)</label>
-              <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-[1px] flex items-center">
+              <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-px flex items-center">
                 <span className="material-symbols-outlined text-outline-variant pl-sm text-[18px]">link</span>
                 <input 
                   type="url" 
@@ -282,7 +284,7 @@ export default function JDMatcher() {
                 <label className="font-label-caps text-label-caps text-on-surface-variant">Paste JD Text</label>
                 <span className="font-code text-[10px] text-outline-variant">~{jdText.split(/\s+/).filter(Boolean).length} words</span>
               </div>
-              <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-[1px] flex-1">
+              <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-px flex-1">
                 <textarea 
                   value={jdText}
                   onChange={(e) => setJdText(e.target.value)}
@@ -305,7 +307,7 @@ export default function JDMatcher() {
                 Use manual keywords fallback {!activeApiKey && '(No API Key configured)'}
               </label>
               {(useManualKeywords || !activeApiKey) && (
-                <div className="tech-border-focus rounded bg-surface-container border border-outline-variant p-[1px] mt-1">
+                <div className="tech-border-focus rounded bg-surface-container border border-outline-variant p-px mt-1">
                   <input 
                     type="text" 
                     value={manualKeywords}

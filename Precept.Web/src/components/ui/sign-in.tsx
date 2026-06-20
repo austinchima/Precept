@@ -201,7 +201,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
         <section className="hidden lg:flex flex-1 relative p-6 pl-0 bg-brand-secondary z-10">
           <div className="animate-slide-right animate-delay-300 w-full h-full relative rounded-3xl overflow-hidden border border-brand-border/50 shadow-2xl">
              <div className="absolute inset-0 bg-brand-primary/10 mix-blend-overlay z-10"></div>
-             <div className="absolute inset-0 bg-gradient-to-t from-brand-secondary via-brand-secondary/40 to-transparent z-10"></div>
+             <div className="absolute inset-0 bg-linear-to-t from-brand-secondary via-brand-secondary/40 to-transparent z-10"></div>
              <div className="absolute inset-0 bg-cover bg-center grayscale contrast-125" style={{ backgroundImage: `url(${heroImageSrc})` }}></div>
              
              {/* Tech Grid Pattern overlay */}

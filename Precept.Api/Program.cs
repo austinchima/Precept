@@ -8,8 +8,16 @@ using Precept.Api.Models;
 using Precept.Api.Services;
 using Precept.Api.Services.Interfaces;
 using Scalar.AspNetCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File("logs/api-log-.txt", rollingInterval: RollingInterval.Day));
 
 // ─────────────────────────────────────────────────────────────
 //  Load .env file (production secrets)
@@ -44,7 +52,7 @@ if (!string.IsNullOrWhiteSpace(envSecretKey))
 //  1. Database
 // ─────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<PreceptDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // ─────────────────────────────────────────────────────────────
 //  2. ASP.NET Identity
@@ -159,6 +167,24 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// ─────────────────────────────────────────────────────────────
+//  Initialize Database (Apply Migrations)
+// ─────────────────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<PreceptDbContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
 
 // ─────────────────────────────────────────────────────────────
 //  Middleware Pipeline

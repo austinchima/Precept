@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { Application } from '../types';
+import { useToast } from '../components/ui/Toast';
 
 interface DashboardStats {
   storyStats: {
@@ -27,6 +28,7 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [followUps, setFollowUps] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,7 +78,7 @@ export default function Dashboard() {
       setStats(statsData);
     } catch (err) {
       console.error('Failed to mark followed up:', err);
-      alert('Failed to update follow up status.');
+      toast.error((err as Error).message || 'Failed to update follow up status.');
     } finally {
       setProcessingId(null);
     }

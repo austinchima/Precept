@@ -3,6 +3,7 @@ import { X, Plus, Terminal, Loader2, ShieldAlert, User as UserIcon } from 'lucid
 import { Skill, SkillProficiency } from '../types';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../components/ui/Toast';
 
 const PROFICIENCY_COLORS: Record<SkillProficiency, string> = {
   Beginner: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -15,12 +16,12 @@ export default function Settings() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user, updateProfile } = useAuth();
+  const toast = useToast();
   
   // Form state
   const [profileFirstName, setProfileFirstName] = useState(user?.firstName || '');
   const [profileLastName, setProfileLastName] = useState(user?.lastName || '');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
-  const [profileMessage, setProfileMessage] = useState({ text: '', type: '' });
   
   // Diagnostic State
   const [isSystemOnline, setIsSystemOnline] = useState<boolean | null>(null);
@@ -97,7 +98,7 @@ export default function Settings() {
       setNotes('');
     } catch (err) {
       console.error('Failed to add skill:', err);
-      alert('Failed to add skill to database.');
+      toast.error((err as Error).message || 'Failed to add skill to database.');
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +114,7 @@ export default function Settings() {
       setSkills(prev => prev.filter(s => s.id !== id));
     } catch (err) {
       console.error('Failed to delete skill:', err);
-      alert('Failed to remove skill.');
+      toast.error((err as Error).message || 'Failed to remove skill.');
     }
   };
 
@@ -130,13 +131,11 @@ export default function Settings() {
     if (!profileFirstName.trim() || !profileLastName.trim()) return;
 
     setIsUpdatingProfile(true);
-    setProfileMessage({ text: '', type: '' });
     try {
       await updateProfile(profileFirstName, profileLastName);
-      setProfileMessage({ text: 'Profile updated successfully.', type: 'success' });
-      setTimeout(() => setProfileMessage({ text: '', type: '' }), 3000);
+      toast.success('Profile updated successfully.');
     } catch (err) {
-      setProfileMessage({ text: 'Failed to update profile.', type: 'error' });
+      toast.error('Failed to update profile. Please try again.');
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -157,7 +156,7 @@ export default function Settings() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to export data:', err);
-      alert('Failed to export data. Please check connection.');
+      toast.error('Export failed. Please check your connection and try again.');
     } finally {
       setIsExporting(false);
     }
@@ -217,11 +216,6 @@ export default function Settings() {
                 {isUpdatingProfile ? <Loader2 size={16} className="animate-spin" /> : <Terminal size={16} />}
                 {isUpdatingProfile ? 'Updating...' : 'Update Details'}
               </button>
-              {profileMessage.text && (
-                <span className={`text-sm font-mono ${profileMessage.type === 'success' ? 'text-brand-primary' : 'text-red-400'}`}>
-                  {profileMessage.text}
-                </span>
-              )}
             </div>
           </form>
         </div>
@@ -363,8 +357,16 @@ export default function Settings() {
           <section>
             <h2 className="text-lg font-heading font-semibold text-brand-text mb-4">Diagnostics</h2>
             <div className="card-container p-6 bg-brand-surface font-mono text-sm space-y-4">
-              <div className="flex justify-between items-center border-b border-brand-border/50 pb-3">
+              <div className="flex justify-between items-center border-b border-brand-border/50 pb-3 group relative cursor-help">
                 <span className="text-brand-text-muted">System Status</span>
+                {/* Tooltip */}
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 p-3 bg-[#0d141d] border border-brand-border rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                  {/* Speech bubble tail */}
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#0d141d] border-b border-r border-brand-border rotate-45 rounded-sm"></div>
+                  <p className="relative z-10 text-xs text-brand-text-muted font-sans font-normal leading-relaxed text-center">
+                    Continuously pings the backend server to verify API connectivity and system health.
+                  </p>
+                </div>
                 {isCheckingStatus ? (
                   <span className="text-brand-text-muted flex items-center gap-2"><Loader2 size={12} className="animate-spin" /> Checking...</span>
                 ) : isSystemOnline ? (
@@ -373,8 +375,16 @@ export default function Settings() {
                   <span className="text-[#f87171] flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#f87171]"></span> Offline</span>
                 )}
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center group relative cursor-help pt-3">
                 <span className="text-brand-text-muted">Database</span>
+                {/* Tooltip */}
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 p-3 bg-[#0d141d] border border-brand-border rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                  {/* Speech bubble tail */}
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#0d141d] border-b border-r border-brand-border rotate-45 rounded-sm"></div>
+                  <p className="relative z-10 text-xs text-brand-text-muted font-sans font-normal leading-relaxed text-center">
+                    Indicates whether the backend service can successfully communicate with the PostgreSQL database.
+                  </p>
+                </div>
                 <span className={isSystemOnline ? 'text-brand-text' : 'text-[#f87171]'}>{isSystemOnline ? 'Connected' : 'Disconnected'}</span>
               </div>
             </div>

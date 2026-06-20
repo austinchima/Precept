@@ -3,6 +3,7 @@ import { Plus, Filter, Star, Code, X, Trash2, Edit, Loader2 } from 'lucide-react
 import { Story, StoryCategory, ConfidenceLevel } from '../types';
 import { api } from '../api';
 import { BehavioralStoryTab } from '../components/stories/BehavioralStoryTab';
+import { useToast } from '../components/ui/Toast';
 
 const CATEGORIES: ('All' | StoryCategory)[] = ['All', 'Auth', 'Database', 'Ai', 'ML', 'DevOps', 'Frontend', 'Backend', 'SystemDesign', 'Security', 'Testing', 'Cloud', 'Architecture'];
 const CONFIDENCE_LEVELS: ConfidenceLevel[] = ['Panic', 'Shaky', 'Okay', 'Solid', 'CanTeach'];
@@ -37,6 +38,7 @@ export default function StoryBank() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStory, setEditingStory] = useState<Story | null>(null);
+  const toast = useToast();
 
   // Form states
   const [title, setTitle] = useState('');
@@ -138,7 +140,7 @@ export default function StoryBank() {
       setStories(prev => prev.filter(s => s.id !== id));
     } catch (err) {
       console.error(err);
-      alert('Failed to delete story.');
+      toast.error((err as Error).message || 'Failed to delete story.');
     }
   };
 

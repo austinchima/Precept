@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: precept_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: precept_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # CRITICAL FIX: Changed from /var/lib/postgresql/data to the parent directory /var/lib/postgresql
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      # OPTIMIZATION: Specify the database name to make the health check more accurate
+      test: ["CMD-SHELL", "pg_isready -U postgres -d precept_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./Precept.Api
+      dockerfile: Dockerfile
+    container_name: precept_api
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=db;Database=precept_db;Username=postgres;Password=postgres
+      - ASPNETCORE_ENVIRONMENT=Development
+
+  web:
+    build:
+      context: ./Precept.Web
+      dockerfile: Dockerfile
+    container_name: precept_web
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:

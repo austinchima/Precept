@@ -13,6 +13,8 @@ namespace Precept.Api.Data
 
         public DbSet<Application> Applications { get; set; } = null!;
 
+        public DbSet<ApplicationEvent> ApplicationEvents { get; set; } = null!;
+
         public DbSet<Skill> Skills { get; set; } = null!;
 
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
@@ -62,6 +64,15 @@ namespace Precept.Api.Data
                     .WithMany(jd => jd.Applications)
                     .HasForeignKey(a => a.JobDescriptionId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            builder.Entity<ApplicationEvent>(entity =>
+            {
+                // Cascade delete: when an application is deleted, delete its events
+                entity.HasOne(ae => ae.Application)
+                    .WithMany(a => a.Events)
+                    .HasForeignKey(ae => ae.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

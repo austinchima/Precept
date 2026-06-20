@@ -34,7 +34,7 @@ export default function HeroShader() {
     <section ref={containerRef} className="relative h-screen w-full bg-[#030811] overflow-hidden border-b border-brand-border/50">
       
       {/* Background Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(50,185,200,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(50,185,200,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)] z-0" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(50,185,200,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(50,185,200,0.05)_1px,transparent_1px)] bg-size-[4rem_4rem] mask-[radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)] z-0" />
 
       {/* Ambient Aurora Orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
@@ -111,12 +111,28 @@ export default function HeroShader() {
         >
           <motion.button 
             onClick={() => navigate('/login')}
-            className="px-8 py-4 bg-brand-primary text-brand-secondary rounded-md font-bold text-lg cursor-pointer shadow-[0_0_30px_rgba(50,185,200,0.3)] flex items-center justify-center gap-2"
-            whileHover={{ scale: 1.05, boxShadow: "0 0 40px rgba(50,185,200,0.5)" }}
-            whileTap={{ scale: 0.95 }}
+            className="px-8 py-4 bg-brand-primary text-brand-secondary rounded-md font-bold text-lg cursor-pointer flex items-center justify-center gap-2"
+            initial="rest"
+            animate="rest"
+            whileHover="hover"
+            whileTap="tap"
+            variants={{
+              rest: { scale: 1, boxShadow: "0 0 30px rgba(50,185,200,0.3)" },
+              hover: { scale: 1.05, boxShadow: "0 0 40px rgba(50,185,200,0.5)" },
+              tap: { scale: 0.95 }
+            }}
           >
             Get Started
-            <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+            <motion.span 
+              className="material-symbols-outlined text-[20px] inline-block"
+              variants={{
+                rest: { x: 0 },
+                hover: { x: 6 }
+              }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              arrow_forward
+            </motion.span>
           </motion.button>
           <motion.button 
             onClick={() => {

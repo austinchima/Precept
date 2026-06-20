@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { BehavioralStory } from '../../types';
 import { api } from '../../api';
+import { useToast } from '../ui/Toast';
 import { BehavioralStoryCard } from './BehavioralStoryCard';
 import { BehavioralStoryForm } from './BehavioralStoryForm';
 
@@ -10,6 +11,7 @@ export const BehavioralStoryTab: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStory, setEditingStory] = useState<BehavioralStory | null>(null);
+  const toast = useToast();
 
   const loadStories = async () => {
     setIsLoading(true);
@@ -46,7 +48,7 @@ export const BehavioralStoryTab: React.FC = () => {
       setStories(prev => prev.filter(s => s.id !== id));
     } catch (err) {
       console.error(err);
-      alert('Failed to delete behavioral story.');
+      toast.error((err as Error).message || 'Failed to delete behavioral story.');
     }
   };
 

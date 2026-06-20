@@ -75,3 +75,13 @@ build/
 graphify*/
 
 MASTER.md
+
+.openpost/*
+
+design-system/*
+
+Precept.Desktop/*
+
+Precept.Mobile/*
+
+.claude/*

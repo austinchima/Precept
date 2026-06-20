@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { SignInPage, Testimonial } from '../components/ui/sign-in';
 
@@ -16,10 +16,17 @@ const sampleTestimonials: Testimonial[] = [
     handle: "Full Stack Developer",
     text: "The Story Bank is a cheat code for behavioral rounds. Highly recommend this OS to any serious engineer."
   },
+  {
+    avatarSrc: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
+    name: "Alex Rivera",
+    handle: "Systems Architect",
+    text: "The True Trajectory Scanner tracks every single pipeline event precisely. I never lose track of where I stand with any employer."
+  }
 ];
 
 export default function Landing() {
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const [isLogin, setIsLogin] = useState(location.state?.mode !== 'signup');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

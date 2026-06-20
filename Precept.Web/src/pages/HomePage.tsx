@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HeroShader from '../components/ui/hero-shader';
 import DemoVideoSection from '../components/ui/demo-video-section';
+import PageTransition from '../components/ui/PageTransition';
 import { useAuth } from '../AuthContext';
 
 // Custom hook for scroll reveal animations
@@ -70,29 +71,42 @@ export default function HomePage() {
     };
   }, []);
 
-  const StatusBadge = ({ className = '' }: { className?: string }) => {
+  const StatusBadge = ({ className = '', tooltipPos = 'bottom' }: { className?: string, tooltipPos?: 'top' | 'bottom' }) => {
+    const Tooltip = () => (
+      <div className={`absolute ${tooltipPos === 'bottom' ? 'top-full mt-3' : 'bottom-full mb-3'} right-0 lg:left-1/2 lg:-translate-x-1/2 w-64 p-3 bg-[#0d141d] border border-brand-border rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none`}>
+        {/* Speech bubble tail */}
+        <div className={`absolute ${tooltipPos === 'bottom' ? '-top-2 border-t border-l' : '-bottom-2 border-b border-r'} right-6 lg:right-auto lg:left-1/2 lg:-translate-x-1/2 w-4 h-4 bg-[#0d141d] border-brand-border rotate-45 rounded-sm`}></div>
+        <p className="relative z-10 text-xs text-brand-text-muted font-sans font-normal leading-relaxed text-center whitespace-normal normal-case tracking-normal">
+          Continuously pings the backend server to verify API connectivity and system health.
+        </p>
+      </div>
+    );
+
     if (systemStatus === 'checking') {
       return (
-        <div className={`flex items-center gap-2 px-3 py-1 bg-brand-surface-high/50 rounded-full border border-brand-border/50 ${className}`}>
+        <div className={`group relative flex items-center gap-2 px-3 py-1 bg-brand-surface-high/50 rounded-full border border-brand-border/50 cursor-help ${className}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-[pulse_2s_infinite]"></span>
           <span className="text-xs font-mono text-brand-text-muted">Checking System...</span>
+          <Tooltip />
         </div>
       );
     }
     
     if (systemStatus === 'offline') {
       return (
-        <div className={`flex items-center gap-2 px-3 py-1 bg-red-500/10 rounded-full border border-red-500/30 ${className}`}>
+        <div className={`group relative flex items-center gap-2 px-3 py-1 bg-red-500/10 rounded-full border border-red-500/30 cursor-help ${className}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-[pulse_1s_infinite]"></span>
           <span className="text-xs font-mono text-red-400 font-bold">API Offline</span>
+          <Tooltip />
         </div>
       );
     }
 
     return (
-      <div className={`flex items-center gap-2 px-3 py-1 bg-[#06101c] rounded-full border border-brand-border/50 hover:border-brand-primary/50 transition-colors ${className}`}>
+      <div className={`group relative flex items-center gap-2 px-3 py-1 bg-[#06101c] rounded-full border border-brand-border/50 hover:border-brand-primary/50 transition-colors cursor-help ${className}`}>
         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-[pulse_2s_infinite]"></span>
         <span className="text-xs font-mono text-brand-text-muted">All Systems Operational</span>
+        <Tooltip />
       </div>
     );
   };
@@ -114,9 +128,10 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6 text-sm font-mono text-brand-text-muted">
-              <a href="#features" className="hover:text-brand-primary transition-colors duration-300">Features</a>
-              <a href="#security" className="hover:text-brand-primary transition-colors duration-300">Security</a>
-              <StatusBadge className="cursor-pointer" />
+              <a href="#demo" className="hover:text-brand-primary transition-colors duration-300">Live Demo</a>
+              <a href="#features" className="hover:text-brand-primary transition-colors duration-300">Deploy Your Strategy</a>
+              <a href="#roadmap" className="hover:text-brand-primary transition-colors duration-300">Roadmap</a>
+              <StatusBadge className="cursor-pointer" tooltipPos="bottom" />
             </div>
             <button 
               onClick={() => navigate('/login')}
@@ -125,7 +140,7 @@ export default function HomePage() {
               Sign In
             </button>
             <button 
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/login', { state: { mode: 'signup' } })}
               className="bg-brand-primary text-brand-secondary font-mono font-bold px-6 py-2.5 rounded-md hover:bg-brand-primary-container transition-all duration-300 hover:shadow-[0_0_20px_rgba(50,185,200,0.4)] hover:-translate-y-0.5 cursor-pointer"
             >
               Initialize
@@ -134,29 +149,30 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <HeroShader />
+      <PageTransition>
+        {/* Hero Section */}
+        <HeroShader />
 
       {/* Demo Video Section */}
       <DemoVideoSection />
 
       {/* Trust & Security */}
       <section id="security" ref={securityReveal.ref} className={`py-12 border-y border-brand-border/30 bg-[#06101c]/50 backdrop-blur-sm transition-all duration-1000 transform ease-out relative ${securityReveal.isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/5 via-transparent to-transparent pointer-events-none"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-brand-primary/5 via-transparent to-transparent pointer-events-none"></div>
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-12 font-mono text-sm text-brand-text-muted relative z-10">
           <div className="flex items-center gap-3 hover:text-brand-text transition-colors duration-300 cursor-default">
             <span className="material-symbols-outlined text-brand-primary">lock</span>
-            Secure & Encrypted
+            Encrypted Storage
           </div>
           <div className="hidden md:block w-1 h-1 rounded-full bg-brand-border"></div>
           <div className="flex items-center gap-3 hover:text-brand-text transition-colors duration-300 cursor-default">
             <span className="material-symbols-outlined text-brand-primary">visibility_off</span>
-            100% Private
+            Private Architecture
           </div>
           <div className="hidden md:block w-1 h-1 rounded-full bg-brand-border"></div>
           <div className="flex items-center gap-3 hover:text-brand-text transition-colors duration-300 cursor-default">
             <span className="material-symbols-outlined text-brand-primary">dns</span>
-            Local-First Architecture
+            Developer Controlled
           </div>
         </div>
       </section>
@@ -166,40 +182,56 @@ export default function HomePage() {
         <div className="text-left mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 font-mono text-xs uppercase tracking-widest">
             <span className="material-symbols-outlined text-[14px]">grid_view</span>
-            Core Modules
+            Available Now
           </div>
           <h2 className="font-heading font-bold text-4xl md:text-5xl mb-4 text-white">Deploy Your Strategy</h2>
-          <p className="font-mono text-brand-text-muted">Three powerful modules to orchestrate your job search.</p>
+          <p className="font-mono text-brand-text-muted">Four powerful modules to orchestrate your job search.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Feature 1 - PRIMARY BENTO CARD (Spans 2 cols) */}
+          {/* Feature 1 - Technical Story Bank */}
           <div 
             onClick={() => handleFeatureClick('/story-bank')}
-            className="md:col-span-2 relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-brand-primary/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col md:flex-row justify-between items-start md:items-center gap-8"
+            className="relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-brand-primary/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col"
           >
-            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary/10 rounded-bl-full -mr-32 -mt-32 transition-transform duration-700 group-hover:scale-[1.5] ease-out"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-[2.5] ease-out"></div>
             
-            <div className="flex-1 z-10 w-full">
-              <div className="w-14 h-14 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center mb-6 text-brand-primary shadow-[0_0_15px_rgba(50,185,200,0.1)] group-hover:shadow-[0_0_20px_rgba(50,185,200,0.3)] transition-shadow">
-                <span className="material-symbols-outlined text-[28px]">auto_stories</span>
+            <div className="z-10 flex-1">
+              <div className="w-12 h-12 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center mb-6 text-brand-primary shadow-[0_0_15px_rgba(50,185,200,0.1)] group-hover:shadow-[0_0_20px_rgba(50,185,200,0.3)] transition-shadow">
+                <span className="material-symbols-outlined text-[24px]">terminal</span>
               </div>
-              <h3 className="font-heading font-bold text-3xl mb-4 text-brand-text">Story Bank</h3>
-              <p className="text-brand-text-muted font-sans text-lg mb-6 leading-relaxed max-w-2xl">
-                Master your interview narratives with a dual-track system. Store complex <strong className="text-brand-primary font-normal">Technical Code Snippets</strong> to explain architecture decisions, and curate dedicated <strong className="text-brand-primary font-normal">Behavioral STAR Stories</strong> to ace culture-fit rounds with absolute confidence.
+              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">Technical Story Bank</h3>
+              <p className="text-brand-text-muted font-sans mb-6">
+                Save code snippets with your own explanations. Self-quiz by recall; your confidence rating drives spaced repetition so weak spots resurface next session.
               </p>
-              <div className="font-mono text-sm text-brand-primary flex items-center gap-2 uppercase tracking-wider font-bold mt-8 md:mt-0">
-                Master Narratives <span className="material-symbols-outlined text-[18px] group-hover:translate-x-2 transition-transform duration-300">arrow_forward</span>
-              </div>
             </div>
-            
-            {/* Subtle Watermark Graphic */}
-            <div className="hidden md:flex flex-shrink-0 z-10 p-8 mr-8 items-center justify-center">
-              <span className="material-symbols-outlined text-[140px] text-brand-primary/5 group-hover:text-brand-primary/20 transition-colors duration-500">auto_stories</span>
+            <div className="font-mono text-xs text-brand-primary flex items-center gap-2 uppercase tracking-wider font-bold z-10 mt-auto">
+              Master Technicals <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
             </div>
           </div>
 
-          {/* Feature 2 - STANDARD BENTO CARD */}
+          {/* Feature 2 - Behavioral Story Bank */}
+          <div 
+            onClick={() => handleFeatureClick('/story-bank')}
+            className="relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-amber-500/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-[2.5] ease-out"></div>
+            
+            <div className="z-10 flex-1">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 text-amber-500 group-hover:shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-shadow">
+                <span className="material-symbols-outlined text-[24px]">psychology</span>
+              </div>
+              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">Behavioral Story Bank</h3>
+              <p className="text-brand-text-muted font-sans mb-6">
+                The spaced repetition mechanic applied to STAR method interview narratives (Situation, Task, Action, Result). Tag and retrieve stories instantly.
+              </p>
+            </div>
+            <div className="font-mono text-xs text-amber-500 flex items-center gap-2 uppercase tracking-wider font-bold z-10 mt-auto">
+              Master Behaviors <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
+            </div>
+          </div>
+
+          {/* Feature 3 - JD Analyzer */}
           <div 
             onClick={() => handleFeatureClick('/jd-matcher')}
             className="relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-blue-500/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col"
@@ -208,19 +240,19 @@ export default function HomePage() {
             
             <div className="z-10 flex-1">
               <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-6 text-blue-400 group-hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] transition-shadow">
-                <span className="material-symbols-outlined text-[24px]">analytics</span>
+                <span className="material-symbols-outlined text-[24px]">troubleshoot</span>
               </div>
-              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">JD Matcher</h3>
+              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">JD Analyzer</h3>
               <p className="text-brand-text-muted font-sans mb-6">
-                Stop applying blindly. Instantly parse job descriptions to identify exact skill gaps and align your profile with automated precision.
+                Paste a job description and manually map its requirements against your stories and skills to find coverage gaps before the interview.
               </p>
             </div>
             <div className="font-mono text-xs text-blue-400 flex items-center gap-2 uppercase tracking-wider font-bold z-10 mt-auto">
-              Analyze JDs <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
+              Analyze Coverage <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
             </div>
           </div>
 
-          {/* Feature 3 - STANDARD BENTO CARD */}
+          {/* Feature 4 - App Tracker */}
           <div 
             onClick={() => handleFeatureClick('/applications')}
             className="relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-purple-500/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col"
@@ -231,9 +263,9 @@ export default function HomePage() {
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 text-purple-400 group-hover:shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-shadow">
                 <span className="material-symbols-outlined text-[24px]">view_kanban</span>
               </div>
-              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">App Tracker</h3>
+              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">Application Tracker</h3>
               <p className="text-brand-text-muted font-sans mb-6">
-                Organize your pipeline with a tactical Kanban board designed specifically for the intricacies of multi-stage engineering interviews.
+                A tactical Kanban board to track active applications, coordinate follow-ups, and manage negotiation stages seamlessly.
               </p>
             </div>
             <div className="font-mono text-xs text-purple-400 flex items-center gap-2 uppercase tracking-wider font-bold z-10 mt-auto">
@@ -242,11 +274,58 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Roadmap / Coming Soon */}
+      <section id="roadmap" className="py-24 px-6 max-w-7xl mx-auto border-t border-brand-border/30">
+        <div className="text-left mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full border border-brand-border bg-brand-surface-high text-brand-text-muted font-mono text-xs uppercase tracking-widest">
+            <span className="material-symbols-outlined text-[14px]">map</span>
+            Roadmap
+          </div>
+          <h2 className="font-heading font-bold text-3xl md:text-4xl mb-4 text-white">Coming Soon</h2>
+          <p className="font-mono text-brand-text-muted">The architecture is expanding. These features are in active development.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
+            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">phone_iphone</span>
+            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">Native Mobile App</h3>
+            <p className="text-brand-text-muted font-sans text-sm">iOS and Android companion applications to update your job pipeline on the go.</p>
+          </div>
+          
+          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
+            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">document_scanner</span>
+            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">Resume Extraction</h3>
+            <p className="text-brand-text-muted font-sans text-sm">Secure resume storage with automated text parsing and extraction capabilities.</p>
+          </div>
+
+          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
+            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">record_voice_over</span>
+            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">AI Mock Interview</h3>
+            <p className="text-brand-text-muted font-sans text-sm">
+              Upload your resume and a JD. An AI interviewer generates questions the way a real interviewer would. Post-session qualitative feedback provides a readiness read, strengths, and areas to improve. (Note: AI is sandboxed and has absolutely zero access to your Story Bank.)
+            </p>
+          </div>
+
+          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
+            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">mic</span>
+            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">Voice Interview Mode</h3>
+            <p className="text-brand-text-muted font-sans text-sm">Practice answering questions verbally with real-time transcription.</p>
+          </div>
+
+          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
+            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">desktop_windows</span>
+            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">Desktop App</h3>
+            <p className="text-brand-text-muted font-sans text-sm">Native desktop client optimized for focused, distraction-free preparation.</p>
+          </div>
+
+        </div>
+      </section>
       
       {/* Real Footer Implementation */}
       <footer className="border-t border-brand-border/30 bg-[#02050a] relative overflow-hidden">
         {/* Subtle top glow */}
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent"></div>
+        <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-brand-primary/20 to-transparent"></div>
         
         <div className="max-w-7xl mx-auto px-6 py-16 lg:py-24 relative z-10">
           <div className="flex flex-col text-left max-w-2xl">
@@ -280,10 +359,11 @@ export default function HomePage() {
           
           <div className="mt-16 pt-8 border-t border-brand-border/30 flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs text-brand-text-muted">
             <p>© 2026 Precept JobHunt OS. All rights reserved.</p>
-            <StatusBadge />
+            <StatusBadge className="cursor-pointer" tooltipPos="top" />
           </div>
         </div>
       </footer>
+      </PageTransition>
     </div>
   );
 }

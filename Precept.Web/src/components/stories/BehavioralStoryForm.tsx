@@ -87,7 +87,7 @@ export const BehavioralStoryForm: React.FC<BehavioralStoryFormProps> = ({ story,
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 items-center gap-1">
                 <span className="text-brand-primary font-bold">S</span>ituation
               </label>
               <textarea
@@ -100,7 +100,7 @@ export const BehavioralStoryForm: React.FC<BehavioralStoryFormProps> = ({ story,
             </div>
             
             <div>
-              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 items-center gap-1">
                 <span className="text-brand-primary font-bold">T</span>ask
               </label>
               <textarea
@@ -115,7 +115,7 @@ export const BehavioralStoryForm: React.FC<BehavioralStoryFormProps> = ({ story,
           
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 items-center gap-1">
                 <span className="text-brand-primary font-bold">A</span>ction
               </label>
               <textarea
@@ -128,7 +128,7 @@ export const BehavioralStoryForm: React.FC<BehavioralStoryFormProps> = ({ story,
             </div>
             
             <div>
-              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 items-center gap-1">
                 <span className="text-brand-primary font-bold">R</span>esult
               </label>
               <textarea
