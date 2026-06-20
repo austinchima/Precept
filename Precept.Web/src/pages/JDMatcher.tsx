@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { api } from '../api';
-import { GoogleGenAI } from '@google/genai';
 import { useToast } from '../components/ui/Toast';
 
 interface MatchResults {
@@ -27,22 +26,9 @@ export default function JDMatcher() {
     'We are looking for a Frontend Engineer with strong experience in React, TypeScript, and modern state management. You should be familiar with REST APIs, GraphQL, and CI/CD pipelines...'
   );
   
-  // Gemini API Key state
-  const [customApiKey, setCustomApiKey] = useState(localStorage.getItem('precept_gemini_api_key') || '');
-  const [showKeyInput, setShowKeyInput] = useState(false);
-  
-  // Fallback manual keywords
-  const [useManualKeywords, setUseManualKeywords] = useState(false);
+  // Fallback manual keywords (until server-side AI is shipped)
+  const [useManualKeywords, setUseManualKeywords] = useState(true);
   const [manualKeywords, setManualKeywords] = useState('React, TypeScript, REST APIs, CI/CD, Frontend, GraphQL, WebRTC');
-
-  const activeApiKey = (import.meta as any).env.VITE_GEMINI_API_KEY || customApiKey;
-
-  const handleSaveApiKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem('precept_gemini_api_key', customApiKey.trim());
-    setShowKeyInput(false);
-  };
-
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setResults(null);
@@ -50,41 +36,11 @@ export default function JDMatcher() {
     let extracted: string[] = [];
 
     try {
-      if (useManualKeywords || !activeApiKey) {
-        extracted = manualKeywords
-          .split(',')
-          .map(k => k.trim())
-          .filter(k => k.length > 0);
-      } else {
-        // Execute Gemini Extraction
-        const ai = new GoogleGenAI({ apiKey: activeApiKey });
-        const prompt = `
-          You are an expert technical recruiter. Analyze the following job description and extract a flat list of technical skills, frameworks, tools, databases, and methodologies as single keywords (e.g. "React", "TypeScript", "EF Core", "Docker").
-          Return ONLY a JSON array of strings. Do not include any markdown formatting, backticks, or surrounding text.
-          
-          Job Description:
-          ${jdText}
-        `;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-        });
-
-        const text = response.text || '';
-        const jsonStart = text.indexOf('[');
-        const jsonEnd = text.lastIndexOf(']') + 1;
-        
-        if (jsonStart !== -1 && jsonEnd > jsonStart) {
-          extracted = JSON.parse(text.substring(jsonStart, jsonEnd));
-        } else {
-          extracted = text
-            .replace(/[\[\]"]/g, '')
-            .split(',')
-            .map(k => k.trim())
-            .filter(k => k.length > 0);
-        }
-      }
+      // Fallback: Just use manual keywords until the backend AI is implemented
+      extracted = manualKeywords
+        .split(',')
+        .map(k => k.trim())
+        .filter(k => k.length > 0);
 
       const res = await api.post<MatchResults>('/api/jobdescription', {
         companyName: company,
@@ -179,53 +135,7 @@ export default function JDMatcher() {
             Paste a job description to instantly align your skills, identify gaps, and generate optimized resume bullets tailored to the specific role.
           </p>
         </div>
-
-        <button 
-          onClick={() => setShowKeyInput(!showKeyInput)}
-          className="border border-outline-variant text-on-surface hover:bg-surface-variant px-md py-sm rounded transition-colors font-label-caps text-label-caps flex items-center gap-2 cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[16px]">vpn_key</span>
-          {activeApiKey ? 'Update Key' : 'Configure Gemini'}
-        </button>
       </div>
-
-      {/* API Key Panel */}
-      {showKeyInput && (
-        <div className="bg-surface-container border border-outline-variant rounded-lg p-md animate-in slide-in-from-top-8 duration-200">
-          <form onSubmit={handleSaveApiKey} className="flex flex-col gap-sm">
-            <div className="flex justify-between items-center">
-              <h3 className="font-label-caps text-label-caps text-primary uppercase">Gemini Protocol Authentication</h3>
-              <button 
-                type="button" 
-                onClick={() => setShowKeyInput(false)}
-                className="text-on-surface-variant hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">close</span>
-              </button>
-            </div>
-            <p className="font-code text-code text-on-surface-variant">
-              Input a Gemini API Key from Google AI Studio. This enables automated keyword parsing of JDs.
-            </p>
-            <div className="flex gap-sm">
-              <div className="tech-border-focus rounded bg-surface-container-low border border-outline-variant p-px flex-1">
-                <input 
-                  type="password" 
-                  value={customApiKey}
-                  onChange={(e) => setCustomApiKey(e.target.value)}
-                  className="w-full bg-transparent border-none focus:ring-0 text-on-surface font-code text-code px-sm py-xs"
-                  placeholder="AIzaSy..."
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="bg-primary-container text-on-primary-fixed font-code text-code px-md py-xs rounded hover:bg-primary transition-colors cursor-pointer border-none"
-              >
-                Save Key
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* 2-Column Bento Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
@@ -294,29 +204,21 @@ export default function JDMatcher() {
               </div>
             </div>
 
-            {/* Fallback Option Toggle */}
+            {/* Manual Keyword Override (Temporary) */}
             <div className="flex flex-col gap-2 p-4 bg-surface-container-low border border-outline-variant rounded-lg">
-              <label className="flex items-center gap-2 font-code text-code text-on-surface-variant cursor-pointer hover:text-on-surface select-none">
-                <input 
-                  type="checkbox" 
-                  checked={useManualKeywords || !activeApiKey} 
-                  disabled={!activeApiKey}
-                  onChange={(e) => setUseManualKeywords(e.target.checked)}
-                  className="accent-primary"
-                />
-                Use manual keywords fallback {!activeApiKey && '(No API Key configured)'}
+              <label className="font-code text-code text-on-surface-variant flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">warning</span>
+                Manual keywords fallback (until server-side AI is shipped)
               </label>
-              {(useManualKeywords || !activeApiKey) && (
-                <div className="tech-border-focus rounded bg-surface-container border border-outline-variant p-px mt-1">
-                  <input 
-                    type="text" 
-                    value={manualKeywords}
-                    onChange={(e) => setManualKeywords(e.target.value)}
-                    className="w-full bg-transparent border-none focus:ring-0 text-on-surface font-code text-code px-sm py-xs"
-                    placeholder="Enter keywords separated by commas..."
-                  />
-                </div>
-              )}
+              <div className="tech-border-focus rounded bg-surface-container border border-outline-variant p-px mt-1">
+                <input 
+                  type="text" 
+                  value={manualKeywords}
+                  onChange={(e) => setManualKeywords(e.target.value)}
+                  className="w-full bg-transparent border-none focus:ring-0 text-on-surface font-code text-code px-sm py-xs"
+                  placeholder="Enter keywords separated by commas..."
+                />
+              </div>
             </div>
             
             {/* Action */}
