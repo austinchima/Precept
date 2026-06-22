@@ -10,7 +10,7 @@
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=.net&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Containerized-336791?logo=postgresql&logoColor=white)
 
-Precept is a highly specialized, terminal-inspired Career OS designed strictly for developers. It moves beyond standard spreadsheets by introducing a localized system to manage STAR (Situation, Task, Action, Result) stories, track applications, and index technical skills, all behind a sleek, developer-first interface.
+Precept is a highly specialized Career OS designed strictly for developers. It moves beyond standard spreadsheets by introducing a localized system to manage STAR (Situation, Task, Action, Result) stories, track applications, and index technical skills, all behind a sleek, developer-first interface.
 
 </div>
 
@@ -26,7 +26,7 @@ Standard CRMs and spreadsheets are clunky and generalized. Precept was built to 
 - **Pipeline Tracking & True Trajectory Scanner**: A centralized dashboard to track active applications. Automatically logs historical pipeline events (status changes) so you have an exact, real-time timeline of your job hunt trajectory.
 - **Skills Matrix**: Keep an up-to-date inventory of your technical capabilities and proficiencies to quickly match against job descriptions.
 - **Containerized Architecture**: Your career data is highly personal. Precept leverages a containerized PostgreSQL database to ensure your pipeline remains private, fast, and completely under your control.
-- **Terminal Aesthetics**: A dark-mode, command-center UI built with TailwindCSS and Framer Motion that developers actually _want_ to use.
+- **Developer-First Aesthetics**: A dark-mode, command-center UI built with TailwindCSS and Framer Motion that developers actually _want_ to use.
 
 ---
 
@@ -71,7 +71,15 @@ graph TD
 
 ### Tech Stack
 
-#### Frontend (Precept.Web)
+#### 🟢 Backend (Precept.Api) — **[LIVE: R1]**
+
+- **Framework**: ASP.NET Core Web API (.NET 10)
+- **Language**: C#
+- **ORM**: Entity Framework Core
+- **Database**: PostgreSQL (Docker Container)
+- **Authentication**: JSON Web Tokens (JWT) & ASP.NET Core Identity
+
+#### 🟡 Frontend (Precept.Web) — **[ROADMAP]**
 
 - **Framework**: React 19 with TypeScript
 - **Build Tool**: Vite (Lightning fast HMR)
@@ -80,14 +88,6 @@ graph TD
 - **Icons**: Lucide React / Google Material Symbols
 - **State Management**: React Context API
 - **Routing**: React Router DOM
-
-#### Backend (Precept.Api)
-
-- **Framework**: ASP.NET Core Web API (.NET 10)
-- **Language**: C#
-- **ORM**: Entity Framework Core
-- **Database**: PostgreSQL (Docker Container)
-- **Authentication**: JSON Web Tokens (JWT) & ASP.NET Core Identity
 
 ---
 
@@ -201,16 +201,17 @@ _The API will boot and be accessible by the frontend container automatically. Th
 
 Since Precept handles your personal career trajectory, security is treated as a first-class citizen:
 
-- **Authentication**: Short-lived JWTs paired with SHA-256-hashed refresh tokens stored exclusively in `HttpOnly`, `Secure`, `SameSite=Strict` cookies. Implements full token rotation on every refresh cycle; revoked tokens are chained to their replacements, and reuse of any revoked token triggers cascade revocation across all active sessions, forcing re-authentication.
+- **Authentication**: Short-lived JWTs paired with SHA-256-hashed refresh tokens stored exclusively in `HttpOnly`, `Secure`, `SameSite=Strict` cookies. Implements full token rotation on every refresh cycle; revoked tokens are chained to their replacements. Reuse of a stolen revoked token triggers cascade revocation across all active sessions. Includes rigorous optimistic concurrency (dead-heat) and lineage guards to prevent legitimate double-refresh actions from accidentally locking users out.
 - **Containerized Isolation**: PostgreSQL keeps your data entirely localized to your machine's Docker network. No telemetry, no cloud sync unless explicitly configured.
 - **Data Export**: Built-in raw JSON payload export functionality for immediate data portability.
 
 ---
 
-## 🔮 Roadmap (Future Releases)
+## 🔮 Roadmap
 
-Precept is constantly evolving to better serve the engineering community. In future releases, the architecture will be expanded to include:
+Precept is constantly evolving. Currently, **Release 1 (R1)** focuses purely on stabilizing the robust, secure Backend API. In future releases, the architecture will be expanded to include:
 
+- **Web Application**: The React/Vite web interface that consumes the R1 API.
 - **Cross-Platform Native Apps**: Packaging the web experience into a native **Desktop Application** and a companion **Mobile App**, giving you offline-first access to your interview stories and job pipeline anytime, anywhere.
 
 ---

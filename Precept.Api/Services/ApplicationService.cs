@@ -10,8 +10,13 @@ namespace Precept.Api.Services;
 /// Service implementation for managing job applications.
 /// Handles creation, retrieval, updating, status changes, and deletion of applications.
 /// </summary>
-public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationService> logger) : IApplicationService
+public class ApplicationService(
+    PreceptDbContext dbContext,
+    ILogger<ApplicationService> logger,
+    TimeProvider timeProvider) : IApplicationService
 {
+    private DateTime UtcNow => timeProvider.GetUtcNow().UtcDateTime;
+
     private static ApplicationResponse MapToResponse(Application app)
     {
         return new ApplicationResponse
@@ -78,7 +83,7 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
         {
             ApplicationId = application.Id,
             Status = application.Status,
-            DateOccurred = DateTime.UtcNow,
+            DateOccurred = UtcNow,
         };
         dbContext.Set<ApplicationEvent>().Add(appEvent);
 
@@ -170,7 +175,7 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
             {
                 ApplicationId = app.Id,
                 Status = request.Status,
-                DateOccurred = DateTime.UtcNow,
+                DateOccurred = UtcNow,
                 Notes = "Status updated"
             };
             dbContext.Set<ApplicationEvent>().Add(appEvent);
@@ -204,14 +209,14 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
             {
                 ApplicationId = app.Id,
                 Status = status,
-                DateOccurred = DateTime.UtcNow,
+                DateOccurred = UtcNow,
                 Notes = "Status updated"
             };
             dbContext.Set<ApplicationEvent>().Add(appEvent);
         }
 
         app.Status = status;
-        app.DateLastContact = DateTime.UtcNow;
+        app.DateLastContact = UtcNow;
         app.FollowUpDate = CalculateAutoFollowUpDate(status);
         await dbContext.SaveChangesAsync();
         logger.ApplicationUpdated(guid);
@@ -222,15 +227,15 @@ public class ApplicationService(PreceptDbContext dbContext, ILogger<ApplicationS
     /// <summary>
     /// Calculates the auto follow-up date based on the new application status.
     /// </summary>
-    private static DateTime CalculateAutoFollowUpDate(ApplicationStatus status) => status switch
+    private DateTime CalculateAutoFollowUpDate(ApplicationStatus status) => status switch
     {
-        ApplicationStatus.Applied      => DateTime.UtcNow.AddDays(7),   // 1 week for initial recruiter review
-        ApplicationStatus.PhoneScreen  => DateTime.UtcNow.AddDays(3),   // 3 days after phone screen
-        ApplicationStatus.Interviewing => DateTime.UtcNow.AddDays(5),   // 5 days after interview
-        ApplicationStatus.Offer        => DateTime.UtcNow.AddDays(2),   // 2 days to respond/negotiate
-        ApplicationStatus.Ghosted      => DateTime.UtcNow.AddDays(14),  // 2 weeks for a final attempt
-        ApplicationStatus.Rejected     => DateTime.UtcNow,              // No future follow-up needed
-        _                              => DateTime.UtcNow.AddDays(7)
+        ApplicationStatus.Applied      => UtcNow.AddDays(7),   // 1 week for initial recruiter review
+        ApplicationStatus.PhoneScreen  => UtcNow.AddDays(3),   // 3 days after phone screen
+        ApplicationStatus.Interviewing => UtcNow.AddDays(5),   // 5 days after interview
+        ApplicationStatus.Offer        => UtcNow.AddDays(2),   // 2 days to respond/negotiate
+        ApplicationStatus.Ghosted      => UtcNow.AddDays(14),  // 2 weeks for a final attempt
+        ApplicationStatus.Rejected     => UtcNow,              // No future follow-up needed
+        _                              => UtcNow.AddDays(7)
     };
 
     /// <summary>

@@ -17,10 +17,12 @@ public class TokenService : ITokenService
 {
     private readonly JwtSettings _jwtSettings;
     private readonly SymmetricSecurityKey _signingKey;
+    private readonly TimeProvider _timeProvider;
 
-    public TokenService(IOptions<JwtSettings> jwtSettings)
+    public TokenService(IOptions<JwtSettings> jwtSettings, TimeProvider timeProvider)
     {
         _jwtSettings = jwtSettings.Value;
+        _timeProvider = timeProvider;
 
         if (string.IsNullOrWhiteSpace(_jwtSettings.SecretKey) || _jwtSettings.SecretKey.Length < 32)
         {
@@ -51,15 +53,16 @@ public class TokenService : ITokenService
         }
 
         var credentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256);
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpiryMinutes),
+            Expires = now.AddMinutes(_jwtSettings.AccessTokenExpiryMinutes),
             Issuer = _jwtSettings.Issuer,
             Audience = _jwtSettings.Audience,
             SigningCredentials = credentials,
-            NotBefore = DateTime.UtcNow
+            NotBefore = now
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();

@@ -10,8 +10,13 @@ namespace Precept.Api.Services;
 /// Service implementation for managing user stories (code snippets with explanations and confidence levels).
 /// Handles creation, updates, deletion, retrieval, and secure user data isolation.
 /// </summary>
-public class StoryService(PreceptDbContext dbContext, ILogger<StoryService> logger) : IStoryService
+public class StoryService(
+    PreceptDbContext dbContext,
+    ILogger<StoryService> logger,
+    TimeProvider timeProvider) : IStoryService
 {
+    private DateTime UtcNow => timeProvider.GetUtcNow().UtcDateTime;
+
     /// <summary>
     /// Creates a new code story and persists it to the database.
     /// </summary>
@@ -31,8 +36,8 @@ public class StoryService(PreceptDbContext dbContext, ILogger<StoryService> logg
             Category = request.Category,
             ConfidenceLevel = request.ConfidenceLevel,
             UserId = userId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = UtcNow,
+            UpdatedAt = UtcNow
         };
 
         dbContext.Stories.Add(story);
@@ -277,7 +282,7 @@ public class StoryService(PreceptDbContext dbContext, ILogger<StoryService> logg
         story.CodeSnippet = request.CodeSnippet;
         story.Category = request.Category;
         story.ConfidenceLevel = request.ConfidenceLevel;
-        story.UpdatedAt = DateTime.UtcNow;
+        story.UpdatedAt = UtcNow;
         
         await dbContext.SaveChangesAsync();
         logger.StoryUpdated(guid);
@@ -357,8 +362,8 @@ public class StoryService(PreceptDbContext dbContext, ILogger<StoryService> logg
         
         // Update only the confidence level and last reviewed timestamp
         story.ConfidenceLevel = confidenceLevel;
-        story.LastReviewedAt = DateTime.UtcNow;
-        story.UpdatedAt = DateTime.UtcNow;
+        story.LastReviewedAt = UtcNow;
+        story.UpdatedAt = UtcNow;
         
         await dbContext.SaveChangesAsync();
         logger.StoryUpdated(guid);

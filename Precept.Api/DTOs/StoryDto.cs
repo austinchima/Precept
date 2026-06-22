@@ -11,11 +11,10 @@ public class CreateStoryRequest
 {
     [Required]
     public string Title { get; set; } = string.Empty;
-    
-    [Required]
-    [MinLength(50, ErrorMessage = "Explanation must be at least 50 characters")]
+
+    [Required, MinLength(50, ErrorMessage = "Explanation must be at least 50 characters")]
     public string Explanation { get; set; } = string.Empty;
-    
+
     public string SourceProject { get; set; } = string.Empty;
     
     [Required]
@@ -29,14 +28,12 @@ public class CreateStoryRequest
 
 public class UpdateStoryRequest
 {
-    [Required]
     public string Id { get; set; } = string.Empty;
     
     [Required]
     public string Title { get; set; } = string.Empty;
     
-    [Required]
-    [MinLength(50, ErrorMessage = "Explanation must be at least 50 characters")]
+    [Required, MinLength(50, ErrorMessage = "Explanation must be at least 50 characters")]
     public string Explanation { get; set; } = string.Empty;
     
     public string SourceProject { get; set; } = string.Empty;

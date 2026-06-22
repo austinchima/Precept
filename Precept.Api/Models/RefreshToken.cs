@@ -36,6 +36,7 @@ public class RefreshToken
     /// <summary>
     /// When this token was revoked (null if still active).
     /// </summary>
+    [ConcurrencyCheck]
     public DateTime? RevokedAt { get; set; }
 
     /// <summary>

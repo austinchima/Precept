@@ -20,32 +20,22 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .WriteTo.File("logs/api-log-.txt", rollingInterval: RollingInterval.Day));
 
 // ─────────────────────────────────────────────────────────────
-//  Load .env file (production secrets)
+//  Load .env file (production secrets — skipped during integration tests)
 // ─────────────────────────────────────────────────────────────
-var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
-if (File.Exists(envPath))
+if (!builder.Environment.IsEnvironment("Testing"))
 {
-    foreach (var line in File.ReadAllLines(envPath))
+    var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+    if (File.Exists(envPath))
     {
-        var trimmed = line.Trim();
-        if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#'))
-            continue;
-
-        var separatorIndex = trimmed.IndexOf('=');
-        if (separatorIndex <= 0)
-            continue;
-
-        var key = trimmed[..separatorIndex].Trim();
-        var value = trimmed[(separatorIndex + 1)..].Trim();
-        Environment.SetEnvironmentVariable(key, value);
+        DotNetEnv.Env.Load(envPath);
     }
-}
 
-// Override JWT secret from environment variable if present
-var envSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
-if (!string.IsNullOrWhiteSpace(envSecretKey))
-{
-    builder.Configuration["JwtSettings:SecretKey"] = envSecretKey;
+    // Override JWT secret from environment variable if present
+    var envSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+    if (!string.IsNullOrWhiteSpace(envSecretKey))
+    {
+        builder.Configuration["JwtSettings:SecretKey"] = envSecretKey;
+    }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -55,7 +45,15 @@ builder.Services.AddDbContext<PreceptDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // ─────────────────────────────────────────────────────────────
-//  2. ASP.NET Identity
+//  2. Time
+// ─────────────────────────────────────────────────────────────
+// Registered as a singleton so services can inject TimeProvider and tests
+// can substitute FakeTimeProvider for deterministic date assertions.
+builder.Services.AddSingleton(TimeProvider.System);
+
+
+// ─────────────────────────────────────────────────────────────
+//  3. ASP.NET Identity
 // ─────────────────────────────────────────────────────────────
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
@@ -80,6 +78,14 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<PreceptDbContext>()
 .AddDefaultTokenProviders();
 
+// Override Identity's default cookie-based authentication scheme
+// with JwtBearer — must come AFTER AddIdentity to take precedence.
+builder.Services.Configure<Microsoft.AspNetCore.Authentication.AuthenticationOptions>(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+});
+
 // ─────────────────────────────────────────────────────────────
 //  3. JWT Settings (strongly typed)
 // ─────────────────────────────────────────────────────────────
@@ -102,7 +108,7 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     // Require HTTPS in production only
-    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+    options.RequireHttpsMetadata = builder.Environment.IsProduction();
 
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
@@ -121,10 +127,14 @@ builder.Services.AddAuthentication(options =>
     // Return structured error info in WWW-Authenticate header (useful for debugging)
     options.Events = new JwtBearerEvents
     {
-        OnAuthenticationFailed = context =>
+        OnChallenge = context =>
         {
-            if (context.Exception is SecurityTokenExpiredException)
+            if (context.AuthenticateFailure is SecurityTokenExpiredException)
             {
+                // Take over the response to ensure X-Token-Expired is included
+                context.HandleResponse();
+                context.Response.StatusCode = 401;
+                context.Response.Headers.Append("WWW-Authenticate", "Bearer error=\"invalid_token\", error_description=\"The token is expired\"");
                 context.Response.Headers.Append("X-Token-Expired", "true");
             }
             return Task.CompletedTask;
@@ -138,7 +148,14 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // ─────────────────────────────────────────────────────────────
-//  6. Application Services
+//  6. Current-user accessor (feeds global query filters in DbContext)
+// ─────────────────────────────────────────────────────────────
+// Scoped, not singleton — reads per-request HttpContext claims.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+
+// ─────────────────────────────────────────────────────────────
+//  7. Application Services
 // ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
@@ -147,6 +164,7 @@ builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISkillService, SkillService>();
 builder.Services.AddScoped<IJobDescriptionService, JobDescriptionService>();
+builder.Services.AddScoped<ICookieOptionsFactory, CookieOptionsFactory>();
 
 builder.Services.AddCors(options =>
 {

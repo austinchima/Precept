@@ -18,7 +18,7 @@ namespace Precept.Api.Controllers;
 public class AuthController(
     UserManager<ApplicationUser> userManager,
     ITokenService tokenService,
-    IWebHostEnvironment env,
+    ICookieOptionsFactory cookieOptionsFactory,
     PreceptDbContext dbContext,
     IOptions<JwtSettings> jwtSettings,
     ILogger<AuthController> logger) : ControllerBase
@@ -170,11 +170,30 @@ public class AuthController(
         // 3. Reuse detection: if the token was already revoked, someone may be replaying a stolen token
         if (storedToken.IsRevoked)
         {
-            logger.TokenReuseDetected(storedToken.UserId);
+            // Determine if this revoked token is the direct parent of the current active token
+            var activeToken = await dbContext.RefreshTokens
+                .Where(rt => rt.UserId == storedToken.UserId && rt.RevokedAt == null)
+                .OrderByDescending(rt => rt.CreatedAt)
+                .FirstOrDefaultAsync();
 
+            var isDirectParent = activeToken != null &&
+                                 storedToken.ReplacedByToken != null &&
+                                 storedToken.ReplacedByToken == activeToken.Token;
+
+            var withinGrace = storedToken.RevokedAt.HasValue &&
+                              (DateTime.UtcNow - storedToken.RevokedAt.Value).TotalSeconds <= 10;
+
+            // Graceful handling only if direct parent and within grace window
+            if (isDirectParent && withinGrace)
+            {
+                // Graceful handling of a concurrent retry – do not cascade revoke
+                return Unauthorized(new { message = "Token just refreshed" });
+            }
+
+            // Otherwise treat as a replay attack – revoke all sessions
             await RevokeAllUserTokens(storedToken.UserId);
             ClearRefreshCookie();
-            return Unauthorized(new { message = "Token reuse detected. All sessions have been revoked. Please log in again." });
+            return Unauthorized(new { message = "Token reuse detection. All sessions have been revoked. Please log in again." });
         }
 
         // 4. Check if expired
@@ -207,7 +226,19 @@ public class AuthController(
         };
 
         dbContext.RefreshTokens.Add(newRefreshToken);
-        await dbContext.SaveChangesAsync();
+        
+        try
+        {
+            // The [ConcurrencyCheck] on RevokedAt ensures this is atomic.
+            // If another thread already updated RevokedAt, this throws.
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Dead-heat race condition: another concurrent request just revoked this token.
+            // The DbContext state is dirty but since we return here, it evaporates.
+            return Unauthorized(new { message = "Token just refreshed" });
+        }
 
         // Generate new access token
         var accessToken = tokenService.GenerateAccessToken(user, roles);
@@ -317,15 +348,7 @@ public class AuthController(
     /// </summary>
     private void SetRefreshCookie(string rawToken, bool rememberMe)
     {
-        var isDev = env.IsDevelopment();
-
-        var options = new CookieOptions
-        {
-            HttpOnly = true,                                             // Not accessible via JavaScript (XSS protection)
-            Secure = !isDev,                                             // HTTPS only in production; allow HTTP in dev
-            SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.Strict,   // Lax in dev for Scalar/Swagger testing
-            Path = "/api/auth"                                           // Only sent to auth endpoints (minimizes exposure)
-        };
+        var options = cookieOptionsFactory.CreateCookieOptions(rememberMe);
 
         if (rememberMe)
         {
@@ -337,14 +360,8 @@ public class AuthController(
 
     private void ClearRefreshCookie()
     {
-        var isDev = env.IsDevelopment();
-        Response.Cookies.Delete("refreshToken", new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !isDev,
-            SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.Strict,
-            Path = "/api/auth"
-        });
+        var options = cookieOptionsFactory.CreateCookieOptions(false);
+        Response.Cookies.Delete("refreshToken", options);
     }
 
     // ─────────────────────────────────────────────────────────────
