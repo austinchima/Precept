@@ -2,15 +2,15 @@
   
 # Precept
 
-**A Private, Containerized Job-Hunting Command Center for Software Engineers**
+**A Secure, Hosted Job-Hunting Command Center for Software Engineers**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=.net&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Containerized-336791?logo=postgresql&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?logo=postgresql&logoColor=white)
 
-Precept is a highly specialized Career OS designed strictly for developers. It moves beyond standard spreadsheets by introducing a localized system to manage STAR (Situation, Task, Action, Result) stories, track applications, and index technical skills, all behind a sleek, developer-first interface.
+Precept is a highly specialized Career OS designed strictly for developers. It moves beyond standard spreadsheets by introducing a secure system to manage STAR (Situation, Task, Action, Result) stories, track applications, and index technical skills, all behind a sleek, developer-first interface.
 
 </div>
 
@@ -26,14 +26,14 @@ Standard CRMs and spreadsheets are clunky and generalized. Precept was built to 
 - **Pipeline Tracking & True Trajectory Scanner**: A centralized dashboard to track active applications. Automatically logs historical pipeline events (status changes) so you have an exact, real-time timeline of your job hunt trajectory.
 - **Analytics & Insights Dashboard**: Visual representations of your job search progress, skill gaps, and application conversion rates using dynamic radar and bar charts.
 - **Skills Matrix**: Keep an up-to-date inventory of your technical capabilities and proficiencies to quickly match against job descriptions.
-- **Containerized Architecture**: Your career data is highly personal. Precept leverages a containerized PostgreSQL database to ensure your pipeline remains private, fast, and completely under your control.
+- **Secure Cloud Architecture**: Your career data is highly personal. Precept leverages a robust, isolated cloud infrastructure to ensure your pipeline remains fast, accessible anywhere, and completely secure.
 - **Developer-First Aesthetics**: A dark-mode, command-center UI built with TailwindCSS, Framer Motion, and Liquid Glass elements that developers actually _want_ to use.
 
 ---
 
 ## 🏗️ System Architecture
 
-Precept follows a clean, decoupled client-server architecture, allowing for independent scaling and local deployment.
+Precept follows a clean, decoupled client-server architecture, built for scalable cloud deployment and high availability.
 
 ```mermaid
 graph TD
@@ -77,7 +77,7 @@ graph TD
 - **Framework**: ASP.NET Core Web API (.NET 10)
 - **Language**: C#
 - **ORM**: Entity Framework Core
-- **Database**: PostgreSQL (Docker Container)
+- **Database**: PostgreSQL
 - **Authentication**: JSON Web Tokens (JWT) & ASP.NET Core Identity
 
 #### 🟢 Frontend (Precept.Web) — **[LIVE: R1]**
@@ -204,7 +204,7 @@ _The API will boot and be accessible by the frontend container automatically. Th
 Since Precept handles your personal career trajectory, security is treated as a first-class citizen:
 
 - **Authentication**: Short-lived JWTs paired with SHA-256-hashed refresh tokens stored exclusively in `HttpOnly`, `Secure`, `SameSite=Strict` cookies. Implements full token rotation on every refresh cycle; revoked tokens are chained to their replacements. Reuse of a stolen revoked token triggers cascade revocation across all active sessions. Includes rigorous optimistic concurrency (dead-heat) and lineage guards to prevent legitimate double-refresh actions from accidentally locking users out.
-- **Containerized Isolation**: PostgreSQL keeps your data entirely localized to your machine's Docker network. No telemetry, no cloud sync unless explicitly configured.
+- **Data Isolation**: Precept ensures strict data segregation and encryption at rest. Your career data is never shared, sold, or used for unauthorized telemetry. You own your pipeline.
 - **Data Export**: Built-in raw JSON payload export functionality for immediate data portability.
 
 ---
@@ -221,7 +221,7 @@ Precept is constantly evolving. **Release 1 (R1)** shipped the full-stack founda
 
 ### R3 — Platform Expansion
 
-- **Cross-Platform Native Apps**: Packaging the web experience into a native **Desktop Application** (Electron/Tauri) and a companion **Mobile App**, giving you offline-first access to your interview stories and job pipeline anytime, anywhere.
+- **Cross-Platform Native Apps**: Packaging the web experience into a native **Desktop Application** (Electron/Tauri) and a companion **Mobile App**, giving you access to your interview stories and job pipeline anytime, anywhere.
 - **Team Mode**: Shared story banks and peer mock interviews for engineering teams preparing together.
 
 ---
