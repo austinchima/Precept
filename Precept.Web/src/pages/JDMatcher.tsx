@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
+import { getSkillIcon } from '../lib/utils';
 
 interface MatchResults {
   id: string;
@@ -143,7 +145,7 @@ export default function JDMatcher() {
         {/* Left Column: Input (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           <div className="glass-panel rounded-2xl p-6 flex flex-col gap-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-linear-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
 
             <h3 className="text-lg font-semibold text-white flex items-center gap-2.5">
               <i className="fa-solid fa-file-lines text-accent-teal text-sm"></i>
@@ -181,7 +183,7 @@ export default function JDMatcher() {
                   type="url" 
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  className="input-base w-full text-sm !pl-9"
+                  className="input-base w-full text-sm pl-9!"
                   placeholder="https://careers.company.com/jobs/..."
                 />
               </div>
@@ -291,11 +293,15 @@ export default function JDMatcher() {
                   <div className="flex flex-wrap gap-1.5">
                     {results.extractedKeyWords
                       .filter(kw => !results.missingKeyWords.some(m => m.toLowerCase() === kw.toLowerCase()))
-                      .map(kw => (
-                        <span key={kw} className="px-2.5 py-1 bg-accent-teal/10 text-accent-teal border border-accent-teal/20 rounded-full font-mono text-[10px]">
-                          {kw.toUpperCase()}
-                        </span>
-                      ))}
+                      .map(kw => {
+                        const iconData = getSkillIcon(kw);
+                        return (
+                          <span key={kw} className="px-2.5 py-1 flex items-center gap-1.5 bg-accent-teal/10 text-accent-teal border border-accent-teal/20 rounded-full font-mono text-[10px]">
+                            <i className={`${iconData.icon} opacity-80`} style={{ color: iconData.color }}></i>
+                            {kw.toUpperCase()}
+                          </span>
+                        );
+                      })}
                     {results.extractedKeyWords.length === results.missingKeyWords.length && (
                       <span className="text-xs font-mono text-text-secondary italic">No matched capabilities.</span>
                     )}
@@ -309,11 +315,15 @@ export default function JDMatcher() {
                     Missing / Gap ({results.missingKeyWords.length})
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {results.missingKeyWords.map(kw => (
-                      <span key={kw} className="px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full font-mono text-[10px]">
-                        {kw.toUpperCase()}
-                      </span>
-                    ))}
+                    {results.missingKeyWords.map(kw => {
+                      const iconData = getSkillIcon(kw);
+                      return (
+                        <span key={kw} className="px-2.5 py-1 flex items-center gap-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full font-mono text-[10px]">
+                          <i className={`${iconData.icon} opacity-80`} style={{ color: iconData.color }}></i>
+                          {kw.toUpperCase()}
+                        </span>
+                      );
+                    })}
                     {results.missingKeyWords.length === 0 && (
                       <span className="text-xs font-mono text-accent-teal italic">No skill gaps! Perfect match.</span>
                     )}

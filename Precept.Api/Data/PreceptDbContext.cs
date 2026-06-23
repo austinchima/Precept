@@ -5,7 +5,8 @@ using Precept.Api.Services.Interfaces;
 
 namespace Precept.Api.Data
 {
-    public class PreceptDbContext : IdentityDbContext<ApplicationUser>
+    public class PreceptDbContext(DbContextOptions<PreceptDbContext> options, ICurrentUser currentUser)
+        : IdentityDbContext<ApplicationUser>(options)
     {
         // Captured at construction time from the scoped ICurrentUser.
         // EF Core detects a reference to a context-instance field in a query filter lambda
@@ -14,13 +15,7 @@ namespace Precept.Api.Data
         // IMPORTANT: do NOT copy _currentUserId to a local and close over that local;
         // doing so bakes the value into the cached model and every user gets the first
         // caller's filter.
-        private readonly string? _currentUserId;
-
-        public PreceptDbContext(DbContextOptions<PreceptDbContext> options, ICurrentUser currentUser)
-            : base(options)
-        {
-            _currentUserId = currentUser.UserId;
-        }
+        private readonly string? _currentUserId = currentUser.UserId;
 
         public DbSet<Story> Stories { get; set; } = null!;
         public DbSet<BehavioralStory> BehavioralStories { get; set; } = null!;

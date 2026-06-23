@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Skill, SkillProficiency } from '../types';
+import { getSkillIcon } from '../lib/utils';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -389,9 +391,10 @@ export default function Settings() {
                       >
                         <i className="fa-solid fa-xmark text-xs"></i>
                       </button>
-
-                      <h4 className="font-semibold text-white text-sm pr-6 group-hover:text-accent-teal transition-colors duration-300">{skill.name}</h4>
-                      
+                      <h4 className="font-semibold text-white text-sm pr-6 group-hover:text-accent-teal transition-colors duration-300 flex items-center gap-2">
+                        <i className={`${getSkillIcon(skill.name).icon} text-sm`} style={{ color: getSkillIcon(skill.name).color }}></i>
+                        {skill.name}
+                      </h4>
                       <div className="flex gap-2 mt-2 items-center flex-wrap">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 border rounded-full text-[10px] font-mono font-medium ${PROFICIENCY_COLORS[skill.proficiencyLevel]}`}>
                           <i className={`${PROFICIENCY_ICONS[skill.proficiencyLevel]} text-[8px]`}></i>
@@ -566,7 +569,7 @@ export default function Settings() {
               </div>
               <h2 className="text-lg font-semibold text-[#f87171]">Danger Zone</h2>
             </div>
-            <div className="glass-panel rounded-2xl p-6 !border-rose-500/20">
+            <div className="glass-panel rounded-2xl p-6 border-rose-500/20!">
               <p className="text-sm text-[#f87171]/70 mb-4 leading-relaxed">Force revoke all active credential caches from this local browser instance.</p>
               <button 
                 onClick={handlePurge}

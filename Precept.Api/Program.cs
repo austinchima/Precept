@@ -164,6 +164,7 @@ builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISkillService, SkillService>();
 builder.Services.AddScoped<IJobDescriptionService, JobDescriptionService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<ICookieOptionsFactory, CookieOptionsFactory>();
 
 builder.Services.AddCors(options =>
@@ -231,7 +232,7 @@ app.Use(async (context, next) =>
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
 
-        var response = new { message, detail = exception?.Message };
+        var response = new { message, detail = exception.Message };
         await context.Response.WriteAsJsonAsync(response);
     }
 });

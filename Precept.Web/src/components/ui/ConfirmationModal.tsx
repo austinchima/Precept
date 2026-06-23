@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface ConfirmationModalProps {
   isOpen: boolean;
@@ -21,10 +22,16 @@ export default function ConfirmationModal({
   onCancel,
   danger = false
 }: ConfirmationModalProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center animate-fade-in-up">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
+
+  const modalContent = (
+    <div className="fixed inset-0 z-200 flex items-center justify-center animate-fade-in-up">
       {/* Overlay */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -32,9 +39,9 @@ export default function ConfirmationModal({
       ></div>
 
       {/* Modal Content - Liquid Glass Effect */}
-      <div className="relative w-full max-w-md mx-4 overflow-hidden rounded-3xl bg-dashboard-bg/40 backdrop-blur-2xl border border-white/10 shadow-[inset_0_0_40px_rgba(255,255,255,0.05),0_20px_40px_rgba(0,0,0,0.5)] flex flex-col transform transition-all animate-scale-up">
+      <div className="relative w-full max-w-112 mx-4 overflow-hidden rounded-3xl bg-dashboard-bg/40 backdrop-blur-2xl border border-white/10 shadow-[inset_0_0_40px_rgba(255,255,255,0.05),0_20px_40px_rgba(0,0,0,0.5)] flex flex-col transform transition-all animate-scale-up">
         {/* Decorative Top Glow */}
-        <div className={`absolute top-0 left-0 w-full h-1 ${danger ? 'bg-gradient-to-r from-transparent via-[#f87171] to-transparent shadow-[0_0_15px_rgba(248,113,113,0.8)]' : 'bg-gradient-to-r from-transparent via-accent-teal to-transparent shadow-[0_0_15px_rgba(45,212,191,0.8)]'}`}></div>
+        <div className={`absolute top-0 left-0 w-full h-1 ${danger ? 'bg-linear-to-r from-transparent via-[#f87171] to-transparent shadow-[0_0_15px_rgba(248,113,113,0.8)]' : 'bg-linear-to-r from-transparent via-accent-teal to-transparent shadow-[0_0_15px_rgba(45,212,191,0.8)]'}`}></div>
 
         <div className="p-6 md:p-8">
           <div className="flex items-center gap-4 mb-4">
@@ -75,4 +82,6 @@ export default function ConfirmationModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

@@ -5,6 +5,7 @@ import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import confetti from 'canvas-confetti';
+import { getCompanyIcon } from '../lib/utils';
 
 const COLUMNS: ApplicationStatus[] = ['Applied', 'PhoneScreen', 'Interviewing', 'Offer', 'Rejected', 'Ghosted'];
 
@@ -49,6 +50,27 @@ const getStatusGlow = (status: ApplicationStatus) => {
   }
 };
 
+const renderCompanyLogo = (name: string, sizeClass = 'h-6 w-6 text-xs') => {
+  const { icon, color, isText, initials } = getCompanyIcon(name);
+  if (isText) {
+    return (
+      <div 
+        className={`${sizeClass} rounded-md flex items-center justify-center shrink-0 shadow-sm`}
+        style={{ backgroundColor: color, color: '#ffffff' }}
+      >
+        <span className="font-bold leading-none">{initials}</span>
+      </div>
+    );
+  }
+  return (
+    <div 
+      className={`${sizeClass} rounded-md flex items-center justify-center shrink-0 shadow-sm`}
+      style={{ backgroundColor: `${color}15`, color: color, border: `1px solid ${color}30` }}
+    >
+      <i className={icon}></i>
+    </div>
+  );
+};
 
 export default function AppTracker() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -343,19 +365,22 @@ export default function AppTracker() {
                   </div>
                   
                   {/* Column Body */}
-                  <div className="flex-1 space-y-3 glass-panel rounded-xl p-3 border-dashed !border-white/5 overflow-y-auto min-h-[300px] custom-scrollbar">
+                  <div className="flex-1 space-y-3 glass-panel rounded-xl p-3 border-dashed border-white/5! overflow-y-auto min-h-[300px] custom-scrollbar">
                     {apps.filter(a => a.status === col).map(app => (
                       <div 
                         key={app.id} 
                         draggable
                         onDragStart={(e) => handleDragStart(e, app.id)}
                         onClick={() => handleOpenEditModal(app)}
-                        className={`glass-panel rounded-xl p-4 hover:border-white/15 transition-all duration-300 cursor-move group relative ${getStatusGlow(app.status)} ${draggedAppId === app.id ? 'opacity-40 !border-accent-teal' : ''}`}
+                        className={`glass-panel rounded-xl p-4 hover:border-white/15 transition-all duration-300 cursor-move group relative ${getStatusGlow(app.status)} ${draggedAppId === app.id ? 'opacity-40 border-accent-teal!' : ''}`}
                       >
                          <button className="absolute top-3.5 right-3.5 text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity hover:text-accent-teal cursor-pointer flex items-center justify-center">
                            <i className="fa-solid fa-ellipsis text-xs"></i>
                          </button>
-                         <h4 className="font-semibold text-white text-sm mb-1 truncate pr-6 group-hover:text-accent-teal transition-colors duration-300">{app.companyName}</h4>
+                         <div className="flex items-center gap-2 mb-1 pr-6">
+                           {renderCompanyLogo(app.companyName)}
+                           <h4 className="font-semibold text-white text-sm truncate group-hover:text-accent-teal transition-colors duration-300">{app.companyName}</h4>
+                         </div>
                          <p className="text-xs text-text-secondary mb-3 truncate">{app.roleTitle}</p>
                          <div className="flex items-center text-[10px] font-mono text-text-secondary gap-1.5">
                            <i className="fa-regular fa-calendar text-accent-teal text-[10px]"></i> {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'No date'}
@@ -385,9 +410,14 @@ export default function AppTracker() {
                     <tr 
                       key={app.id} 
                       onClick={() => handleOpenEditModal(app)}
-                      className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                      className="hover:bg-white/3 transition-colors cursor-pointer group"
                     >
-                      <td className="px-6 py-4 font-semibold text-white group-hover:text-accent-teal transition-colors duration-300">{app.companyName}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {renderCompanyLogo(app.companyName, 'h-8 w-8 text-sm')}
+                          <span className="font-semibold text-white group-hover:text-accent-teal transition-colors duration-300">{app.companyName}</span>
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-text-secondary text-sm">{app.roleTitle}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium border ${getStatusColor(app.status)}`}>
@@ -427,7 +457,10 @@ export default function AppTracker() {
                   <div key={app.id} onClick={() => handleOpenEditModal(app)} className="glass-panel p-4 rounded-xl flex flex-col gap-3 cursor-pointer">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="text-sm font-medium text-white">{app.companyName}</div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          {renderCompanyLogo(app.companyName, 'h-5 w-5 text-[10px]')}
+                          <div className="text-sm font-medium text-white">{app.companyName}</div>
+                        </div>
                         <div className="text-xs text-text-secondary truncate max-w-[200px]">{app.roleTitle}</div>
                       </div>
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium border ${getStatusColor(app.status)}`}>
@@ -452,7 +485,7 @@ export default function AppTracker() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dashboard-bg/80 backdrop-blur-sm">
           <div className="glass-panel w-full max-w-[672px] max-h-[90vh] flex flex-col shadow-2xl relative rounded-2xl overflow-hidden opacity-0 animate-fade-in-up">
             {/* Modal top accent */}
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-linear-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
             
             <div className="flex items-center justify-between p-5 border-b border-panel-border/30">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">

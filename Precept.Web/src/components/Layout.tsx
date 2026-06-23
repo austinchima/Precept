@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import CommandPalette from './ui/CommandPalette';
 
 export default function Layout() {
   const { logout, user } = useAuth();
@@ -8,6 +9,7 @@ export default function Layout() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem('precept-sidebar-collapsed') === 'true';
   });
@@ -15,6 +17,17 @@ export default function Layout() {
   useEffect(() => {
     localStorage.setItem('precept-sidebar-collapsed', String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -146,18 +159,21 @@ export default function Layout() {
               <i className="fa-solid fa-bars text-lg"></i>
             </button>
 
-            {/* Search */}
+            {/* Search Trigger */}
             <div className="relative w-full max-w-[200px] md:w-96 group hidden sm:block">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-300 group-focus-within:text-accent-teal">
-              <i className="fa-solid fa-magnifying-glass text-text-secondary text-sm group-focus-within:text-accent-teal transition-colors duration-300"></i>
-            </div>
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search" 
-              className="block w-full pl-11 pr-3 py-2.5 border border-panel-border/50 rounded-xl leading-5 bg-black/20 text-text-primary placeholder-text-secondary focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal sm:text-sm transition-all duration-300 focus:bg-black/40"
-            />
+              <button 
+                onClick={() => setIsCommandPaletteOpen(true)}
+                className="w-full flex items-center justify-between pl-4 pr-3 py-2.5 border border-panel-border/50 rounded-xl leading-5 bg-black/20 text-text-secondary hover:text-white hover:bg-black/40 hover:border-accent-teal/50 transition-all duration-300 cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <i className="fa-solid fa-magnifying-glass text-sm"></i>
+                  <span className="text-sm">Search...</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-mono opacity-50">
+                  <kbd className="bg-white/10 px-1.5 py-0.5 rounded">⌘</kbd>
+                  <kbd className="bg-white/10 px-1.5 py-0.5 rounded">K</kbd>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -171,9 +187,9 @@ export default function Layout() {
               </button>
             </div>
             
-            <div className="text-right transition-opacity duration-300 hover:opacity-80 hidden md:block">
-              <div className="text-sm text-white font-medium">{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-              <div className="text-xs text-text-secondary">{new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+            <div className="text-right transition-opacity duration-300 hover:opacity-80 hidden md:flex flex-col items-end justify-center min-w-[80px] px-2">
+              <div className="text-base text-white font-bold tracking-wide">{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+              <div className="text-sm text-text-secondary font-medium tracking-wide">{new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
             </div>
             
 
@@ -192,10 +208,10 @@ export default function Layout() {
 
       {/* Logout Confirmation Modal */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-100 flex items-center justify-center p-4">
           <div className="glass-panel flex flex-col p-6 rounded-2xl w-[90vw] sm:w-[400px] max-w-full shrink-0 border border-panel-border/50 shadow-2xl animate-fade-in-up">
             <h3 className="text-xl font-semibold text-white mb-2">Confirm Logout</h3>
-            <p className="text-text-secondary mb-6 text-left break-words">Are you sure you want to end your session?</p>
+            <p className="text-text-secondary mb-6 text-left overflow-wrap-break-word">Are you sure you want to end your session?</p>
             <div className="flex gap-3 justify-end">
               <button 
                 onClick={() => setIsLogoutModalOpen(false)}
@@ -213,6 +229,11 @@ export default function Layout() {
           </div>
         </div>
       )}
+
+      <CommandPalette 
+        isOpen={isCommandPaletteOpen} 
+        onClose={() => setIsCommandPaletteOpen(false)} 
+      />
     </>
   );
 }

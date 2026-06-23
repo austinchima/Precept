@@ -111,3 +111,12 @@ export interface TestimonialDto {
   text: string;
   avatarSrc?: string;
 }
+
+export interface SearchResult {
+  id: string;
+  type: string;
+  title: string;
+  subtitle: string;
+  route: string;
+  icon: string;
+}

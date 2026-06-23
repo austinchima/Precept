@@ -4,6 +4,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis
 import { api } from '../api';
 import { Application, Story, Skill, BehavioralStory } from '../types';
 import { useAuth } from '../AuthContext';
+import { getSkillIcon, getCompanyIcon } from '../lib/utils';
 
 interface DashboardStats {
   storyStats: {
@@ -147,30 +148,27 @@ export default function Dashboard() {
   };
 
   const getCompanyLogo = (name: string) => {
-    const initial = name.charAt(0).toUpperCase();
-    let themeClasses = 'bg-white text-black';
-    if (initial === 'S') themeClasses = 'bg-[#635BFF] text-white';
-    else if (initial === 'F') themeClasses = 'bg-black text-white';
-    else if (initial === 'A') themeClasses = 'bg-orange-500 text-white';
-    else if (initial === 'M') themeClasses = 'bg-emerald-600 text-white';
-    else if (initial === 'G') themeClasses = 'bg-white text-black';
+    const { icon, color, isText, initials } = getCompanyIcon(name);
     
+    if (isText) {
+      return (
+        <div 
+          className="h-8 w-8 rounded-lg flex items-center justify-center shadow-sm p-1.5 transition-transform duration-300 group-hover:scale-110"
+          style={{ backgroundColor: color, color: '#ffffff' }}
+        >
+          <span className="font-bold text-lg leading-none">{initials}</span>
+        </div>
+      );
+    }
+
     return (
-      <div className={`h-8 w-8 rounded-lg flex items-center justify-center shadow-sm p-1.5 transition-transform duration-300 group-hover:scale-110 ${themeClasses}`}>
-        <span className="font-bold text-lg leading-none">{initial}</span>
+      <div 
+        className="h-8 w-8 rounded-lg flex items-center justify-center shadow-sm p-1.5 transition-transform duration-300 group-hover:scale-110"
+        style={{ backgroundColor: `${color}15`, color: color, border: `1px solid ${color}30` }}
+      >
+        <i className={`${icon} text-lg`}></i>
       </div>
     );
-  };
-
-  const getSkillDetails = (name: string) => {
-    const text = name.toLowerCase();
-    if (text.includes('react')) return { color: '#2dd4bf', icon: 'fa-brands fa-react text-xl' };
-    if (text.includes('python')) return { color: '#F5C34A', icon: 'fa-brands fa-python text-xl' };
-    if (text.includes('aws')) return { color: '#FF9900', icon: 'fa-brands fa-aws text-xl' };
-    if (text.includes('go')) return { color: '#00ADD8', icon: 'fa-brands fa-golang text-lg' };
-    if (text.includes('docker')) return { color: '#2496ED', icon: 'fa-brands fa-docker text-lg' };
-    if (text.includes('k8s') || text.includes('kubernetes')) return { color: '#326CE5', icon: 'fa-solid fa-dharmachakra text-lg group-hover:rotate-12' };
-    return { color: '#8b5cf6', icon: 'fa-solid fa-code text-lg' };
   };
 
   // Radar chart dynamic calculations (6 axes)
@@ -523,7 +521,7 @@ export default function Dashboard() {
                 <div className="col-span-3 text-center text-text-secondary text-sm italic py-4">No skills documented.</div>
               )}
               {topSkills.map((skill, idx) => {
-                const details = getSkillDetails(skill.name);
+                const details = getSkillIcon(skill.name);
                 const percentage = getProficiencyPercentage(skill.proficiencyLevel);
                 // Cycle heights for a dynamic look
                 const hClass = idx % 3 === 0 ? "h-[104px]" : "h-[84px]";
@@ -582,13 +580,13 @@ export default function Dashboard() {
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-text-secondary">Response Rate (Interviews / Total)</span>
                   <span className="text-white font-medium">
-                    {stats?.applicationStats.responseRate ? (stats.applicationStats.responseRate * 100).toFixed(1) : 0}%
+                    {stats?.applicationStats.responseRate ? stats.applicationStats.responseRate.toFixed(1) : 0}%
                   </span>
                 </div>
                 <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-accent-blue rounded-full transition-all duration-1000"
-                    style={{ width: `${(stats?.applicationStats.responseRate || 0) * 100}%` }}
+                    style={{ width: `${stats?.applicationStats.responseRate || 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -614,13 +612,13 @@ export default function Dashboard() {
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-text-secondary">Rejection Rate</span>
                   <span className="text-white font-medium">
-                    {stats?.applicationStats.rejectionRate ? (stats.applicationStats.rejectionRate * 100).toFixed(1) : 0}%
+                    {stats?.applicationStats.rejectionRate ? stats.applicationStats.rejectionRate.toFixed(1) : 0}%
                   </span>
                 </div>
                 <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-rose-500 rounded-full transition-all duration-1000"
-                    style={{ width: `${(stats?.applicationStats.rejectionRate || 0) * 100}%` }}
+                    style={{ width: `${stats?.applicationStats.rejectionRate || 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -629,7 +627,7 @@ export default function Dashboard() {
 
           {/* Average Match Score Gauge */}
           <div className="bg-black/20 rounded-xl p-5 border border-white/5 flex flex-col items-center justify-center relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-accent-purple/5 to-accent-teal/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="absolute inset-0 bg-linear-to-br from-accent-purple/5 to-accent-teal/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <h3 className="text-sm font-medium text-text-secondary mb-4 z-10 w-full text-center">Avg. JD Match Score</h3>
             
             <div className="relative w-32 h-32 flex items-center justify-center z-10">

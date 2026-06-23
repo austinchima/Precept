@@ -279,7 +279,7 @@ export default function StoryBank() {
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="glass-panel rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden opacity-0 animate-fade-in-up">
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-linear-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
             
             <div className="flex items-center justify-between p-5 border-b border-panel-border/30">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">

@@ -42,7 +42,7 @@ interface SignInPageProps {
 
 // --- SUB-COMPONENTS ---
 const GlassInputWrapper = ({ children, isError = false }: { children: React.ReactNode, isError?: boolean }) => (
-  <div className={`rounded-xl border ${isError ? 'border-red-500/50 bg-red-500/5' : 'border-brand-border bg-[#151c26]/55 backdrop-blur-md'} transition-colors focus-within:border-brand-primary/60 focus-within:bg-brand-primary/5 flex items-center`}>
+  <div className={`rounded-xl border ${isError ? 'border-red-500/50 bg-red-500/5' : 'border-brand-border bg-surface-container-low/55 backdrop-blur-md'} transition-colors focus-within:border-brand-primary/60 focus-within:bg-brand-primary/5 flex items-center`}>
     {children}
   </div>
 );
@@ -50,9 +50,9 @@ const GlassInputWrapper = ({ children, isError = false }: { children: React.Reac
 const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, delay: string }) => (
   <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-2xl glass-card p-5 w-72 shadow-lg`}>
     {testimonial.avatarSrc ? (
-      <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-xl border border-brand-border flex-shrink-0" alt="avatar" width={40} height={40} loading="lazy" decoding="async" />
+      <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-xl border border-brand-border shrink-0" alt="avatar" width={40} height={40} loading="lazy" decoding="async" />
     ) : (
-      <div className="h-10 w-10 rounded-xl border border-brand-border flex-shrink-0 flex items-center justify-center bg-brand-primary/10 text-brand-primary font-bold text-lg">
+      <div className="h-10 w-10 rounded-xl border border-brand-border shrink-0 flex items-center justify-center bg-brand-primary/10 text-brand-primary font-bold text-lg">
         {testimonial.name.charAt(0).toUpperCase()}
       </div>
     )}

@@ -9,24 +9,16 @@ namespace Precept.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class TestimonialController : ControllerBase
+    public class TestimonialController(PreceptDbContext context, ICurrentUser currentUser) : ControllerBase
     {
-        private readonly PreceptDbContext _context;
-        private readonly ICurrentUser _currentUser;
-
-        public TestimonialController(PreceptDbContext context, ICurrentUser currentUser)
-        {
-            _context = context;
-            _currentUser = currentUser;
-        }
-
-        // GET: api/testimonial/public
-        // Unauthenticated access for the landing page
+        /// <summary>
+        /// Gets 10 auto-approved testimonials for the landing page.
+        /// </summary>
         [AllowAnonymous]
         [HttpGet("public")]
         public async Task<IActionResult> GetPublicTestimonials()
         {
-            var testimonials = await _context.Testimonials
+            var testimonials = await context.Testimonials
                 .Where(t => t.IsApproved)
                 .OrderByDescending(t => t.DateSubmitted)
                 .Take(10)
@@ -49,12 +41,12 @@ namespace Precept.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> SubmitTestimonial([FromBody] TestimonialDto dto)
         {
-            if (string.IsNullOrEmpty(_currentUser.UserId))
+            if (string.IsNullOrEmpty(currentUser.UserId))
                 return Unauthorized();
 
             var testimonial = new Testimonial
             {
-                UserId = _currentUser.UserId,
+                UserId = currentUser.UserId,
                 Name = dto.Name,
                 Handle = dto.Handle,
                 Text = dto.Text,
@@ -62,8 +54,8 @@ namespace Precept.Api.Controllers
                 IsApproved = true // Auto-approved as requested
             };
 
-            _context.Testimonials.Add(testimonial);
-            await _context.SaveChangesAsync();
+            context.Testimonials.Add(testimonial);
+            await context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetPublicTestimonials), new { id = testimonial.Id }, testimonial);
         }
