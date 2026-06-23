@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "D9tjkWGE0g4=",
+  "dgSpecHash": "UwDAq2DoMjA=",
   "success": true,
-  "projectFilePath": "E:\\Personal Projects\\Precept\\Precept.Tests\\Precept.Tests.csproj",
+  "projectFilePath": "e:\\Personal Projects\\Precept\\Precept.Tests\\Precept.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\austi\\.nuget\\packages\\bouncycastle.cryptography\\2.4.0\\bouncycastle.cryptography.2.4.0.nupkg.sha512",
     "C:\\Users\\austi\\.nuget\\packages\\castle.core\\5.1.1\\castle.core.5.1.1.nupkg.sha512",

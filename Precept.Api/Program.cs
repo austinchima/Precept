@@ -207,6 +207,35 @@ using (var scope = app.Services.CreateScope())
 // ─────────────────────────────────────────────────────────────
 //  Middleware Pipeline
 // ─────────────────────────────────────────────────────────────
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception exception)
+    {
+        var statusCode = StatusCodes.Status500InternalServerError;
+        var message = "An unexpected error occurred.";
+
+        // Detect database connection/transient failures
+        if (exception is Npgsql.NpgsqlException || 
+            exception is System.Net.Sockets.SocketException ||
+            (exception is InvalidOperationException && exception.InnerException is Npgsql.NpgsqlException))
+        {
+            statusCode = StatusCodes.Status503ServiceUnavailable;
+            message = "Database connection failed. The service is temporarily offline.";
+        }
+
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json";
+
+        var response = new { message, detail = exception?.Message };
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();

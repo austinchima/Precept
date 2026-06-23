@@ -53,111 +53,112 @@ export const BehavioralStoryForm: React.FC<BehavioralStoryFormProps> = ({ story,
   };
 
   return (
-    <div className="card-container p-6 bg-brand-surface border border-brand-primary/30 relative">
-      {/* Decorative corners */}
-      <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-brand-primary"></div>
-      <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-brand-primary"></div>
-      <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-brand-primary"></div>
-      <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-brand-primary"></div>
+    <div className="glass-panel rounded-2xl p-6 relative overflow-hidden">
+      {/* Top accent */}
+      <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
 
-      <div className="flex justify-between items-center mb-6 pb-2 border-b border-brand-border/50">
-        <h2 className="text-xl font-heading font-semibold text-brand-text flex items-center gap-2">
-          <span className="material-symbols-outlined text-brand-primary">psychology</span>
+      <div className="flex justify-between items-center mb-6 pb-3 border-b border-panel-border/20">
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2.5">
+          <i className="fa-solid fa-brain text-accent-teal text-sm"></i>
           {story ? 'Edit Behavioral Story' : 'New Behavioral Story'}
         </h2>
-        <button onClick={onCancel} className="text-brand-text-muted hover:text-brand-text transition-colors">
-          <span className="material-symbols-outlined">close</span>
+        <button onClick={onCancel} className="text-text-secondary hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer">
+          <i className="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      {error && <div className="text-red-400 text-sm mb-4 font-mono bg-red-400/10 p-2 rounded">{error}</div>}
+      {error && (
+        <div className="p-3 rounded-lg bg-[#f87171]/10 border border-[#f87171]/20 text-[#f87171] text-xs font-mono flex items-center gap-2 mb-4">
+          <i className="fa-solid fa-triangle-exclamation"></i> {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1">Story Title</label>
+        <div className="space-y-1.5">
+          <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Story Title</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-brand-bg border border-brand-border rounded p-2 text-brand-text font-mono text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all outline-none"
+            className="input-base w-full text-sm"
             placeholder="e.g. Resolved Production DB Outage"
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 items-center gap-1">
-                <span className="text-brand-primary font-bold">S</span>ituation
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">
+                <span className="text-accent-teal font-bold">S</span>ituation
               </label>
               <textarea
                 value={situation}
                 onChange={(e) => setSituation(e.target.value)}
                 rows={4}
-                className="w-full bg-brand-bg border border-brand-border rounded p-2 text-brand-text font-sans text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all outline-none"
+                className="input-base w-full text-sm resize-none"
                 placeholder="What was the context or background? Set the scene."
               />
             </div>
             
-            <div>
-              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 items-center gap-1">
-                <span className="text-brand-primary font-bold">T</span>ask
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">
+                <span className="text-accent-teal font-bold">T</span>ask
               </label>
               <textarea
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
                 rows={4}
-                className="w-full bg-brand-bg border border-brand-border rounded p-2 text-brand-text font-sans text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all outline-none"
+                className="input-base w-full text-sm resize-none"
                 placeholder="What was your specific responsibility or challenge?"
               />
             </div>
           </div>
           
           <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 items-center gap-1">
-                <span className="text-brand-primary font-bold">A</span>ction
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">
+                <span className="text-accent-teal font-bold">A</span>ction
               </label>
               <textarea
                 value={action}
                 onChange={(e) => setAction(e.target.value)}
                 rows={4}
-                className="w-full bg-brand-bg border border-brand-border rounded p-2 text-brand-text font-sans text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all outline-none"
+                className="input-base w-full text-sm resize-none"
                 placeholder="What specific steps did YOU take to solve the problem?"
               />
             </div>
             
-            <div>
-              <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1 items-center gap-1">
-                <span className="text-brand-primary font-bold">R</span>esult
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">
+                <span className="text-accent-teal font-bold">R</span>esult
               </label>
               <textarea
                 value={result}
                 onChange={(e) => setResult(e.target.value)}
                 rows={4}
-                className="w-full bg-brand-bg border border-brand-border rounded p-2 text-brand-text font-sans text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all outline-none"
+                className="input-base w-full text-sm resize-none"
                 placeholder="What was the final outcome? (Use metrics if possible!)"
               />
             </div>
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-mono text-brand-text-muted uppercase tracking-wider mb-1">Tags (Comma separated)</label>
+        <div className="space-y-1.5">
+          <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Tags (Comma separated)</label>
           <input
             type="text"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
-            className="w-full bg-brand-bg border border-brand-border rounded p-2 text-brand-text font-mono text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all outline-none"
+            className="input-base w-full text-sm font-mono"
             placeholder="leadership, conflict, optimization"
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-brand-border/50">
+        <div className="flex justify-end gap-3 pt-4 border-t border-panel-border/20">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-brand-text-muted hover:text-brand-text font-mono text-sm transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer"
             disabled={isSubmitting}
           >
             Cancel
@@ -165,8 +166,9 @@ export const BehavioralStoryForm: React.FC<BehavioralStoryFormProps> = ({ story,
           <button
             type="submit"
             disabled={isSubmitting}
-            className="btn-primary py-2 px-6 font-mono text-sm cursor-pointer"
+            className="inline-flex items-center px-5 py-2 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
           >
+            {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : null}
             {isSubmitting ? 'Saving...' : 'Save Story'}
           </button>
         </div>

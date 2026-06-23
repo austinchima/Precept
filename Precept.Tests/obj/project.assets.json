@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 3,
   "targets": {
     "net10.0": {
       "BouncyCastle.Cryptography/2.4.0": {
@@ -4756,11 +4756,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\Personal Projects\\Precept\\Precept.Tests\\Precept.Tests.csproj",
+      "projectUniqueName": "e:\\Personal Projects\\Precept\\Precept.Tests\\Precept.Tests.csproj",
       "projectName": "Precept.Tests",
-      "projectPath": "E:\\Personal Projects\\Precept\\Precept.Tests\\Precept.Tests.csproj",
+      "projectPath": "e:\\Personal Projects\\Precept\\Precept.Tests\\Precept.Tests.csproj",
       "packagesPath": "C:\\Users\\austi\\.nuget\\packages\\",
-      "outputPath": "E:\\Personal Projects\\Precept\\Precept.Tests\\obj\\",
+      "outputPath": "e:\\Personal Projects\\Precept\\Precept.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -4780,11 +4780,10 @@
       },
       "frameworks": {
         "net10.0": {
-          "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {
-            "E:\\Personal Projects\\Precept\\Precept.Api\\Precept.Api.csproj": {
-              "projectPath": "E:\\Personal Projects\\Precept\\Precept.Api\\Precept.Api.csproj"
+            "e:\\Personal Projects\\Precept\\Precept.Api\\Precept.Api.csproj": {
+              "projectPath": "e:\\Personal Projects\\Precept\\Precept.Api\\Precept.Api.csproj"
             }
           }
         }
@@ -4803,7 +4802,6 @@
     },
     "frameworks": {
       "net10.0": {
-        "framework": "net10.0",
         "targetAlias": "net10.0",
         "dependencies": {
           "FluentAssertions": {

@@ -61,63 +61,63 @@ export default function Subscription() {
   ];
 
   return (
-    <div className="flex flex-col gap-xl fade-in">
+    <div className="flex flex-col gap-8 fade-in">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-sm mb-xs">
-          <span className="font-label-caps text-label-caps text-primary tracking-widest uppercase">System Licenses</span>
-          <div className="h-[1px] w-12 bg-primary/30"></div>
+      <div className="border-b border-brand-border pb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-mono text-brand-primary tracking-widest uppercase">System Licenses</span>
+          <div className="h-px w-12 bg-brand-primary/30"></div>
         </div>
-        <h2 className="font-h2 text-h2 text-on-surface">Subscription Protocol</h2>
-        <p className="font-code text-code text-on-surface-variant mt-sm max-w-2xl">
+        <h1 className="text-3xl font-heading font-bold text-brand-text tracking-tight">Subscription Protocol</h1>
+        <p className="font-mono text-brand-text-muted text-sm mt-1 max-w-2xl">
           Upgrade your authorization levels to unlock advanced semantic search matrices, unlimited JD matching, and automated career pipeline telemetry.
         </p>
       </div>
 
       {/* Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-gutter items-stretch">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
         {plans.map((plan) => (
           <div 
             key={plan.name}
-            className={`flex flex-col bg-surface-container border p-md md:p-lg rounded-xl relative overflow-hidden group transition-all duration-300 ${
+            className={`glass-card flex flex-col p-6 rounded-xl relative overflow-hidden group transition-all duration-300 bg-[#151c26]/60 backdrop-blur-xl border ${
               plan.popular 
-                ? 'border-primary shadow-[0_0_30px_rgba(90,215,231,0.1)]' 
-                : 'border-outline-variant hover:border-primary/40'
+                ? 'border-brand-primary/50 shadow-[0_0_30px_rgba(90,215,231,0.15)]' 
+                : 'border-white/5 hover:border-brand-primary/30'
             }`}
           >
             {plan.popular && (
-              <div className="absolute top-0 right-0 bg-primary text-on-primary-fixed font-label-caps text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
+              <div className="absolute top-0 right-0 bg-brand-primary text-[#050b14] font-mono text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
                 Recommended
               </div>
             )}
             
-            <div className="mb-md">
-              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest block mb-2">
+            <div className="mb-6">
+              <span className="text-xs font-mono text-brand-text-muted uppercase tracking-widest block mb-2">
                 {plan.name}
               </span>
               <div className="flex items-baseline gap-1 mb-2">
-                <span className="font-h1 text-[40px] font-bold text-on-surface leading-none">
+                <span className="text-4xl font-heading font-bold text-brand-text leading-none">
                   {plan.price}
                 </span>
-                <span className="font-code text-[12px] text-on-surface-variant">
+                <span className="font-mono text-xs text-brand-text-muted">
                   / {plan.period}
                 </span>
               </div>
-              <p className="text-sm text-on-surface-variant font-sans leading-relaxed mt-2 min-h-[40px]">
+              <p className="text-sm text-brand-text-muted font-sans leading-relaxed mt-2 min-h-[40px]">
                 {plan.tagline}
               </p>
             </div>
 
-            <hr className="border-outline-variant/30 my-sm w-full" />
+            <hr className="border-brand-border/40 my-4 w-full" />
 
-            <div className="flex-1 flex flex-col gap-sm my-md">
-              <span className="font-label-caps text-[11px] text-on-surface-variant uppercase tracking-wider block mb-1">
+            <div className="flex-1 flex flex-col gap-4 my-6">
+              <span className="text-[11px] font-mono text-brand-text-muted uppercase tracking-wider block mb-1">
                 Authorization Specs
               </span>
-              <ul className="flex flex-col gap-sm">
+              <ul className="flex flex-col gap-3">
                 {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-sm text-sm text-on-surface">
-                    <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">check_circle</span>
+                  <li key={idx} className="flex items-start gap-2 text-sm text-brand-text">
+                    <span className="material-symbols-outlined text-brand-primary text-[16px] shrink-0 mt-0.5">check_circle</span>
                     <span className="font-sans leading-normal">{feature}</span>
                   </li>
                 ))}
@@ -126,12 +126,12 @@ export default function Subscription() {
 
             <button
               disabled={plan.active}
-              className={`w-full font-code text-code py-sm px-md rounded-lg transition-all flex items-center justify-center gap-sm mt-md border cursor-pointer ${
+              className={`w-full font-mono text-xs py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 mt-auto border cursor-pointer uppercase tracking-wider font-bold ${
                 plan.active
-                  ? 'bg-surface-bright/50 border-outline-variant/50 text-on-surface-variant/60 cursor-default'
+                  ? 'bg-brand-surface-high border-brand-border/50 text-brand-text-muted/60 cursor-default'
                   : plan.popular
-                    ? 'bg-primary-container border-primary-container text-on-primary-fixed hover:bg-primary'
-                    : 'bg-transparent border-outline-variant text-on-surface hover:border-primary hover:text-primary'
+                    ? 'bg-brand-primary border-brand-primary text-[#050b14] hover:bg-brand-primary-container'
+                    : 'bg-transparent border-brand-border text-brand-text hover:border-brand-primary hover:text-brand-primary'
               }`}
             >
               {plan.cta}

@@ -32,15 +32,18 @@ export default defineConfig(() => {
       }
     },
     server: {
+      host: '0.0.0.0', // Important for Docker
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        usePolling: process.env.VITE_USE_POLLING === 'true',
+      },
       allowedHosts: ['upgrade-finder-weekend-media.trycloudflare.com'],
       proxy: {
         '/api': {
-          target: 'http://localhost:5177',
+          target: process.env.API_TARGET || 'http://localhost:5177',
           changeOrigin: true,
           secure: false,
         }

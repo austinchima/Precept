@@ -25,6 +25,7 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-router-dom": "^7.17.0",
+    "recharts": "^3.8.1",
     "tailwind-merge": "^2.5.2",
     "vite": "^6.2.3"
   },

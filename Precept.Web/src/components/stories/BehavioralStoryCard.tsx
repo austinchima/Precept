@@ -11,41 +11,41 @@ export const BehavioralStoryCard: React.FC<BehavioralStoryCardProps> = ({ story,
   const tags = story.tags ? story.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
   return (
-    <div className="card-container p-5 bg-brand-surface border border-brand-border/50 hover:border-brand-primary/50 transition-colors flex flex-col group">
+    <div className="glass-panel rounded-2xl p-5 flex flex-col group hover:border-white/15 hover:-translate-y-0.5 transition-all duration-300">
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-lg font-heading font-semibold text-brand-text wrap-break-word pr-4">{story.title}</h3>
-        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={() => onEdit(story)} className="text-brand-text-muted hover:text-brand-primary cursor-pointer transition-colors" title="Edit">
-            <span className="material-symbols-outlined text-[18px]">edit</span>
+        <h3 className="text-base font-semibold text-white wrap-break-word pr-4 group-hover:text-accent-teal transition-colors duration-300">{story.title}</h3>
+        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button onClick={() => onEdit(story)} className="text-text-secondary hover:text-accent-teal cursor-pointer transition-colors" title="Edit">
+            <i className="fa-solid fa-pen text-xs"></i>
           </button>
-          <button onClick={() => onDelete(story.id)} className="text-brand-text-muted hover:text-red-400 cursor-pointer transition-colors" title="Delete">
-            <span className="material-symbols-outlined text-[18px]">delete</span>
+          <button onClick={() => onDelete(story.id)} className="text-text-secondary hover:text-[#f87171] cursor-pointer transition-colors" title="Delete">
+            <i className="fa-regular fa-trash-can text-xs"></i>
           </button>
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 font-sans text-sm text-brand-text/90">
+      <div className="flex-1 space-y-3 text-sm text-text-secondary">
         <div>
-          <strong className="text-brand-primary font-mono uppercase tracking-wider text-[10px] block mb-1">Situation</strong>
+          <strong className="text-accent-teal font-mono uppercase tracking-wider text-[10px] block mb-1">Situation</strong>
           <p className="line-clamp-3">{story.situation}</p>
         </div>
         <div>
-          <strong className="text-brand-primary font-mono uppercase tracking-wider text-[10px] block mb-1">Task</strong>
+          <strong className="text-accent-teal font-mono uppercase tracking-wider text-[10px] block mb-1">Task</strong>
           <p className="line-clamp-2">{story.task}</p>
         </div>
         <div>
-          <strong className="text-brand-primary font-mono uppercase tracking-wider text-[10px] block mb-1">Action</strong>
+          <strong className="text-accent-teal font-mono uppercase tracking-wider text-[10px] block mb-1">Action</strong>
           <p className="line-clamp-3">{story.action}</p>
         </div>
         <div>
-          <strong className="text-brand-primary font-mono uppercase tracking-wider text-[10px] block mb-1">Result</strong>
+          <strong className="text-accent-teal font-mono uppercase tracking-wider text-[10px] block mb-1">Result</strong>
           <p className="line-clamp-2">{story.result}</p>
         </div>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-brand-border/30 flex items-center gap-2 flex-wrap">
+      <div className="mt-4 pt-3 border-t border-panel-border/20 flex items-center gap-2 flex-wrap">
         {tags.map((tag, idx) => (
-          <span key={idx} className="text-[10px] font-mono text-brand-primary bg-brand-primary/10 px-2 py-1 rounded">
+          <span key={idx} className="text-[10px] font-mono text-accent-teal bg-accent-teal/10 px-2 py-0.5 rounded-full border border-accent-teal/20">
             #{tag}
           </span>
         ))}

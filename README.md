@@ -24,9 +24,10 @@ Standard CRMs and spreadsheets are clunky and generalized. Precept was built to 
 - **Behavioral Story Bank**: Curate STAR-method narratives (Situation, Task, Action, Result) with tagging so you never freeze during a behavioral round.
 - **JD Analyzer**: Paste a job description and manually map its requirements against your stories and skills to identify coverage gaps before an interview.
 - **Pipeline Tracking & True Trajectory Scanner**: A centralized dashboard to track active applications. Automatically logs historical pipeline events (status changes) so you have an exact, real-time timeline of your job hunt trajectory.
+- **Analytics & Insights Dashboard**: Visual representations of your job search progress, skill gaps, and application conversion rates using dynamic radar and bar charts.
 - **Skills Matrix**: Keep an up-to-date inventory of your technical capabilities and proficiencies to quickly match against job descriptions.
 - **Containerized Architecture**: Your career data is highly personal. Precept leverages a containerized PostgreSQL database to ensure your pipeline remains private, fast, and completely under your control.
-- **Developer-First Aesthetics**: A dark-mode, command-center UI built with TailwindCSS and Framer Motion that developers actually _want_ to use.
+- **Developer-First Aesthetics**: A dark-mode, command-center UI built with TailwindCSS, Framer Motion, and Liquid Glass elements that developers actually _want_ to use.
 
 ---
 
@@ -79,13 +80,14 @@ graph TD
 - **Database**: PostgreSQL (Docker Container)
 - **Authentication**: JSON Web Tokens (JWT) & ASP.NET Core Identity
 
-#### 🟡 Frontend (Precept.Web) — **[ROADMAP]**
+#### 🟢 Frontend (Precept.Web) — **[LIVE: R1]**
 
 - **Framework**: React 19 with TypeScript
 - **Build Tool**: Vite (Lightning fast HMR)
-- **Styling**: TailwindCSS with arbitrary custom properties
-- **Animations**: Framer Motion
-- **Icons**: Lucide React / Google Material Symbols
+- **Styling**: TailwindCSS v4 with custom design system tokens
+- **Animations**: CSS keyframe animations (glassmorphic transitions, pulse glows)
+- **Data Visualization**: Recharts for dynamic, responsive dashboard analytics
+- **Icons**: FontAwesome 6
 - **State Management**: React Context API
 - **Routing**: React Router DOM
 
@@ -209,10 +211,18 @@ Since Precept handles your personal career trajectory, security is treated as a 
 
 ## 🔮 Roadmap
 
-Precept is constantly evolving. Currently, **Release 1 (R1)** focuses purely on stabilizing the robust, secure Backend API. In future releases, the architecture will be expanded to include:
+Precept is constantly evolving. **Release 1 (R1)** shipped the full-stack foundation: a secure ASP.NET Core API, the React/Vite web interface, and the containerized PostgreSQL data layer. Future releases will expand the platform with intelligent automation:
 
-- **Web Application**: The React/Vite web interface that consumes the R1 API.
-- **Cross-Platform Native Apps**: Packaging the web experience into a native **Desktop Application** and a companion **Mobile App**, giving you offline-first access to your interview stories and job pipeline anytime, anywhere.
+### R2 — AI-Powered Interview Intelligence
+
+- **🤖 AI Mock Interviewer**: Upload your resume and a job description URL. An LLM (OpenAI/Gemini) generates tailored behavioral and technical interview questions, scores your live responses, and provides actionable feedback — turning Precept into a personal interview coach.
+- **🎙️ Voice Interview Simulation**: Real-time voice-based mock interviews using the Web Speech API for speech-to-text transcription. Practice answering under pressure with a timed, conversational interview flow that mirrors real phone screens.
+- **📄 AI Resume Analyzer**: Server-side resume parsing (PDF/DOCX) that automatically extracts skills, experience keywords, and role-specific strengths. Auto-populates your Skills inventory and computes JD match scores without manual keyword entry.
+
+### R3 — Platform Expansion
+
+- **Cross-Platform Native Apps**: Packaging the web experience into a native **Desktop Application** (Electron/Tauri) and a companion **Mobile App**, giving you offline-first access to your interview stories and job pipeline anytime, anywhere.
+- **Team Mode**: Shared story banks and peer mock interviews for engineering teams preparing together.
 
 ---
 

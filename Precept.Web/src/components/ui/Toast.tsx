@@ -1,5 +1,4 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,35 +35,35 @@ const DISMISS_AFTER_MS = 5000;
 
 const VARIANT_CONFIG: Record<
   ToastVariant,
-  { Icon: React.ElementType; border: string; iconColor: string; bg: string; titleColor: string }
+  { iconClass: string; border: string; iconColor: string; bg: string; titleColor: string }
 > = {
   success: {
-    Icon: CheckCircle,
+    iconClass: 'fa-solid fa-circle-check',
     border: 'border-[#4ade80]/40',
     iconColor: 'text-[#4ade80]',
     bg: 'bg-[#4ade80]/5',
     titleColor: 'text-[#4ade80]',
   },
   error: {
-    Icon: XCircle,
+    iconClass: 'fa-solid fa-circle-xmark',
     border: 'border-[#f87171]/40',
     iconColor: 'text-[#f87171]',
     bg: 'bg-[#f87171]/5',
     titleColor: 'text-[#f87171]',
   },
   warning: {
-    Icon: AlertTriangle,
+    iconClass: 'fa-solid fa-triangle-exclamation',
     border: 'border-[#fbbf24]/40',
     iconColor: 'text-[#fbbf24]',
     bg: 'bg-[#fbbf24]/5',
     titleColor: 'text-[#fbbf24]',
   },
   info: {
-    Icon: Info,
-    border: 'border-brand-primary/40',
-    iconColor: 'text-brand-primary',
-    bg: 'bg-brand-primary/5',
-    titleColor: 'text-brand-primary',
+    iconClass: 'fa-solid fa-circle-info',
+    border: 'border-accent-teal/40',
+    iconColor: 'text-accent-teal',
+    bg: 'bg-accent-teal/5',
+    titleColor: 'text-accent-teal',
   },
 };
 
@@ -77,7 +76,7 @@ interface ToastItemProps {
 }
 
 function ToastItem({ toast, onDismiss }: ToastItemProps) {
-  const { Icon, border, iconColor, bg, titleColor } = VARIANT_CONFIG[toast.variant];
+  const { iconClass, border, iconColor, bg, titleColor } = VARIANT_CONFIG[toast.variant];
   const defaultTitle: Record<ToastVariant, string> = {
     success: 'Success',
     error: 'Something went wrong',
@@ -88,9 +87,9 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   return (
     <div
       className={`
-        flex items-start gap-3 w-full max-w-sm p-4 rounded-lg border shadow-2xl
+        flex items-start gap-3 w-full max-w-[384px] p-4 rounded-lg border shadow-2xl
         ${bg} ${border}
-        bg-brand-surface
+        bg-dashboard-bg/95
         backdrop-blur-sm
         animate-toast-in
         pointer-events-auto
@@ -98,27 +97,26 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       role="alert"
       aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
     >
-      <Icon
-        size={18}
-        className={`${iconColor} mt-0.5 shrink-0`}
+      <i
+        className={`${iconClass} ${iconColor} text-sm mt-0.5 shrink-0`}
         aria-hidden="true"
-      />
+      ></i>
 
       <div className="flex-1 min-w-0">
         <p className={`text-xs font-mono font-semibold uppercase tracking-widest mb-0.5 ${titleColor}`}>
           {toast.title ?? defaultTitle[toast.variant]}
         </p>
-        <p className="text-sm text-brand-text leading-relaxed wrap-break-word">
+        <p className="text-sm text-text-primary leading-relaxed wrap-break-word">
           {toast.message}
         </p>
       </div>
 
       <button
         onClick={() => onDismiss(toast.id)}
-        className="text-brand-text-muted hover:text-brand-text transition-colors shrink-0 mt-0.5 cursor-pointer"
+        className="text-text-secondary hover:text-white transition-colors shrink-0 mt-0.5 cursor-pointer flex items-center justify-center"
         aria-label="Dismiss notification"
       >
-        <X size={14} />
+        <i className="fa-solid fa-xmark text-xs"></i>
       </button>
     </div>
   );

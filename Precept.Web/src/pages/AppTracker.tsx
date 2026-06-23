@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { LayoutGrid, List, Plus, MoreHorizontal, Calendar, X, Trash2, Edit, Loader2, Radar, FileText, User, Code, Trophy } from 'lucide-react';
 import { Application, ApplicationStatus } from '../types';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
-import RadialOrbitalTimeline, { TimelineItem } from '../components/ui/radial-orbital-timeline';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
+import confetti from 'canvas-confetti';
 
 const COLUMNS: ApplicationStatus[] = ['Applied', 'PhoneScreen', 'Interviewing', 'Offer', 'Rejected', 'Ghosted'];
 
@@ -19,110 +19,36 @@ const COLUMN_LABELS: Record<ApplicationStatus, string> = {
 
 const getStatusColor = (status: ApplicationStatus) => {
   switch(status) {
-    case 'Offer': return 'bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30';
-    case 'Rejected': 
-    case 'Ghosted': return 'bg-brand-surface-high text-brand-text-muted border-brand-border';
-    case 'Interviewing': return 'bg-brand-primary/10 text-brand-primary border-brand-primary/30';
-    default: return 'bg-[#fbbf24]/10 text-[#fbbf24] border-[#fbbf24]/30';
+    case 'Offer': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    case 'Rejected': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+    case 'Ghosted': return 'bg-white/5 text-text-secondary border-white/10';
+    case 'Interviewing': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+    case 'PhoneScreen': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+    default: return 'bg-accent-teal/10 text-accent-teal border-accent-teal/20';
   }
 };
 
-const generateTrajectory = (app: Application): TimelineItem[] => {
-  const isRejected = app.status === 'Rejected' || app.status === 'Ghosted';
-  const nodes: TimelineItem[] = [];
-  let currentId = 1;
-
-  if (app.events && app.events.length > 0) {
-    const sortedEvents = [...app.events].sort((a, b) => new Date(a.dateOccurred).getTime() - new Date(b.dateOccurred).getTime());
-
-    sortedEvents.forEach((event, index) => {
-      const isLast = index === sortedEvents.length - 1;
-      const isActive = isLast && !isRejected;
-      const isFailedNode = event.status === 'Rejected' || event.status === 'Ghosted';
-
-      let title: string = event.status;
-      let category = "Phase";
-      let icon = FileText;
-
-      switch(event.status) {
-        case 'Applied': title = 'Application Submitted'; category = 'Screening'; icon = FileText; break;
-        case 'PhoneScreen': title = 'Phone Screen'; category = 'Screening'; icon = User; break;
-        case 'Interviewing': title = 'Interviews'; category = 'Technical'; icon = Code; break;
-        case 'Offer': title = 'Offer'; category = 'Offer'; icon = Trophy; break;
-        case 'Rejected': title = 'Rejected'; category = 'Closure'; icon = FileText; break;
-        case 'Ghosted': title = 'Ghosted'; category = 'Closure'; icon = FileText; break;
-      }
-
-      nodes.push({
-        id: currentId,
-        title,
-        date: new Date(event.dateOccurred).toLocaleDateString() + " " + new Date(event.dateOccurred).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-        content: event.notes || (isActive ? 'Currently active in this stage.' : (isFailedNode ? 'Pipeline closed.' : 'Successfully cleared this stage.')),
-        category,
-        icon,
-        relatedIds: currentId > 1 ? [currentId - 1] : [],
-        status: isFailedNode ? 'pending' : (isLast ? 'in-progress' : 'completed'),
-        energy: isFailedNode ? 0 : (isLast ? 50 : 100),
-      });
-
-      if (currentId > 1 && nodes[currentId - 2]) {
-        nodes[currentId - 2].relatedIds.push(currentId);
-      }
-      currentId++;
-    });
-
-    return nodes;
+const getStatusIcon = (status: ApplicationStatus) => {
+  switch(status) {
+    case 'Offer': return 'fa-solid fa-trophy';
+    case 'Rejected': return 'fa-solid fa-xmark';
+    case 'Ghosted': return 'fa-solid fa-ghost';
+    case 'Interviewing': return 'fa-solid fa-comments';
+    case 'PhoneScreen': return 'fa-solid fa-phone';
+    default: return 'fa-regular fa-paper-plane';
   }
-
-  // 1. Always start with Application Submitted
-  nodes.push({
-    id: currentId,
-    title: "Application Submitted",
-    date: app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'N/A',
-    content: `Submitted application for ${app.roleTitle} at ${app.companyName}.`,
-    category: "Screening",
-    icon: FileText,
-    relatedIds: [],
-    status: app.status === 'Applied' && !isRejected ? 'in-progress' : 'completed',
-    energy: app.status === 'Applied' ? 50 : 100,
-  });
-
-  const pushNode = (title: string, category: string, icon: any, isActive: boolean, isPast: boolean) => {
-    currentId++;
-    nodes.push({
-      id: currentId,
-      title,
-      date: isPast ? 'Completed' : (isActive ? 'Active' : 'Pending'),
-      content: isActive ? 'Currently active in this stage.' : (isPast ? 'Successfully cleared this stage.' : ''),
-      category,
-      icon,
-      relatedIds: [currentId - 1], // link to previous
-      status: isPast ? 'completed' : (isActive && !isRejected ? 'in-progress' : 'pending'),
-      energy: isPast ? 100 : (isActive ? 50 : 0),
-    });
-    // Link previous to this
-    if (nodes[currentId - 2]) {
-      nodes[currentId - 2].relatedIds.push(currentId);
-    }
-  };
-
-  const statusHierarchy = ['Applied', 'PhoneScreen', 'Interviewing', 'Offer'];
-  const currentActualIndex = statusHierarchy.indexOf(app.status);
-
-  if (currentActualIndex >= 1 || app.status === 'PhoneScreen') {
-    pushNode("Phone Screen", "Screening", User, app.status === 'PhoneScreen', currentActualIndex > 1);
-  }
-
-  if (currentActualIndex >= 2 || app.status === 'Interviewing') {
-    pushNode("Interviews", "Technical", Code, app.status === 'Interviewing', currentActualIndex > 2);
-  }
-
-  if (currentActualIndex >= 3 || app.status === 'Offer') {
-    pushNode("Offer", "Offer", Trophy, app.status === 'Offer', false);
-  }
-
-  return nodes;
 };
+
+const getStatusGlow = (status: ApplicationStatus) => {
+  switch(status) {
+    case 'Offer': return 'shadow-[0_0_15px_rgba(16,185,129,0.15)]';
+    case 'Rejected': return 'shadow-[0_0_15px_rgba(244,63,94,0.1)]';
+    case 'Interviewing': return 'shadow-[0_0_15px_rgba(59,130,246,0.15)]';
+    case 'PhoneScreen': return 'shadow-[0_0_15px_rgba(6,182,212,0.15)]';
+    default: return '';
+  }
+};
+
 
 export default function AppTracker() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -131,7 +57,8 @@ export default function AppTracker() {
   const [view, setView] = useState<'board' | 'table'>('board');
   const [isLoading, setIsLoading] = useState(true);
   const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
-  const [scannerApp, setScannerApp] = useState<Application | null>(null);
+  const [appToDelete, setAppToDelete] = useState<string | null>(null);
+
   const toast = useToast();
   
   // Modal states
@@ -191,6 +118,36 @@ export default function AppTracker() {
     if (targetApp && targetApp.status !== newStatus) {
       // Optimistic UI update
       setApps(prev => prev.map(a => a.id === draggedAppId ? { ...a, status: newStatus } : a));
+
+      if (newStatus === 'Offer') {
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+        
+        const commonOptions = {
+          particleCount: 40,
+          spread: 40,
+          scalar: 0.6,
+          ticks: 60, // Short duration
+          gravity: 2, // Fall quickly
+          startVelocity: 55, // Shoot out fast
+          colors: ['#2dd4bf', '#10b981', '#fcd34d', '#ffffff'],
+          zIndex: 0
+        };
+
+        // Shoot left
+        confetti({
+          ...commonOptions,
+          origin: { x: Math.max(0, x - 0.05), y },
+          angle: 135
+        });
+
+        // Shoot right
+        confetti({
+          ...commonOptions,
+          origin: { x: Math.min(1, x + 0.05), y },
+          angle: 45
+        });
+      }
 
       try {
         await api.patch(`/api/application/${draggedAppId}/status`, { status: newStatus });
@@ -273,6 +230,22 @@ export default function AppTracker() {
           id: selectedApp.id
         });
         setApps(prev => prev.map(a => a.id === updated.id ? updated : a));
+        
+        if (selectedApp.status !== 'Offer' && status === 'Offer') {
+          const commonOptions = {
+            particleCount: 40,
+            spread: 40,
+            scalar: 0.6,
+            ticks: 60,
+            gravity: 2,
+            startVelocity: 55,
+            colors: ['#2dd4bf', '#10b981', '#fcd34d', '#ffffff'],
+            zIndex: 40 // behind the z-50 modal
+          };
+          
+          confetti({ ...commonOptions, origin: { x: 0.35, y: 0.5 }, angle: 135 });
+          confetti({ ...commonOptions, origin: { x: 0.65, y: 0.5 }, angle: 45 });
+        }
       } else {
         const created = await api.post<Application>('/api/application', payload);
         setApps(prev => [created, ...prev]);
@@ -286,90 +259,106 @@ export default function AppTracker() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('DANGER: Are you sure you want to permanently delete this application pipeline?')) {
-      return;
-    }
+  const confirmDelete = (id: string) => {
+    setAppToDelete(id);
+  };
 
+  const executeDelete = async () => {
+    if (!appToDelete) return;
+    
     try {
-      await api.delete(`/api/application/${id}`);
-      setApps(prev => prev.filter(a => a.id !== id));
+      await api.delete(`/api/application/${appToDelete}`);
+      setApps(prev => prev.filter(a => a.id !== appToDelete));
       setIsModalOpen(false);
+      setAppToDelete(null);
     } catch (err) {
       console.error(err);
       toast.error((err as Error).message || 'Failed to delete application.');
+      setAppToDelete(null);
     }
   };
 
   return (
-    <div className="space-y-6 fade-in h-full flex flex-col">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-brand-border pb-6">
+    <div className="p-8 pt-6 max-w-[1400px] mx-auto space-y-6 h-full flex flex-col">
+
+      {/* Hero Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 opacity-0 animate-fade-in-up">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-brand-text tracking-tight">Active Pipelines</h1>
-          <p className="text-brand-text-muted font-mono text-sm mt-1">Status tracking for outbound connections.</p>
+          <h1 className="text-[28px] font-medium text-white flex items-center tracking-tight">
+            Active <span className="font-bold ml-2 hover:text-accent-teal transition-colors duration-300 cursor-default">Pipelines</span>
+            <span className="mx-3 text-text-secondary/30 text-3xl font-light">|</span>
+            <span className="text-text-secondary font-normal text-lg">{apps.length} tracked</span>
+          </h1>
+          <p className="text-text-secondary text-sm mt-1">Status tracking for outbound connections.</p>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex p-1 bg-brand-surface-high/50 rounded-lg border border-brand-border">
+
+        <div className="flex flex-wrap items-center gap-4">
+          {/* View Toggle */}
+          <div className="flex glass-panel rounded-xl p-1 gap-1">
             <button 
               onClick={() => setView('board')}
-              className={`p-1.5 rounded-md transition-colors cursor-pointer ${view === 'board' ? 'bg-brand-surface text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text'}`}
+              className={`p-2 rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center ${view === 'board' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
             >
-              <LayoutGrid size={16} />
+              <i className="fa-solid fa-table-columns text-sm"></i>
             </button>
             <button 
               onClick={() => setView('table')}
-              className={`p-1.5 rounded-md transition-colors cursor-pointer ${view === 'table' ? 'bg-brand-surface text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text'}`}
+              className={`p-2 rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center ${view === 'table' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
             >
-              <List size={16} />
+              <i className="fa-solid fa-list text-sm"></i>
             </button>
           </div>
-          
-          <button onClick={handleOpenCreateModal} className="btn-primary flex items-center gap-2 text-sm cursor-pointer">
-            <Plus size={16} /> Init Pipeline
+
+          <button onClick={handleOpenCreateModal} className="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] animate-pulse-glow-teal hover:scale-105 transition-all duration-300 cursor-pointer">
+            <i className="fa-solid fa-plus mr-2"></i> Init Pipeline
           </button>
         </div>
-      </header>
+      </div>
 
       {isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-20 text-brand-text-muted font-mono gap-3">
-          <Loader2 className="animate-spin text-brand-primary" size={40} />
-          <span>Ingesting Connection Data...</span>
+        <div className="flex-1 flex flex-col items-center justify-center py-20 text-text-secondary gap-3">
+          <div className="w-12 h-12 rounded-full border-4 border-accent-teal/10 border-t-accent-teal animate-spin"></div>
+          <span className="font-mono text-sm">Ingesting Connection Data...</span>
         </div>
       ) : (
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto opacity-0 animate-fade-in-up delay-200">
           {view === 'board' ? (
-            <div className="flex gap-6 h-full min-w-max pb-4">
+            <div className="flex flex-col lg:flex-row gap-5 h-full pb-4">
               {COLUMNS.map(col => (
                 <div 
                   key={col} 
-                  className="w-[300px] flex flex-col pt-2"
+                  className="w-full lg:w-[280px] flex flex-col pt-2"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, col)}
                 >
+                  {/* Column Header */}
                   <div className="flex items-center justify-between mb-4 px-1">
-                    <h3 className="font-mono text-sm uppercase text-brand-text-muted">{COLUMN_LABELS[col]}</h3>
-                    <span className="text-xs font-mono bg-brand-surface-high px-2 py-0.5 rounded-full text-brand-text-muted">
+                    <div className="flex items-center gap-2">
+                      <i className={`${getStatusIcon(col)} text-xs ${getStatusColor(col).split(' ')[1]}`}></i>
+                      <h3 className="text-xs font-semibold uppercase text-text-secondary tracking-wider">{COLUMN_LABELS[col]}</h3>
+                    </div>
+                    <span className="text-[10px] font-mono bg-white/5 px-2 py-0.5 rounded-full text-text-secondary border border-white/5">
                       {apps.filter(a => a.status === col).length}
                     </span>
                   </div>
                   
-                  <div className="flex-1 space-y-3 bg-brand-surface/30 rounded-lg p-2 border border-brand-border border-dashed overflow-y-auto min-h-[300px]">
+                  {/* Column Body */}
+                  <div className="flex-1 space-y-3 glass-panel rounded-xl p-3 border-dashed !border-white/5 overflow-y-auto min-h-[300px] custom-scrollbar">
                     {apps.filter(a => a.status === col).map(app => (
                       <div 
                         key={app.id} 
                         draggable
                         onDragStart={(e) => handleDragStart(e, app.id)}
                         onClick={() => handleOpenEditModal(app)}
-                        className={`card-container p-4 hover:border-brand-primary/45 bg-brand-surface transition-colors cursor-move group relative ${draggedAppId === app.id ? 'opacity-50 border-brand-primary' : ''}`}
+                        className={`glass-panel rounded-xl p-4 hover:border-white/15 transition-all duration-300 cursor-move group relative ${getStatusGlow(app.status)} ${draggedAppId === app.id ? 'opacity-40 !border-accent-teal' : ''}`}
                       >
-                         <button className="absolute top-3 right-3 text-brand-text-muted opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-primary">
-                           <MoreHorizontal size={16} />
+                         <button className="absolute top-3.5 right-3.5 text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity hover:text-accent-teal cursor-pointer flex items-center justify-center">
+                           <i className="fa-solid fa-ellipsis text-xs"></i>
                          </button>
-                         <h4 className="font-heading font-semibold text-brand-text text-lg mb-1">{app.companyName}</h4>
-                         <p className="text-sm font-sans text-brand-text-muted mb-3">{app.roleTitle}</p>
-                         <div className="flex items-center text-xs font-mono text-brand-text-muted gap-1.5">
-                           <Calendar size={12} /> {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'No date'}
+                         <h4 className="font-semibold text-white text-sm mb-1 truncate pr-6 group-hover:text-accent-teal transition-colors duration-300">{app.companyName}</h4>
+                         <p className="text-xs text-text-secondary mb-3 truncate">{app.roleTitle}</p>
+                         <div className="flex items-center text-[10px] font-mono text-text-secondary gap-1.5">
+                           <i className="fa-regular fa-calendar text-accent-teal text-[10px]"></i> {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'No date'}
                          </div>
                       </div>
                     ))}
@@ -378,71 +367,108 @@ export default function AppTracker() {
               ))}
             </div>
           ) : (
-            <div className="card-container overflow-hidden bg-brand-surface">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-brand-surface-high border-b border-brand-border text-xs font-mono text-brand-text-muted uppercase tracking-wider">
-                    <th className="px-6 py-4 font-medium">Target Entity (Company)</th>
-                    <th className="px-6 py-4 font-medium">Protocol (Role)</th>
-                    <th className="px-6 py-4 font-medium">Pipeline Status</th>
-                    <th className="px-6 py-4 font-medium">Init Date</th>
-                    <th className="px-6 py-4 font-medium w-16"></th>
+            <section className="glass-panel rounded-2xl overflow-hidden shadow-2xl">
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead>
+                  <tr className="border-b border-panel-border/30">
+                    <th className="px-6 py-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Company</th>
+                    <th className="px-6 py-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-4 w-16"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-brand-border">
+                <tbody className="divide-y divide-panel-border/20">
                   {apps.map((app) => (
                     <tr 
                       key={app.id} 
                       onClick={() => handleOpenEditModal(app)}
-                      className="hover:bg-brand-surface-high/30 transition-colors cursor-pointer"
+                      className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
                     >
-                      <td className="px-6 py-4 font-heading font-semibold text-brand-text">{app.companyName}</td>
-                      <td className="px-6 py-4 text-brand-text-muted text-sm">{app.roleTitle}</td>
+                      <td className="px-6 py-4 font-semibold text-white group-hover:text-accent-teal transition-colors duration-300">{app.companyName}</td>
+                      <td className="px-6 py-4 text-text-secondary text-sm">{app.roleTitle}</td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-md text-xs font-mono font-medium border ${getStatusColor(app.status)}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium border ${getStatusColor(app.status)}`}>
+                          <i className={`${getStatusIcon(app.status)} text-[8px]`}></i>
                           {COLUMN_LABELS[app.status]}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm font-mono text-brand-text-muted">
+                      <td className="px-6 py-4 text-sm font-mono text-text-secondary">
                         {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => handleOpenEditModal(app)} className="text-brand-text-muted hover:text-brand-primary transition-colors cursor-pointer">
-                           <MoreHorizontal size={18} />
+                        <button onClick={() => handleOpenEditModal(app)} className="text-text-secondary hover:text-accent-teal transition-colors cursor-pointer">
+                           <i className="fa-solid fa-ellipsis text-sm"></i>
                         </button>
                       </td>
                     </tr>
                   ))}
                   {apps.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-brand-text-muted font-mono text-sm italic">
+                      <td colSpan={5} className="py-12 text-center text-text-secondary font-mono text-sm italic">
                         No pipelines tracked yet. Initialise outbound connections above.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
-            </div>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-4">
+                {apps.length === 0 && (
+                  <div className="py-12 text-center text-text-secondary font-mono text-sm italic">
+                    No pipelines tracked yet. Initialise outbound connections above.
+                  </div>
+                )}
+                {apps.map(app => (
+                  <div key={app.id} onClick={() => handleOpenEditModal(app)} className="glass-panel p-4 rounded-xl flex flex-col gap-3 cursor-pointer">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="text-sm font-medium text-white">{app.companyName}</div>
+                        <div className="text-xs text-text-secondary truncate max-w-[200px]">{app.roleTitle}</div>
+                      </div>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium border ${getStatusColor(app.status)}`}>
+                        <i className={`${getStatusIcon(app.status)} text-[8px]`}></i>
+                        {COLUMN_LABELS[app.status]}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-text-secondary mt-1">
+                      <span><i className="fa-regular fa-calendar mr-1"></i> {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'N/A'}</span>
+                      <i className="fa-solid fa-chevron-right text-[10px]"></i>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
         </div>
       )}
 
       {/* Create/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-secondary/80 backdrop-blur-sm">
-          <div className="card-container w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 bg-brand-surface">
-            <div className="flex items-center justify-between p-4 border-b border-brand-border bg-brand-surface-high/30">
-              <h2 className="text-lg font-heading font-bold">{selectedApp ? 'Update Outbound Connection' : 'Initialize Outbound Connection'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-brand-text-muted hover:text-brand-text p-1 rounded hover:bg-brand-surface-high transition-colors cursor-pointer">
-                <X size={20} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dashboard-bg/80 backdrop-blur-sm">
+          <div className="glass-panel w-full max-w-[672px] max-h-[90vh] flex flex-col shadow-2xl relative rounded-2xl overflow-hidden opacity-0 animate-fade-in-up">
+            {/* Modal top accent */}
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
+            
+            <div className="flex items-center justify-between p-5 border-b border-panel-border/30">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <i className={`${selectedApp ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-plus'} text-accent-teal text-sm`}></i>
+                {selectedApp ? 'Update Connection' : 'Initialize Connection'}
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-text-secondary hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer">
+                <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
             
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div className="p-6 overflow-y-auto space-y-4 flex-1 custom-scrollbar">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Company Name</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Company Name</label>
                     <input 
                       type="text" 
                       value={companyName}
@@ -453,7 +479,7 @@ export default function AppTracker() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Role Title</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Role Title</label>
                     <input 
                       type="text" 
                       value={roleTitle}
@@ -467,7 +493,7 @@ export default function AppTracker() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Status</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Status</label>
                     <select 
                       value={status}
                       onChange={(e) => setStatus(e.target.value as ApplicationStatus)}
@@ -477,7 +503,7 @@ export default function AppTracker() {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Salary Range (Optional)</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Salary Range (Optional)</label>
                     <input 
                       type="text" 
                       value={salaryRange}
@@ -490,7 +516,7 @@ export default function AppTracker() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Location</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Location</label>
                     <input 
                       type="text" 
                       value={location}
@@ -500,7 +526,7 @@ export default function AppTracker() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Source</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Source</label>
                     <input 
                       type="text" 
                       value={source}
@@ -510,7 +536,7 @@ export default function AppTracker() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Resume Version</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Resume Version</label>
                     <input 
                       type="text" 
                       value={resumeVersion}
@@ -523,7 +549,7 @@ export default function AppTracker() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Date Applied</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Date Applied</label>
                     <input 
                       type="date" 
                       value={dateApplied}
@@ -532,7 +558,7 @@ export default function AppTracker() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-brand-text-muted uppercase">Date Last Contact</label>
+                    <label className="text-xs font-mono text-text-secondary uppercase">Date Last Contact</label>
                     <input 
                       type="date" 
                       value={dateLastContact}
@@ -544,7 +570,7 @@ export default function AppTracker() {
 
                 {/* Job Description Relational Link */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-brand-text-muted uppercase">Linked Job Description (Keywords Matcher)</label>
+                  <label className="text-xs font-mono text-text-secondary uppercase">Linked Job Description</label>
                   <select 
                     value={jobDescriptionId}
                     onChange={(e) => setJobDescriptionId(e.target.value)}
@@ -558,18 +584,18 @@ export default function AppTracker() {
                 </div>
 
                 {/* Remote Checkbox */}
-                <label className="flex items-center gap-2 font-mono text-xs text-brand-text-muted cursor-pointer hover:text-brand-text select-none pt-1">
+                <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer hover:text-white select-none pt-1">
                   <input 
                     type="checkbox" 
                     checked={isRemote} 
                     onChange={(e) => setIsRemote(e.target.checked)}
-                    className="accent-brand-primary"
+                    className="accent-accent-teal"
                   />
                   This is a Remote position
                 </label>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-brand-text-muted uppercase">Log Notes / Recruiter Directives</label>
+                  <label className="text-xs font-mono text-text-secondary uppercase">Notes</label>
                   <textarea 
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -579,34 +605,27 @@ export default function AppTracker() {
                 </div>
               </div>
 
-              <div className="p-4 border-t border-brand-border bg-brand-surface-high/40 flex justify-between gap-3 shrink-0">
+              <div className="p-4 border-t border-panel-border/30 flex justify-between gap-3 shrink-0">
                 {selectedApp ? (
                   <div className="flex gap-2">
                     <button 
                       type="button" 
-                      onClick={() => setScannerApp(selectedApp)}
-                      className="text-xs font-mono border border-brand-primary/40 text-brand-primary hover:bg-brand-primary/10 px-3 py-2 rounded transition-colors flex items-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(50,185,200,0.1)] hover:shadow-[0_0_15px_rgba(50,185,200,0.3)]"
+                      onClick={() => confirmDelete(selectedApp.id)}
+                      className="text-[11px] font-mono border border-[#f87171]/40 text-[#f87171] hover:bg-[#f87171]/10 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
-                      <Radar size={14} className="animate-pulse" /> Scanner
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => handleDelete(selectedApp.id)}
-                      className="text-2xs font-mono border border-[#f87171]/40 text-[#f87171] hover:bg-[#f87171]/10 px-3 py-2 rounded transition-colors flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Trash2 size={12} /> Delete
+                      <i className="fa-regular fa-trash-can text-xs"></i> Delete
                     </button>
                   </div>
                 ) : <div />}
                 
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary text-sm cursor-pointer">Cancel</button>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
                   <button 
                     type="submit" 
                     disabled={isSubmitting || !companyName.trim() || !roleTitle.trim()}
-                    className="btn-primary text-sm flex items-center gap-2 cursor-pointer"
+                    className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
                   >
-                    {isSubmitting ? <Loader2 className="animate-spin" size={14} /> : null}
+                    {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : null}
                     {selectedApp ? 'Save Pipeline' : 'Initialize Connection'}
                   </button>
                 </div>
@@ -616,29 +635,16 @@ export default function AppTracker() {
         </div>
       )}
 
-      {/* Trajectory Scanner Overlay */}
-      {scannerApp && (
-        <div className="fixed inset-0 z-100 flex flex-col bg-brand-secondary/95 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="flex items-center justify-between p-4 border-b border-brand-border bg-brand-surface-high/30 z-20">
-            <div className="flex items-center gap-3">
-              <span className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg border border-brand-primary/20">
-                <Radar size={20} className="animate-pulse" />
-              </span>
-              <div>
-                <h2 className="text-xl font-heading font-bold text-brand-text">Trajectory Scanner Active</h2>
-                <p className="text-xs font-mono text-brand-text-muted uppercase tracking-widest">Target: {scannerApp.companyName} — {scannerApp.roleTitle}</p>
-              </div>
-            </div>
-            <button onClick={() => setScannerApp(null)} className="text-brand-text-muted hover:text-brand-primary p-2 border border-transparent hover:border-brand-primary/30 rounded-lg hover:bg-brand-primary/10 transition-colors cursor-pointer flex items-center gap-2">
-              <span className="font-mono text-xs uppercase tracking-widest hidden md:inline">Abort Scan</span>
-              <X size={20} />
-            </button>
-          </div>
-          <div className="flex-1 relative overflow-hidden">
-             <RadialOrbitalTimeline timelineData={generateTrajectory(scannerApp)} />
-          </div>
-        </div>
-      )}
+      <ConfirmationModal 
+        isOpen={!!appToDelete}
+        title="Delete Pipeline"
+        message="Are you sure you want to permanently delete this application pipeline? This action cannot be undone."
+        confirmText="Erase Pipeline"
+        cancelText="Cancel"
+        onConfirm={executeDelete}
+        onCancel={() => setAppToDelete(null)}
+        danger={true}
+      />
     </div>
   );
 }

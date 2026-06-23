@@ -93,3 +93,21 @@ export interface Skill {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Testimonial {
+  id: string;
+  userId: string;
+  name: string;
+  handle: string;
+  text: string;
+  avatarSrc?: string;
+  isApproved: boolean;
+  dateSubmitted: string;
+}
+
+export interface TestimonialDto {
+  name: string;
+  handle: string;
+  text: string;
+  avatarSrc?: string;
+}

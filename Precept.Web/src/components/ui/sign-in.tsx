@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { AnimatedGridBackground } from './animated-grid-background';
 
 // --- HELPER COMPONENTS (ICONS) ---
@@ -12,9 +11,15 @@ const GoogleIcon = () => (
     </svg>
 );
 
+const GithubIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+    </svg>
+);
+
 // --- TYPE DEFINITIONS ---
 export interface Testimonial {
-  avatarSrc: string;
+  avatarSrc?: string;
   name: string;
   handle: string;
   text: string;
@@ -37,14 +42,20 @@ interface SignInPageProps {
 
 // --- SUB-COMPONENTS ---
 const GlassInputWrapper = ({ children, isError = false }: { children: React.ReactNode, isError?: boolean }) => (
-  <div className={`rounded-xl border ${isError ? 'border-red-500/50 bg-red-500/5' : 'border-brand-border bg-brand-surface'} transition-colors focus-within:border-brand-primary/70 focus-within:bg-brand-primary/5 flex items-center`}>
+  <div className={`rounded-xl border ${isError ? 'border-red-500/50 bg-red-500/5' : 'border-brand-border bg-[#151c26]/55 backdrop-blur-md'} transition-colors focus-within:border-brand-primary/60 focus-within:bg-brand-primary/5 flex items-center`}>
     {children}
   </div>
 );
 
 const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, delay: string }) => (
-  <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-2xl bg-brand-surface-high/70 backdrop-blur-xl border border-brand-border p-5 w-72 shadow-lg`}>
-    <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-xl border border-brand-border" alt="avatar" width={40} height={40} loading="lazy" decoding="async" />
+  <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-2xl glass-card p-5 w-72 shadow-lg`}>
+    {testimonial.avatarSrc ? (
+      <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-xl border border-brand-border flex-shrink-0" alt="avatar" width={40} height={40} loading="lazy" decoding="async" />
+    ) : (
+      <div className="h-10 w-10 rounded-xl border border-brand-border flex-shrink-0 flex items-center justify-center bg-brand-primary/10 text-brand-primary font-bold text-lg">
+        {testimonial.name.charAt(0).toUpperCase()}
+      </div>
+    )}
     <div className="text-sm leading-snug">
       <p className="flex items-center gap-1 font-heading font-bold text-brand-text">{testimonial.name}</p>
       <p className="font-mono text-xs text-brand-primary mt-0.5">{testimonial.handle}</p>
@@ -101,11 +112,11 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
           <div className="flex flex-col gap-6">
             <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-heading font-bold tracking-tight text-brand-text">{title || (isLogin ? "Welcome Back" : "Deploy Account")}</h1>
-            <p className="animate-element animate-delay-200 text-brand-text-muted font-sans text-lg">{description || (isLogin ? "Initialize your command center session." : "Join the ultimate developer ecosystem.")}</p>
+            <p className="animate-element animate-delay-200 text-brand-text-muted font-sans text-lg">{description || (isLogin ? "Sign in to your Precept account." : "Create your free account to get started.")}</p>
 
             {error && (
               <div className="animate-element animate-delay-200 p-4 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-start gap-3">
-                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">error</span>
                 <span className="font-mono text-[13px]">{error}</span>
               </div>
             )}
@@ -148,7 +159,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   <div className="relative w-full">
                     <input name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••••••••" className="w-full bg-transparent text-sm p-4 pr-12 font-mono tracking-widest focus:outline-none placeholder:text-brand-text-muted/50" required />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-3 flex items-center cursor-pointer">
-                      {showPassword ? <EyeOff className="w-5 h-5 text-brand-text-muted hover:text-brand-primary transition-colors" /> : <Eye className="w-5 h-5 text-brand-text-muted hover:text-brand-primary transition-colors" />}
+                      {showPassword ? <span className="material-symbols-outlined text-[20px] text-brand-text-muted hover:text-brand-primary transition-colors">visibility_off</span> : <span className="material-symbols-outlined text-[20px] text-brand-text-muted hover:text-brand-primary transition-colors">visibility</span>}
                     </button>
                   </div>
                 </GlassInputWrapper>
@@ -167,7 +178,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               )}
 
               <button type="submit" disabled={isLoading} className="animate-element animate-delay-700 w-full rounded-md bg-brand-primary py-4 font-mono font-bold text-brand-secondary hover:bg-brand-primary-container hover:-translate-y-0.5 transition-all shadow-[0_0_20px_rgba(50,185,200,0.2)] hover:shadow-[0_0_30px_rgba(50,185,200,0.4)] mt-6 cursor-pointer flex items-center justify-center gap-2">
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                {isLoading ? <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> : (
                    <>
                       {isLogin ? "Initialize Protocol" : "Initialize Protocol"}
                       <span className="material-symbols-outlined text-[18px]">{isLogin ? "login" : "rocket_launch"}</span>
@@ -181,10 +192,27 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <span className="px-4 text-[11px] font-mono uppercase tracking-widest text-brand-text-muted bg-brand-secondary absolute">Or Bypass With</span>
             </div>
 
-            <button onClick={onGoogleSignIn} className="animate-element animate-delay-900 w-full flex items-center justify-center gap-3 border border-brand-border rounded-md py-4 hover:bg-brand-surface-high transition-colors font-mono text-sm cursor-pointer hover:border-brand-text-muted text-brand-text">
+            <div className="animate-element animate-delay-900 flex items-center justify-center gap-4 mt-6">
+              <button 
+                type="button"
+                className="group relative flex items-center justify-center w-14 h-14 border border-brand-border/50 rounded-full bg-brand-surface opacity-50 cursor-not-allowed transition-all hover:bg-brand-surface-high"
+                title="Google Integration (Coming Soon)"
+                disabled
+              >
                 <GoogleIcon />
-                Google Integration
-            </button>
+                <span className="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-brand-surface border border-brand-border text-brand-text-muted text-[10px] font-mono px-3 py-1.5 rounded whitespace-nowrap z-50">Coming Soon</span>
+              </button>
+              
+              <button 
+                type="button"
+                className="group relative flex items-center justify-center w-14 h-14 border border-brand-border/50 rounded-full bg-brand-surface opacity-50 cursor-not-allowed transition-all hover:bg-brand-surface-high text-brand-text"
+                title="GitHub Integration (Coming Soon)"
+                disabled
+              >
+                <GithubIcon />
+                <span className="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-brand-surface border border-brand-border text-brand-text-muted text-[10px] font-mono px-3 py-1.5 rounded whitespace-nowrap z-50">Coming Soon</span>
+              </button>
+            </div>
 
             <p className="animate-element animate-delay-1000 text-center text-sm font-sans text-brand-text-muted mt-6">
               {isLogin ? "New operator? " : "Already deployed? "} 

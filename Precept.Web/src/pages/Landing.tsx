@@ -1,37 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { SignInPage, Testimonial } from '../components/ui/sign-in';
-
-const sampleTestimonials: Testimonial[] = [
-  {
-    avatarSrc: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150&auto=format&fit=crop",
-    name: "Sarah Chen",
-    handle: "Sr. Software Engineer",
-    text: "Precept's JD Matcher completely changed how I target roles. I secured 3 staff-level offers in two weeks."
-  },
-  {
-    avatarSrc: "https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=150&auto=format&fit=crop",
-    name: "Marcus Johnson",
-    handle: "Full Stack Developer",
-    text: "The Story Bank is a cheat code for behavioral rounds. Highly recommend this OS to any serious engineer."
-  },
-  {
-    avatarSrc: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
-    name: "Alex Rivera",
-    handle: "Systems Architect",
-    text: "The True Trajectory Scanner tracks every single pipeline event precisely. I never lose track of where I stand with any employer."
-  }
-];
+import { SignInPage } from '../components/ui/sign-in';
+import { api } from '../api';
+import type { Testimonial } from '../types';
 
 export default function Landing() {
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(location.state?.mode !== 'signup');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
   const { login, register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    async function loadTestimonials() {
+      try {
+        const data = await api.get<Testimonial[]>('/api/testimonial/public', { skipAuth: true });
+        setTestimonials(data);
+      } catch (err) {
+        console.error('Failed to load testimonials:', err);
+      }
+    }
+    loadTestimonials();
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -96,7 +90,7 @@ export default function Landing() {
       onGoogleSignIn={handleGoogleSignIn}
       onBack={() => navigate('/')}
       heroImageSrc="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1400&auto=format&fit=crop"
-      testimonials={sampleTestimonials}
+      testimonials={testimonials}
     />
   );
 }

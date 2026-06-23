@@ -1,54 +1,103 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import HeroShader from '../components/ui/hero-shader';
-import DemoVideoSection from '../components/ui/demo-video-section';
 import PageTransition from '../components/ui/PageTransition';
 import { useAuth } from '../AuthContext';
+import { motion, useScroll, useTransform, useSpring, useInView, Variants } from 'framer-motion';
+import {
+  Rocket, LayoutDashboard, Lock, Database, Zap,
+  Building2, Cloud, Target, Code2, Star, BrainCircuit,
+  Sparkles, LineChart, GitBranch, FlaskConical, Bot,
+  Mic, FileText, Github, Linkedin, Terminal, ChevronRight, Activity, Code
+} from 'lucide-react';
 
-// Custom hook for scroll reveal animations
-function useScrollReveal() {
-  const [isVisible, setIsVisible] = useState(false);
-  const domRef = useRef<HTMLDivElement>(null);
+// Spotlight effect for the background
+const Spotlight = () => {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [opacity, setOpacity] = useState(0);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) setIsVisible(true);
-        });
-      },
-      { threshold: 0.1 }
-    );
-    const { current } = domRef;
-    if (current) observer.observe(current);
-    return () => {
-      if (current) observer.unobserve(current);
+    const handleMouseMove = (e: MouseEvent) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+      if (opacity === 0) setOpacity(1);
     };
-  }, []);
+    
+    const handleMouseLeave = () => setOpacity(0);
 
-  return { ref: domRef, isVisible };
-}
+    window.addEventListener('mousemove', handleMouseMove);
+    document.body.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      document.body.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [opacity]);
+
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-500 ease-in-out"
+      style={{
+        opacity,
+        background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(20, 184, 166, 0.07), transparent 40%)`,
+      }}
+    />
+  );
+};
+
+const FadeIn = ({ children, delay = 0, className = "" }: { children: React.ReactNode, delay?: number, className?: string, key?: React.Key }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 30 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+      transition={{ duration: 0.8, delay, ease: [0.21, 1.02, 0.73, 1] }}
+      className={`w-full ${className}`}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+const TypewriterText = ({ text, delay = 0, className = "" }: { text: string, delay?: number, className?: string }) => {
+  const characters = Array.from(text);
+  
+  const container: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.015, delayChildren: delay }
+    }
+  };
+  
+  const child: Variants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 }
+  };
+  
+  return (
+    <motion.span variants={container} initial="hidden" animate="visible" className={className}>
+      {characters.map((char, index) => (
+        <motion.span key={index} variants={child}>
+          {char}
+        </motion.span>
+      ))}
+    </motion.span>
+  );
+};
 
 export default function HomePage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-
-  const featuresReveal = useScrollReveal();
-  const securityReveal = useScrollReveal();
-  
   const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-
-  const handleFeatureClick = (path: string) => {
-    if (isAuthenticated) {
-      navigate(path);
-    } else {
-      navigate('/login');
-    }
-  };
+  
+  const { scrollY } = useScroll();
+  const yHero = useTransform(scrollY, [0, 1000], [0, 200]);
+  const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
 
   useEffect(() => {
     let isMounted = true;
-    
     const checkStatus = async () => {
       try {
         const res = await fetch('/api/health');
@@ -65,305 +114,453 @@ export default function HomePage() {
     checkStatus();
     const interval = setInterval(checkStatus, 15000);
     
+    // Preload landing component for login
+    setTimeout(() => {
+      import('./Landing').catch(() => {});
+    }, 1000);
+    
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
   }, []);
 
-  const StatusBadge = ({ className = '', tooltipPos = 'bottom' }: { className?: string, tooltipPos?: 'top' | 'bottom' }) => {
-    const Tooltip = () => (
-      <div className={`absolute ${tooltipPos === 'bottom' ? 'top-full mt-3' : 'bottom-full mb-3'} right-0 lg:left-1/2 lg:-translate-x-1/2 w-64 p-3 bg-[#0d141d] border border-brand-border rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none`}>
-        {/* Speech bubble tail */}
-        <div className={`absolute ${tooltipPos === 'bottom' ? '-top-2 border-t border-l' : '-bottom-2 border-b border-r'} right-6 lg:right-auto lg:left-1/2 lg:-translate-x-1/2 w-4 h-4 bg-[#0d141d] border-brand-border rotate-45 rounded-sm`}></div>
-        <p className="relative z-10 text-xs text-brand-text-muted font-sans font-normal leading-relaxed text-center whitespace-normal normal-case tracking-normal">
-          Continuously pings the backend server to verify API connectivity and system health.
-        </p>
-      </div>
-    );
+  const handleGetStarted = () => {
+    if (isAuthenticated) navigate('/dashboard');
+    else navigate('/login');
+  };
 
+  const StatusBadge = ({ className = '' }: { className?: string }) => {
     if (systemStatus === 'checking') {
       return (
-        <div className={`group relative flex items-center gap-2 px-3 py-1 bg-brand-surface-high/50 rounded-full border border-brand-border/50 cursor-help ${className}`}>
+        <div className={`flex items-center gap-2 px-3 py-1 bg-brand-surface-high/50 rounded-full border border-brand-border/50 ${className}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-[pulse_2s_infinite]"></span>
           <span className="text-xs font-mono text-brand-text-muted">Checking System...</span>
-          <Tooltip />
         </div>
       );
     }
-    
     if (systemStatus === 'offline') {
       return (
-        <div className={`group relative flex items-center gap-2 px-3 py-1 bg-red-500/10 rounded-full border border-red-500/30 cursor-help ${className}`}>
+        <div className={`flex items-center gap-2 px-3 py-1 bg-red-500/10 rounded-full border border-red-500/30 ${className}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-[pulse_1s_infinite]"></span>
           <span className="text-xs font-mono text-red-400 font-bold">API Offline</span>
-          <Tooltip />
         </div>
       );
     }
-
     return (
-      <div className={`group relative flex items-center gap-2 px-3 py-1 bg-[#06101c] rounded-full border border-brand-border/50 hover:border-brand-primary/50 transition-colors cursor-help ${className}`}>
-        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-[pulse_2s_infinite]"></span>
-        <span className="text-xs font-mono text-brand-text-muted">All Systems Operational</span>
-        <Tooltip />
+      <div className={`flex items-center gap-2 px-3 py-1 bg-[#06101c] rounded-full border border-brand-primary/20 hover:border-brand-primary/50 transition-colors cursor-pointer ${className}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_8px_rgba(20,184,166,0.8)] animate-[pulse_2s_infinite]"></span>
+        <span className="text-xs font-mono text-brand-primary/80">Systems Operational</span>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-[#030811] text-brand-text font-sans overflow-hidden selection:bg-brand-primary/30 relative">
-
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-brand-secondary/80 backdrop-blur-md border-b border-brand-border/50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded overflow-hidden flex items-center justify-center bg-brand-surface border border-brand-border/50">
-              <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" width={40} height={40} fetchpriority="high" />
-            </div>
-            <div>
-              <span className="font-heading font-bold text-xl tracking-tight text-brand-text">Precept</span>
-              <span className="block font-mono text-[10px] text-brand-text-muted uppercase tracking-wider">JobHunt OS</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-6 text-sm font-mono text-brand-text-muted">
-              <a href="#demo" className="hover:text-brand-primary transition-colors duration-300">Live Demo</a>
-              <a href="#features" className="hover:text-brand-primary transition-colors duration-300">Deploy Your Strategy</a>
-              <a href="#roadmap" className="hover:text-brand-primary transition-colors duration-300">Roadmap</a>
-              <StatusBadge className="cursor-pointer" tooltipPos="bottom" />
-            </div>
-            <button 
-              onClick={() => navigate('/login')}
-              className="text-brand-text font-mono font-medium hover:text-brand-primary transition-colors duration-300 cursor-pointer"
-            >
-              Sign In
-            </button>
-            <button 
-              onClick={() => navigate('/login', { state: { mode: 'signup' } })}
-              className="bg-brand-primary text-brand-secondary font-mono font-bold px-6 py-2.5 rounded-md hover:bg-brand-primary-container transition-all duration-300 hover:shadow-[0_0_20px_rgba(50,185,200,0.4)] hover:-translate-y-0.5 cursor-pointer"
-            >
-              Initialize
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <PageTransition>
-        {/* Hero Section */}
-        <HeroShader />
-
-      {/* Demo Video Section */}
-      <DemoVideoSection />
-
-      {/* Trust & Security */}
-      <section id="security" ref={securityReveal.ref} className={`py-12 border-y border-brand-border/30 bg-[#06101c]/50 backdrop-blur-sm transition-all duration-1000 transform ease-out relative ${securityReveal.isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
-        <div className="absolute inset-0 bg-linear-to-r from-brand-primary/5 via-transparent to-transparent pointer-events-none"></div>
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-12 font-mono text-sm text-brand-text-muted relative z-10">
-          <div className="flex items-center gap-3 hover:text-brand-text transition-colors duration-300 cursor-default">
-            <span className="material-symbols-outlined text-brand-primary">lock</span>
-            Encrypted Storage
-          </div>
-          <div className="hidden md:block w-1 h-1 rounded-full bg-brand-border"></div>
-          <div className="flex items-center gap-3 hover:text-brand-text transition-colors duration-300 cursor-default">
-            <span className="material-symbols-outlined text-brand-primary">visibility_off</span>
-            Private Architecture
-          </div>
-          <div className="hidden md:block w-1 h-1 rounded-full bg-brand-border"></div>
-          <div className="flex items-center gap-3 hover:text-brand-text transition-colors duration-300 cursor-default">
-            <span className="material-symbols-outlined text-brand-primary">dns</span>
-            Developer Controlled
-          </div>
-        </div>
-      </section>
-
-      {/* Features Bento Grid Showcase */}
-      <section id="features" ref={featuresReveal.ref} className={`py-32 px-6 max-w-7xl mx-auto transition-all duration-1000 transform ease-out ${featuresReveal.isVisible ? 'translate-y-0 opacity-100' : 'translate-y-16 opacity-0'}`}>
-        <div className="text-left mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 font-mono text-xs uppercase tracking-widest">
-            <span className="material-symbols-outlined text-[14px]">grid_view</span>
-            Available Now
-          </div>
-          <h2 className="font-heading font-bold text-4xl md:text-5xl mb-4 text-white">Deploy Your Strategy</h2>
-          <p className="font-mono text-brand-text-muted">Four powerful modules to orchestrate your job search.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Feature 1 - Technical Story Bank */}
-          <div 
-            onClick={() => handleFeatureClick('/story-bank')}
-            className="relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-brand-primary/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-[2.5] ease-out"></div>
-            
-            <div className="z-10 flex-1">
-              <div className="w-12 h-12 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center mb-6 text-brand-primary shadow-[0_0_15px_rgba(50,185,200,0.1)] group-hover:shadow-[0_0_20px_rgba(50,185,200,0.3)] transition-shadow">
-                <span className="material-symbols-outlined text-[24px]">terminal</span>
-              </div>
-              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">Technical Story Bank</h3>
-              <p className="text-brand-text-muted font-sans mb-6">
-                Save code snippets with your own explanations. Self-quiz by recall; your confidence rating drives spaced repetition so weak spots resurface next session.
-              </p>
-            </div>
-            <div className="font-mono text-xs text-brand-primary flex items-center gap-2 uppercase tracking-wider font-bold z-10 mt-auto">
-              Master Technicals <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
-            </div>
-          </div>
-
-          {/* Feature 2 - Behavioral Story Bank */}
-          <div 
-            onClick={() => handleFeatureClick('/story-bank')}
-            className="relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-amber-500/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-[2.5] ease-out"></div>
-            
-            <div className="z-10 flex-1">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 text-amber-500 group-hover:shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-shadow">
-                <span className="material-symbols-outlined text-[24px]">psychology</span>
-              </div>
-              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">Behavioral Story Bank</h3>
-              <p className="text-brand-text-muted font-sans mb-6">
-                The spaced repetition mechanic applied to STAR method interview narratives (Situation, Task, Action, Result). Tag and retrieve stories instantly.
-              </p>
-            </div>
-            <div className="font-mono text-xs text-amber-500 flex items-center gap-2 uppercase tracking-wider font-bold z-10 mt-auto">
-              Master Behaviors <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
-            </div>
-          </div>
-
-          {/* Feature 3 - JD Analyzer */}
-          <div 
-            onClick={() => handleFeatureClick('/jd-matcher')}
-            className="relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-blue-500/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-[2.5] ease-out"></div>
-            
-            <div className="z-10 flex-1">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-6 text-blue-400 group-hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] transition-shadow">
-                <span className="material-symbols-outlined text-[24px]">troubleshoot</span>
-              </div>
-              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">JD Analyzer</h3>
-              <p className="text-brand-text-muted font-sans mb-6">
-                Paste a job description and manually map its requirements against your stories and skills to find coverage gaps before the interview.
-              </p>
-            </div>
-            <div className="font-mono text-xs text-blue-400 flex items-center gap-2 uppercase tracking-wider font-bold z-10 mt-auto">
-              Analyze Coverage <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
-            </div>
-          </div>
-
-          {/* Feature 4 - App Tracker */}
-          <div 
-            onClick={() => handleFeatureClick('/applications')}
-            className="relative overflow-hidden p-8 bg-[#06101c]/80 backdrop-blur-md border border-brand-border/50 rounded-2xl shadow-sm hover:shadow-xl hover:border-purple-500/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1 flex flex-col"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-[2.5] ease-out"></div>
-            
-            <div className="z-10 flex-1">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 text-purple-400 group-hover:shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-shadow">
-                <span className="material-symbols-outlined text-[24px]">view_kanban</span>
-              </div>
-              <h3 className="font-heading font-bold text-2xl mb-3 text-brand-text">Application Tracker</h3>
-              <p className="text-brand-text-muted font-sans mb-6">
-                A tactical Kanban board to track active applications, coordinate follow-ups, and manage negotiation stages seamlessly.
-              </p>
-            </div>
-            <div className="font-mono text-xs text-purple-400 flex items-center gap-2 uppercase tracking-wider font-bold z-10 mt-auto">
-              Track Pipeline <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Roadmap / Coming Soon */}
-      <section id="roadmap" className="py-24 px-6 max-w-7xl mx-auto border-t border-brand-border/30">
-        <div className="text-left mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full border border-brand-border bg-brand-surface-high text-brand-text-muted font-mono text-xs uppercase tracking-widest">
-            <span className="material-symbols-outlined text-[14px]">map</span>
-            Roadmap
-          </div>
-          <h2 className="font-heading font-bold text-3xl md:text-4xl mb-4 text-white">Coming Soon</h2>
-          <p className="font-mono text-brand-text-muted">The architecture is expanding. These features are in active development.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
-            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">phone_iphone</span>
-            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">Native Mobile App</h3>
-            <p className="text-brand-text-muted font-sans text-sm">iOS and Android companion applications to update your job pipeline on the go.</p>
-          </div>
-          
-          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
-            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">document_scanner</span>
-            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">Resume Extraction</h3>
-            <p className="text-brand-text-muted font-sans text-sm">Secure resume storage with automated text parsing and extraction capabilities.</p>
-          </div>
-
-          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
-            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">record_voice_over</span>
-            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">AI Mock Interview</h3>
-            <p className="text-brand-text-muted font-sans text-sm">
-              Upload your resume and a JD. An AI interviewer generates questions the way a real interviewer would. Post-session qualitative feedback provides a readiness read, strengths, and areas to improve. (Note: AI is sandboxed and has absolutely zero access to your Story Bank.)
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
-            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">mic</span>
-            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">Voice Interview Mode</h3>
-            <p className="text-brand-text-muted font-sans text-sm">Practice answering questions verbally with real-time transcription.</p>
-          </div>
-
-          <div className="p-6 rounded-2xl border border-dashed border-brand-border/60 bg-brand-surface/30 flex flex-col opacity-75">
-            <span className="material-symbols-outlined text-brand-text-muted mb-4 text-[24px]">desktop_windows</span>
-            <h3 className="font-heading font-bold text-lg mb-2 text-brand-text">Desktop App</h3>
-            <p className="text-brand-text-muted font-sans text-sm">Native desktop client optimized for focused, distraction-free preparation.</p>
-          </div>
-
-        </div>
-      </section>
-      
-      {/* Real Footer Implementation */}
-      <footer className="border-t border-brand-border/30 bg-[#02050a] relative overflow-hidden">
-        {/* Subtle top glow */}
-        <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-brand-primary/20 to-transparent"></div>
+    <PageTransition>
+      <div className="bg-[#02050A] text-brand-text min-h-screen relative overflow-x-hidden antialiased selection:bg-brand-primary/30">
         
-        <div className="max-w-7xl mx-auto px-6 py-16 lg:py-24 relative z-10">
-          <div className="flex flex-col text-left max-w-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center bg-brand-surface border border-brand-border/50">
-                <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" width={32} height={32} loading="lazy" />
+        <Spotlight />
+        
+        {/* Subtle grid background */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.15]" 
+             style={{ backgroundImage: 'linear-gradient(to right, rgba(20,184,166,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(20,184,166,0.15) 1px, transparent 1px)', backgroundSize: '60px 60px', maskImage: 'radial-gradient(circle at center, black, transparent 80%)', WebkitMaskImage: 'radial-gradient(circle at center, black, transparent 80%)' }}>
+        </div>
+        
+        {/* TopNavBar */}
+        <nav className="sticky top-0 w-full z-50 transition-all duration-300 bg-[#02050A]/70 backdrop-blur-xl border-b border-white/[0.05]">
+          <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
+            {/* Brand */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-md overflow-hidden flex items-center justify-center bg-brand-surface border border-white/10 shadow-[0_0_15px_rgba(20,184,166,0.15)]">
+                <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" width={36} height={36} fetchpriority="high" />
               </div>
               <div>
-                <span className="font-heading font-bold text-xl tracking-tight text-white">Precept</span>
-                <span className="block font-mono text-[10px] text-brand-text-muted uppercase tracking-wider">JobHunt OS</span>
+                <span className="font-heading font-semibold text-lg tracking-tight text-white">Precept</span>
               </div>
             </div>
-            <p className="text-brand-text-muted font-sans text-sm leading-relaxed mb-8">
-              A private, fullstack job-hunting command center for the modern developer. Master your stories, track your pipeline, and close skill gaps with precision.
-            </p>
-            <div className="flex items-center gap-4">
-              {/* GitHub */}
-              <a href="https://github.com/austinchima/Precept" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-brand-text-muted hover:text-white hover:bg-brand-primary/20 hover:border-brand-primary/30 transition-all">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
-                </svg>
+            {/* Links */}
+            <div className="hidden md:flex items-center gap-8">
+              <a className="text-brand-text-muted hover:text-white font-mono text-[13px] transition-colors duration-200" href="#features">Features</a>
+              <a className="text-brand-text-muted hover:text-white font-mono text-[13px] transition-colors duration-200" href="#roadmap">Roadmap</a>
+              <StatusBadge />
+            </div>
+            {/* Action */}
+            <div className="flex items-center gap-5">
+              <button 
+                onClick={() => navigate('/login')}
+                className="text-brand-text-muted font-mono text-[13px] hover:text-white transition-colors cursor-pointer hidden sm:block"
+              >
+                Sign In
+              </button>
+              <button 
+                onClick={handleGetStarted}
+                className="group relative px-5 py-2 rounded-md bg-brand-primary text-[#02050A] font-mono text-[13px] font-bold overflow-hidden transition-transform active:scale-95 cursor-pointer"
+              >
+                <span className="relative z-10 flex items-center gap-2">Initialize <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" /></span>
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+              </button>
+            </div>
+          </div>
+        </nav>
+        
+        <main className="relative z-10 pb-24 px-6 max-w-7xl mx-auto flex flex-col gap-32">
+          
+          {/* Hero Section */}
+          <motion.section 
+            style={{ y: yHero, opacity: opacityHero }}
+            className="flex flex-col items-center text-center gap-8 max-w-4xl mx-auto mt-20"
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/20 text-brand-primary text-xs font-mono shadow-[0_0_20px_rgba(20,184,166,0.15)]"
+            >
+              <Activity size={14} />
+              <span>JobHunt OS is Live</span>
+            </motion.div>
+            
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.2, ease: [0.21, 1.02, 0.73, 1] }}
+              className="text-5xl md:text-[80px] md:leading-[1.05] font-heading font-bold text-white tracking-tight"
+            >
+              Engineer Your Next <br/>
+              <span className="relative inline-block">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-emerald-300">Career Move</span>
+                <div className="absolute -bottom-2 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand-primary to-transparent opacity-50"></div>
+              </span>
+            </motion.h1>
+            
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.3, ease: [0.21, 1.02, 0.73, 1] }}
+              className="text-brand-text-muted font-sans text-lg md:text-xl max-w-2xl mt-4 leading-relaxed font-light"
+            >
+              <TypewriterText 
+                text="The career management platform built specifically for developers. Catalog your technical stories, orchestrate your interview prep, and track your entire job hunt pipeline from a single command center."
+                delay={1.0}
+              />
+            </motion.p>
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.4, ease: [0.21, 1.02, 0.73, 1] }}
+              className="flex flex-col sm:flex-row items-center gap-4 mt-8"
+            >
+              <button 
+                onClick={handleGetStarted}
+                className="w-full sm:w-auto bg-brand-primary text-[#02050A] font-mono text-sm px-8 py-3.5 rounded-md hover:bg-[#109a8a] transition-all font-bold shadow-[0_0_30px_rgba(20,184,166,0.3)] hover:shadow-[0_0_40px_rgba(20,184,166,0.5)] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Terminal size={16} /> Deploy Strategy
+              </button>
+              <a href="#features" className="w-full sm:w-auto bg-white/[0.03] border border-white/10 text-white font-mono text-sm px-8 py-3.5 rounded-md hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2 cursor-pointer backdrop-blur-md">
+                <LayoutDashboard size={16} /> Explore Architecture
               </a>
-              {/* LinkedIn */}
-              <a href="https://www.linkedin.com/in/austin-chima" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-brand-text-muted hover:text-white hover:bg-[#0077B5]/20 hover:border-[#0077B5]/30 transition-all">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fillRule="evenodd" d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" clipRule="evenodd" />
-                </svg>
+            </motion.div>
+            
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 0.8 }}
+              className="mt-16 flex items-center gap-8 font-mono text-[11px] text-brand-text-muted/70 uppercase tracking-widest"
+            >
+              <div className="flex items-center gap-2"><Lock size={14} className="text-brand-primary" /> JWT Secured</div>
+              <div className="w-1 h-1 rounded-full bg-white/20"></div>
+              <div className="flex items-center gap-2"><Database size={14} className="text-emerald-400" /> PostgreSQL</div>
+              <div className="w-1 h-1 rounded-full bg-white/20"></div>
+              <div className="flex items-center gap-2"><Zap size={14} className="text-teal-400" /> .NET + React</div>
+            </motion.div>
+          </motion.section>
+          
+          {/* Asymmetrical Showcase Section */}
+          <section id="features" className="flex flex-col gap-8">
+            <FadeIn>
+              <div className="flex flex-col md:flex-row gap-8 items-stretch">
+                {/* Application Tracker - Large Panel */}
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="flex-1 rounded-2xl bg-[#090D14] border border-white/[0.06] p-8 relative overflow-hidden group shadow-2xl"
+                >
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary/5 rounded-full blur-[100px] -mr-20 -mt-20 transition-opacity group-hover:opacity-100 opacity-50 pointer-events-none"></div>
+                  
+                  <div className="flex items-center justify-between mb-8 relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#121A26] border border-white/10 flex items-center justify-center">
+                        <LayoutDashboard className="text-brand-primary" size={24} />
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-2xl font-bold text-white">Application Tracker</h3>
+                        <p className="text-brand-text-muted text-sm mt-1">Live pipeline metrics.</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4 relative z-10">
+                    <div className="group/item flex items-center justify-between p-5 bg-[#121A26]/80 hover:bg-[#1A2332] transition-colors rounded-xl border border-white/[0.04]">
+                      <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-lg bg-[#090D14] flex items-center justify-center border border-white/5 group-hover/item:border-brand-primary/30 transition-colors">
+                          <Building2 size={20} className="text-brand-text-muted group-hover/item:text-brand-primary transition-colors" />
+                        </div>
+                        <div>
+                          <h4 className="font-heading font-semibold text-white text-lg">Senior Frontend Engineer</h4>
+                          <p className="text-brand-text-muted text-sm font-sans mt-0.5">Stripe • San Francisco</p>
+                        </div>
+                      </div>
+                      <span className="bg-[#121A26] text-white px-4 py-2 rounded-lg text-xs font-mono font-medium border border-white/10 hidden sm:block shadow-inner">Technical Screen</span>
+                    </div>
+                    
+                    <div className="group/item flex items-center justify-between p-5 bg-[#121A26]/80 hover:bg-[#1A2332] transition-colors rounded-xl border border-white/[0.04]">
+                      <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-lg bg-[#090D14] flex items-center justify-center border border-white/5 group-hover/item:border-brand-primary/30 transition-colors">
+                          <Cloud size={20} className="text-brand-text-muted group-hover/item:text-brand-primary transition-colors" />
+                        </div>
+                        <div>
+                          <h4 className="font-heading font-semibold text-white text-lg">Staff Cloud Architect</h4>
+                          <p className="text-brand-text-muted text-sm font-sans mt-0.5">Vercel • Remote</p>
+                        </div>
+                      </div>
+                      <span className="bg-brand-primary/10 text-brand-primary px-4 py-2 rounded-lg text-xs font-mono font-medium border border-brand-primary/20 hidden sm:block shadow-[0_0_15px_rgba(20,184,166,0.1)]">Offer Extended</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Skill Matrix - Tall Side Panel */}
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="w-full md:w-[350px] rounded-2xl bg-[#090D14] border border-white/[0.06] p-8 flex flex-col relative overflow-hidden group shadow-2xl"
+                >
+                  <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-emerald-900/10 to-transparent pointer-events-none"></div>
+                  
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 rounded-xl bg-[#121A26] border border-white/10 flex items-center justify-center">
+                      <Target className="text-emerald-400" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-heading text-2xl font-bold text-white">Skill Matrix</h3>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-6 flex-1 justify-center">
+                    {[
+                      { name: 'React / Next.js', level: 'Expert', val: '90%', color: 'bg-emerald-400' },
+                      { name: 'TypeScript', level: 'Advanced', val: '80%', color: 'bg-emerald-400' },
+                      { name: 'System Design', level: 'Intermediate', val: '60%', color: 'bg-brand-text-muted' }
+                    ].map((skill, i) => (
+                      <div key={i} className="flex flex-col gap-2">
+                        <div className="flex justify-between text-[13px] font-mono">
+                          <span className="text-white">{skill.name}</span>
+                          <span className="text-brand-text-muted">{skill.level}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-[#1A2332] rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            whileInView={{ width: skill.val }}
+                            transition={{ duration: 1, delay: i * 0.2 }}
+                            className={`h-full ${skill.color} rounded-full`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={0.2}>
+              <div className="flex flex-col md:flex-row gap-8 items-stretch">
+                {/* Tech Story Bank - Focus Panel */}
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="flex-[3] rounded-2xl bg-gradient-to-br from-[#090D14] to-[#0A0F18] border border-white/[0.06] p-8 relative overflow-hidden shadow-2xl"
+                >
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary">
+                      <Code2 size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-heading text-2xl font-bold text-white">Technical Story Bank</h3>
+                      <p className="text-brand-text-muted text-sm mt-1">Catalog runnable code and patterns.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-[#05080C] rounded-xl border border-white/[0.05] overflow-hidden shadow-inner">
+                    <div className="flex items-center px-4 py-3 border-b border-white/[0.05] bg-[#0A0F18]">
+                      <div className="flex gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
+                      </div>
+                      <div className="ml-4 font-mono text-xs text-brand-text-muted/70 flex items-center gap-2">
+                        <Code size={12} /> RedisCache.cs
+                      </div>
+                    </div>
+                    <div className="p-5 font-mono text-[13px] leading-relaxed text-brand-text-muted overflow-x-auto">
+                      <span className="text-brand-primary">await</span> _cache.SetAsync(key, data, <br/>
+                      &nbsp;&nbsp;<span className="text-emerald-300">TimeSpan</span>.FromMinutes(<span className="text-yellow-200">15</span>)); <br/>
+                      <span className="text-brand-primary">await</span> _bus.PublishAsync(<span className="text-teal-200">"cache:invalidate"</span>, key);
+                    </div>
+                  </div>
+                  
+                  <button onClick={() => navigate('/story-bank')} className="mt-6 bg-[#121A26] border border-white/10 text-white font-mono text-sm px-6 py-3 rounded-lg hover:bg-[#1A2332] transition-colors cursor-pointer flex items-center gap-2 hover:border-brand-primary/30">
+                    <Terminal size={16} className="text-brand-primary" /> Open Technical Bank
+                  </button>
+                </motion.div>
+
+                {/* Behavioral Story - Focus Panel */}
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="flex-[2] rounded-2xl bg-[#090D14] border border-white/[0.06] p-8 relative overflow-hidden shadow-2xl"
+                >
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                      <BrainCircuit size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-heading text-2xl font-bold text-white">Behavioral Bank</h3>
+                      <p className="text-brand-text-muted text-sm mt-1">STAR method narratives.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-[#121A26] rounded-xl border border-white/[0.05] p-5 space-y-4">
+                    <div className="font-heading font-semibold text-white">Navigating a Critical Outage</div>
+                    <div className="grid grid-cols-4 gap-2 text-[11px] font-mono">
+                      {['Situation', 'Task', 'Action', 'Result'].map((label, i) => (
+                        <div key={label} className="flex flex-col items-center gap-2">
+                          <div className={`w-full h-1 rounded-full ${i <= 2 ? 'bg-purple-500/40' : 'bg-[#2A3342]'}`}></div>
+                          <span className="text-brand-text-muted">{label[0]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-brand-text-muted text-xs leading-relaxed">Map experiences to core leadership principles. Never freeze during a behavioral round.</p>
+                  </div>
+                </motion.div>
+              </div>
+            </FadeIn>
+          </section>
+          
+          {/* Engine Section */}
+          <section className="flex flex-col gap-12 mt-16">
+            <FadeIn>
+              <div className="text-center max-w-2xl mx-auto">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/10 text-white/70 text-xs font-mono mb-6 backdrop-blur-md">
+                  <Sparkles size={14} className="text-brand-primary" /> Core Engine
+                </div>
+                <h2 className="font-heading text-4xl font-bold mb-4 text-white">Data-Driven Preparation</h2>
+                <p className="text-brand-text-muted font-sans text-lg font-light">Centralize your career progression. Match your capabilities against job descriptions instantly.</p>
+              </div>
+            </FadeIn>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { icon: <LineChart size={24} className="text-brand-primary" />, title: "Dynamic Skill Matrix", desc: "Visualize your tech stack proficiencies. Identify gaps in your knowledge and track progression." },
+                { icon: <Sparkles size={24} className="text-emerald-400" />, title: "JD Matcher", desc: "Paste a job description and instantly align your skills, identify missing keywords, and verify match score." },
+                { icon: <GitBranch size={24} className="text-teal-400" />, title: "Funnel Tracking", desc: "Treat your job hunt like a sales pipeline. Track conversion rates from application to offer." }
+              ].map((item, i) => (
+                <FadeIn key={i} delay={i * 0.1}>
+                  <div className="bg-[#090D14] border border-white/[0.06] p-8 rounded-2xl flex flex-col gap-5 hover:border-white/10 transition-colors h-full">
+                    <div className="w-12 h-12 rounded-xl bg-[#121A26] border border-white/5 flex items-center justify-center">
+                      {item.icon}
+                    </div>
+                    <h3 className="font-heading text-xl font-bold text-white">{item.title}</h3>
+                    <p className="text-brand-text-muted text-sm font-sans leading-relaxed font-light">
+                      {item.desc}
+                    </p>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+          </section>
+          
+          {/* Roadmap */}
+          <section id="roadmap" className="flex flex-col gap-12 pt-16 border-t border-white/[0.05]">
+            <FadeIn>
+              <div className="text-center max-w-2xl mx-auto">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-mono mb-6">
+                  <FlaskConical size={14} /> Coming in R2
+                </div>
+                <h2 className="font-heading text-4xl font-bold mb-4 text-white">AI-Powered Intelligence</h2>
+                <p className="text-brand-text-muted font-sans text-lg font-light">The next evolution of Precept. Intelligent automation that transforms how you prepare.</p>
+              </div>
+            </FadeIn>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { icon: <Bot size={24} />, title: "Mock Interviewer", color: "text-brand-primary" },
+                { icon: <Mic size={24} />, title: "Voice Simulation", color: "text-emerald-400" },
+                { icon: <FileText size={24} />, title: "Resume Analyzer", color: "text-purple-400" }
+              ].map((item, i) => (
+                <FadeIn key={i} delay={i * 0.1}>
+                  <div className="bg-gradient-to-b from-[#090D14] to-[#05080C] border border-white/[0.06] p-8 rounded-2xl flex flex-col gap-5 h-full relative overflow-hidden group">
+                    <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`}></div>
+                    <div className="w-12 h-12 rounded-xl bg-[#121A26] border border-white/5 flex items-center justify-center">
+                      <div className={item.color}>{item.icon}</div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-heading text-xl font-bold text-white">{item.title}</h3>
+                      <span className="text-[10px] font-mono text-white/30 border border-white/10 px-2 py-0.5 rounded">R2</span>
+                    </div>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+          </section>
+
+          {/* Final CTA */}
+          <FadeIn>
+            <section className="relative rounded-3xl overflow-hidden bg-gradient-to-b from-[#090D14] to-[#02050A] border border-white/[0.08] p-16 text-center shadow-2xl">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-primary/10 via-transparent to-transparent pointer-events-none"></div>
+              <h2 className="font-heading text-4xl md:text-5xl font-bold z-10 relative text-white tracking-tight">Ready to Initialize?</h2>
+              <p className="text-brand-text-muted font-sans text-lg max-w-2xl w-full mx-auto z-10 relative font-light mt-8">Start using Precept today and manage your career progression with the precision of a senior engineer.</p>
+              <button 
+                onClick={handleGetStarted}
+                className="bg-brand-primary text-[#02050A] font-mono font-bold text-sm px-10 py-4 rounded-md hover:bg-[#109a8a] transition-all shadow-[0_0_30px_rgba(20,184,166,0.3)] z-10 relative cursor-pointer mt-8"
+              >
+                Start Operating System
+              </button>
+            </section>
+          </FadeIn>
+        </main>
+        
+        {/* Footer */}
+        <footer className="bg-[#02050A] w-full border-t border-white/[0.05] relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 px-6 py-20 max-w-7xl mx-auto">
+            <div className="flex flex-col gap-5 col-span-1 md:col-span-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-md overflow-hidden flex items-center justify-center bg-[#121A26] border border-white/10">
+                  <img src="/logo.png" alt="Precept Logo" className="w-full h-full object-cover" width={32} height={32} />
+                </div>
+                <span className="font-heading font-semibold text-lg text-white">Precept</span>
+              </div>
+              <p className="text-brand-text-muted font-sans text-sm font-light">
+                A full-stack career platform for developers who treat their job hunt like an engineering problem.
+              </p>
+            </div>
+            <div className="flex flex-col gap-4">
+              <h4 className="font-mono text-[11px] text-white/50 uppercase tracking-widest">Product</h4>
+              <a className="text-brand-text-muted hover:text-white font-sans text-sm transition-colors" href="#">Documentation</a>
+              <a className="text-brand-text-muted hover:text-white font-sans text-sm transition-colors" href="#">API Reference</a>
+              <a className="text-brand-text-muted hover:text-white font-sans text-sm transition-colors" href="#">Changelog</a>
+            </div>
+            <div className="flex flex-col gap-4">
+              <h4 className="font-mono text-[11px] text-white/50 uppercase tracking-widest">Connect</h4>
+              <a href="https://github.com/austinchima/Precept" className="text-brand-text-muted hover:text-white font-sans text-sm transition-colors flex items-center gap-2">
+                <Github size={16} /> GitHub
+              </a>
+              <a href="https://www.linkedin.com/in/austin-chima" className="text-brand-text-muted hover:text-white font-sans text-sm transition-colors flex items-center gap-2">
+                <Linkedin size={16} /> LinkedIn
               </a>
             </div>
           </div>
-          
-          <div className="mt-16 pt-8 border-t border-brand-border/30 flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs text-brand-text-muted">
-            <p>© 2026 Precept JobHunt OS. All rights reserved.</p>
-            <StatusBadge className="cursor-pointer" tooltipPos="top" />
+          <div className="border-t border-white/[0.05] px-6 py-6 max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+             <p className="text-brand-text-muted/50 font-mono text-xs">© 2026 Precept. MIT License.</p>
+             <StatusBadge />
           </div>
-        </div>
-      </footer>
-      </PageTransition>
-    </div>
+        </footer>
+      </div>
+    </PageTransition>
   );
 }

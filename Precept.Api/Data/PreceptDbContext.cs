@@ -29,6 +29,7 @@ namespace Precept.Api.Data
         public DbSet<ApplicationEvent> ApplicationEvents { get; set; } = null!;
         public DbSet<Skill> Skills { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+        public DbSet<Testimonial> Testimonials { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -93,6 +94,15 @@ namespace Precept.Api.Data
                 entity.HasOne(bs => bs.User)
                     .WithMany(u => u.BehavioralStories)
                     .HasForeignKey(bs => bs.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Testimonial>(entity =>
+            {
+                // Cascade delete: when a user is deleted, remove all their testimonials
+                entity.HasOne(t => t.User)
+                    .WithMany() // Assuming ApplicationUser doesn't have an explicit ICollection<Testimonial> for now
+                    .HasForeignKey(t => t.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

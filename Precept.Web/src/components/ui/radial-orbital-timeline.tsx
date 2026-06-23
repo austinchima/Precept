@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowRight, Link, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -307,7 +306,7 @@ export default function RadialOrbitalTimeline({
                       <div className="mt-4 pt-3 border-t border-brand-border">
                         <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-brand-text-muted mb-1">
                           <span className="flex items-center text-brand-primary">
-                            <Zap size={10} className="mr-1" />
+                            <span className="material-symbols-outlined text-[10px] mr-1">bolt</span>
                             Confidence Level
                           </span>
                           <span>{item.energy}%</span>
@@ -323,7 +322,7 @@ export default function RadialOrbitalTimeline({
                       {item.relatedIds.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-brand-border">
                           <div className="flex items-center mb-2">
-                            <Link size={10} className="text-brand-text-muted mr-1" />
+                            <span className="material-symbols-outlined text-[10px] text-brand-text-muted mr-1">link</span>
                             <h4 className="text-[10px] uppercase tracking-widest font-mono text-brand-text-muted">
                               Connected Narratives
                             </h4>
@@ -345,10 +344,7 @@ export default function RadialOrbitalTimeline({
                                   }}
                                 >
                                   {relatedItem?.title}
-                                  <ArrowRight
-                                    size={8}
-                                    className="ml-1 text-brand-text-muted"
-                                  />
+                                  <span className="material-symbols-outlined text-[8px] ml-1 text-brand-text-muted">arrow_forward</span>
                                 </Button>
                               );
                             })}
