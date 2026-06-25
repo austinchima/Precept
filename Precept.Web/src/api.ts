@@ -43,6 +43,29 @@ async function refreshAccessToken(): Promise<string> {
   });
 
   if (!response.ok) {
+    try {
+      const errorData = await response.json();
+      if (errorData?.message === 'Token just refreshed') {
+        // [Benign Retry Interceptor]: Another concurrent browser tab or overlapping request
+        // just successfully rotated the refresh token within the grace window.
+        // Poll localStorage briefly (up to 500ms) for the winning tab to save the new access token.
+        for (let i = 0; i < 5; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          const latestToken = localStorage.getItem('precept_access_token');
+          if (latestToken && latestToken !== _accessToken) {
+            setAccessToken(latestToken);
+            return latestToken;
+          }
+        }
+        const fallbackToken = localStorage.getItem('precept_access_token');
+        if (fallbackToken) {
+          setAccessToken(fallbackToken);
+          return fallbackToken;
+        }
+      }
+    } catch {
+      // Body parsing failed or unrelated 401 — fall through to error
+    }
     throw new Error('Refresh token expired or invalid');
   }
 

@@ -153,7 +153,7 @@ export default function Layout() {
           <div className="flex items-center gap-4">
             {/* Hamburger for Mobile */}
             <button 
-              className="md:hidden text-text-secondary hover:text-white flex items-center justify-center p-2 -ml-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              className="md:hidden text-text-secondary hover:text-white flex items-center justify-center p-2 -ml-2 min-h-[44px] min-w-[44px] rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <i className="fa-solid fa-bars text-lg"></i>

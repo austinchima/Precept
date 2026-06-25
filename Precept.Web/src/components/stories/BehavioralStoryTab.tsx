@@ -71,7 +71,7 @@ export const BehavioralStoryTab: React.FC = () => {
           <p className="text-text-secondary text-sm mt-0.5">Situation, Task, Action, Result narratives for behavioral interviews.</p>
         </div>
         {!isFormOpen && (
-          <button onClick={handleCreateNew} className="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2">
+          <button onClick={handleCreateNew} className="inline-flex items-center justify-center px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2">
             <i className="fa-solid fa-plus text-xs"></i> Add STAR Story
           </button>
         )}
@@ -103,7 +103,7 @@ export const BehavioralStoryTab: React.FC = () => {
             <div className="col-span-full py-16 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center p-6">
               <i className="fa-regular fa-folder-open text-3xl text-text-secondary/30 mb-4"></i>
               <span className="font-mono text-sm text-text-secondary mb-4">No behavioral narratives found.</span>
-              <button onClick={handleCreateNew} className="px-4 py-2 rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer flex items-center gap-2">
+              <button onClick={handleCreateNew} className="px-4 py-2 min-h-[44px] rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer flex items-center gap-2">
                 <i className="fa-solid fa-plus text-xs"></i> Add First STAR Story
               </button>
             </div>

@@ -126,7 +126,7 @@ export default function Subscription() {
 
             <button
               disabled={plan.active}
-              className={`w-full font-mono text-xs py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 mt-auto border cursor-pointer uppercase tracking-wider font-bold ${
+              className={`w-full font-mono text-xs py-3 px-4 min-h-[44px] rounded-lg transition-all flex items-center justify-center gap-2 mt-auto border cursor-pointer uppercase tracking-wider font-bold ${
                 plan.active
                   ? 'bg-brand-surface-high border-brand-border/50 text-brand-text-muted/60 cursor-default'
                   : plan.popular

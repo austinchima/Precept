@@ -179,13 +179,13 @@ export default function HomePage() {
             <div className="flex items-center gap-5">
               <button 
                 onClick={() => navigate('/login')}
-                className="text-brand-text-muted font-mono text-[13px] hover:text-white transition-colors cursor-pointer hidden sm:block"
+                className="text-brand-text-muted font-mono text-[13px] hover:text-white transition-colors cursor-pointer hidden sm:block min-h-[44px] px-3"
               >
                 Sign In
               </button>
               <button 
                 onClick={handleGetStarted}
-                className="group relative px-5 py-2 rounded-md bg-brand-primary text-[#02050A] font-mono text-[13px] font-bold overflow-hidden transition-transform active:scale-95 cursor-pointer"
+                className="group relative px-5 py-2 rounded-md bg-brand-primary text-[#02050A] font-mono text-[13px] font-bold overflow-hidden transition-transform active:scale-95 cursor-pointer min-h-[44px] flex items-center justify-center"
               >
                 <span className="relative z-10 flex items-center gap-2">Initialize <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" /></span>
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
@@ -254,11 +254,11 @@ export default function HomePage() {
             >
               <button 
                 onClick={handleGetStarted}
-                className="w-full sm:w-auto bg-brand-primary text-[#02050A] font-mono text-sm px-8 py-3.5 rounded-md hover:bg-[#109a8a] transition-all font-bold shadow-[0_0_30px_rgba(20,184,166,0.3)] hover:shadow-[0_0_40px_rgba(20,184,166,0.5)] flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto bg-brand-primary text-[#02050A] font-mono text-sm px-8 py-3.5 min-h-[44px] rounded-md hover:bg-[#109a8a] transition-all font-bold shadow-[0_0_30px_rgba(20,184,166,0.3)] hover:shadow-[0_0_40px_rgba(20,184,166,0.5)] flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Terminal size={16} /> Deploy Strategy
               </button>
-              <a href="#features" className="w-full sm:w-auto bg-white/3 border border-white/10 text-white font-mono text-sm px-8 py-3.5 rounded-md hover:bg-white/8 transition-colors flex items-center justify-center gap-2 cursor-pointer backdrop-blur-md">
+              <a href="#features" className="w-full sm:w-auto bg-white/3 border border-white/10 text-white font-mono text-sm px-8 py-3.5 min-h-[44px] rounded-md hover:bg-white/8 transition-colors flex items-center justify-center gap-2 cursor-pointer backdrop-blur-md">
                 <LayoutDashboard size={16} /> Explore Architecture
               </a>
             </motion.div>
@@ -406,7 +406,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   
-                  <button onClick={() => navigate('/story-bank')} className="mt-6 bg-[#121A26] border border-white/10 text-white font-mono text-sm px-6 py-3 rounded-lg hover:bg-[#1A2332] transition-colors cursor-pointer flex items-center gap-2 hover:border-brand-primary/30">
+                  <button onClick={() => navigate('/story-bank')} className="mt-6 bg-[#121A26] border border-white/10 text-white font-mono text-sm px-6 py-3 min-h-[44px] rounded-lg hover:bg-[#1A2332] transition-colors cursor-pointer flex items-center gap-2 hover:border-brand-primary/30">
                     <Terminal size={16} className="text-brand-primary" /> Open Technical Bank
                   </button>
                 </motion.div>
@@ -518,7 +518,7 @@ export default function HomePage() {
               <p className="text-brand-text-muted font-sans text-lg max-w-2xl w-full mx-auto z-10 relative font-light mt-8">Start using Precept today and manage your career progression with the precision of a senior engineer.</p>
               <button 
                 onClick={handleGetStarted}
-                className="bg-brand-primary text-[#02050A] font-mono font-bold text-sm px-10 py-4 rounded-md hover:bg-[#109a8a] transition-all shadow-[0_0_30px_rgba(20,184,166,0.3)] z-10 relative cursor-pointer mt-8"
+                className="bg-brand-primary text-[#02050A] font-mono font-bold text-sm px-10 py-4 min-h-[44px] flex items-center justify-center mx-auto rounded-md hover:bg-[#109a8a] transition-all shadow-[0_0_30px_rgba(20,184,166,0.3)] z-10 relative cursor-pointer mt-8"
               >
                 Start Operating System
               </button>

@@ -148,7 +148,7 @@ export default function QuizMode() {
           </p>
           <button 
             onClick={() => navigate('/story-bank')}
-            className="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
+            className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
           >
             <i className="fa-solid fa-arrow-left text-xs"></i> Go to Story Bank
           </button>
@@ -174,7 +174,7 @@ export default function QuizMode() {
             }
             navigate('/story-bank');
           }}
-          className="border border-panel-border/30 text-text-secondary hover:text-white hover:border-white/20 px-4 py-2 rounded-xl transition-all font-mono text-xs uppercase flex items-center gap-2 group cursor-pointer"
+          className="border border-panel-border/30 text-text-secondary hover:text-white hover:border-white/20 px-4 py-2 min-h-[44px] rounded-xl transition-all font-mono text-xs uppercase flex items-center justify-center gap-2 group cursor-pointer"
         >
           Exit Quiz
           <i className="fa-solid fa-xmark text-[10px] group-hover:text-[#f87171] transition-colors"></i>
@@ -215,7 +215,7 @@ export default function QuizMode() {
                 <button
                   onClick={toggleRecording}
                   disabled={phase === 'reveal'}
-                  className={`absolute bottom-4 right-4 transition-all flex items-center justify-center w-9 h-9 rounded-xl border cursor-pointer ${
+                  className={`absolute bottom-4 right-4 transition-all flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl border cursor-pointer ${
                     isRecording 
                       ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.3)]' 
                       : 'bg-white/5 text-text-secondary hover:text-accent-teal border-panel-border/30 hover:border-accent-teal/30 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -236,7 +236,7 @@ export default function QuizMode() {
                     }
                     setPhase('reveal');
                   }}
-                  className="w-full inline-flex items-center justify-center px-4 py-3.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-[1.02] transition-all duration-300 cursor-pointer gap-2"
+                  className="w-full inline-flex items-center justify-center px-4 py-3.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-[1.02] transition-all duration-300 cursor-pointer gap-2"
                 >
                   <i className="fa-solid fa-eye text-xs"></i>
                   Access Memory Context (Reveal Explanation)
@@ -264,7 +264,7 @@ export default function QuizMode() {
                     {/* Success Action */}
                     <button 
                       onClick={() => handleAssessment('Nailed it')}
-                      className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-dashboard-bg py-3.5 rounded-xl font-mono text-xs uppercase tracking-wider transition-all flex justify-center items-center gap-2 group cursor-pointer hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-dashboard-bg py-3.5 min-h-[44px] rounded-xl font-mono text-xs uppercase tracking-wider transition-all flex justify-center items-center gap-2 group cursor-pointer hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                     >
                       <i className="fa-solid fa-circle-check text-sm group-hover:scale-110 transition-transform"></i>
                       Nailed it
@@ -272,7 +272,7 @@ export default function QuizMode() {
                     {/* Neutral Action */}
                     <button 
                       onClick={() => handleAssessment('Partial')}
-                      className="bg-white/5 border border-white/10 text-text-secondary hover:bg-white/10 hover:text-white py-3.5 rounded-xl font-mono text-xs uppercase tracking-wider transition-all flex justify-center items-center gap-2 group cursor-pointer"
+                      className="bg-white/5 border border-white/10 text-text-secondary hover:bg-white/10 hover:text-white py-3.5 min-h-[44px] rounded-xl font-mono text-xs uppercase tracking-wider transition-all flex justify-center items-center gap-2 group cursor-pointer"
                     >
                       <i className="fa-solid fa-minus text-sm group-hover:scale-110 transition-transform"></i>
                       Partial
@@ -280,7 +280,7 @@ export default function QuizMode() {
                     {/* Warning/Error Action */}
                     <button 
                       onClick={() => handleAssessment('Blank panic')}
-                      className="bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-dashboard-bg py-3.5 rounded-xl font-mono text-xs uppercase tracking-wider transition-all flex justify-center items-center gap-2 group cursor-pointer hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                      className="bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-dashboard-bg py-3.5 min-h-[44px] rounded-xl font-mono text-xs uppercase tracking-wider transition-all flex justify-center items-center gap-2 group cursor-pointer hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]"
                     >
                       <i className="fa-solid fa-triangle-exclamation text-sm group-hover:scale-110 transition-transform"></i>
                       Blank Panic
@@ -296,7 +296,7 @@ export default function QuizMode() {
             <div className="flex justify-end pt-2 opacity-0 animate-fade-in-up delay-200">
               <button 
                 onClick={loadNextStory}
-                className="inline-flex items-center px-6 py-3.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
+                className="inline-flex items-center justify-center px-6 py-3.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
               >
                 Next Random Story
                 <i className="fa-solid fa-arrow-right text-xs"></i>

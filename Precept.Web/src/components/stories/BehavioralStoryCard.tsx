@@ -15,10 +15,10 @@ export const BehavioralStoryCard: React.FC<BehavioralStoryCardProps> = ({ story,
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-base font-semibold text-white wrap-break-word pr-4 group-hover:text-accent-teal transition-colors duration-300">{story.title}</h3>
         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button onClick={() => onEdit(story)} className="text-text-secondary hover:text-accent-teal cursor-pointer transition-colors" title="Edit">
+          <button onClick={() => onEdit(story)} className="text-text-secondary hover:text-accent-teal cursor-pointer transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Edit">
             <i className="fa-solid fa-pen text-xs"></i>
           </button>
-          <button onClick={() => onDelete(story.id)} className="text-text-secondary hover:text-[#f87171] cursor-pointer transition-colors" title="Delete">
+          <button onClick={() => onDelete(story.id)} className="text-text-secondary hover:text-[#f87171] cursor-pointer transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Delete">
             <i className="fa-regular fa-trash-can text-xs"></i>
           </button>
         </div>

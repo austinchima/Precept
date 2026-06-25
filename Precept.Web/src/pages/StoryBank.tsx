@@ -166,13 +166,13 @@ export default function StoryBank() {
         <div className="flex glass-panel rounded-xl p-1 gap-1">
           <button
             onClick={() => setActiveTab('technical')}
-            className={`px-4 py-2 text-sm rounded-lg transition-all duration-300 cursor-pointer flex items-center gap-2 ${activeTab === 'technical' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
+            className={`px-4 py-2 min-h-[44px] text-sm rounded-lg transition-all duration-300 cursor-pointer flex items-center gap-2 ${activeTab === 'technical' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
           >
             <i className="fa-solid fa-code text-xs"></i> Technical Snippets
           </button>
           <button
             onClick={() => setActiveTab('behavioral')}
-            className={`px-4 py-2 text-sm rounded-lg transition-all duration-300 cursor-pointer flex items-center gap-2 ${activeTab === 'behavioral' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
+            className={`px-4 py-2 min-h-[44px] text-sm rounded-lg transition-all duration-300 cursor-pointer flex items-center gap-2 ${activeTab === 'behavioral' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
           >
             <i className="fa-regular fa-star text-xs"></i> Behavioral STAR
           </button>
@@ -197,7 +197,7 @@ export default function StoryBank() {
               </div>
             </div>
 
-            <button onClick={handleOpenCreateModal} className="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] animate-pulse-glow-teal hover:scale-105 transition-all duration-300 cursor-pointer">
+            <button onClick={handleOpenCreateModal} className="inline-flex items-center justify-center px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] animate-pulse-glow-teal hover:scale-105 transition-all duration-300 cursor-pointer">
               <i className="fa-solid fa-plus mr-2"></i> Add Snippet
             </button>
           </div>
@@ -252,10 +252,10 @@ export default function StoryBank() {
               <div className="px-5 py-3 border-t border-panel-border/20 flex justify-between items-center text-xs text-text-secondary">
                 <span className="font-mono">Last: {story.lastReviewedAt ? new Date(story.lastReviewedAt).toLocaleDateString() : 'Never'}</span>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => handleOpenEditModal(story)} className="hover:text-accent-teal flex items-center gap-1 transition-colors cursor-pointer">
+                  <button onClick={() => handleOpenEditModal(story)} className="hover:text-accent-teal flex items-center justify-center min-h-[44px] min-w-[44px] gap-1 transition-colors cursor-pointer">
                     <i className="fa-solid fa-pen text-[10px]"></i> Edit
                   </button>
-                  <button onClick={() => confirmDelete(story.id)} className="hover:text-[#f87171] flex items-center gap-1 transition-colors cursor-pointer">
+                  <button onClick={() => confirmDelete(story.id)} className="hover:text-[#f87171] flex items-center justify-center min-h-[44px] min-w-[44px] gap-1 transition-colors cursor-pointer">
                     <i className="fa-regular fa-trash-can text-[10px]"></i> Purge
                   </button>
                 </div>
@@ -267,7 +267,7 @@ export default function StoryBank() {
             <div className="col-span-full py-16 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center p-6">
               <i className="fa-regular fa-folder-open text-3xl text-text-secondary/50 mb-4"></i>
               <span className="font-mono text-sm text-text-secondary mb-4">No narrative data matches selected filter.</span>
-              <button onClick={handleOpenCreateModal} className="px-4 py-2 rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer flex items-center gap-2">
+              <button onClick={handleOpenCreateModal} className="px-4 py-2 min-h-[44px] rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer flex items-center gap-2">
                 <i className="fa-solid fa-plus text-xs"></i> Add First Story
               </button>
             </div>
@@ -385,11 +385,11 @@ export default function StoryBank() {
               </div>
 
               <div className="p-4 border-t border-panel-border/30 flex justify-end gap-3 shrink-0">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 min-h-[44px] rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
                 <button 
                   type="submit" 
                   disabled={isSubmitting || explanation.length < 50 || !title.trim() || !codeSnippet.trim()}
-                  className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
+                  className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
                 >
                   {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : null}
                   {editingStory ? 'Commit Changes' : 'Commit to Memory'}

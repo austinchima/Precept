@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-06-25
+
+### Security
+- **Authentication (Crown Jewel)**: Codified database-backed Refresh Token Rotation (RTR) with Lineage-Aware Replay Detection and Fail-Safe Identity-Wide Cascade Revocation (`RevokeAllUserTokens`).
+
+### Changed
+- **Frontend HTTP Client**: Implemented a benign retry interceptor in `api.ts` to silently recover from concurrent multi-tab token rotations (`"Token just refreshed"` 401 response) by polling `localStorage`.
+- **Codebase Documentation**: Added comprehensive architectural commentary across `RefreshToken` and `AuthController` detailing Optimistic Concurrency (`[ConcurrencyCheck]`) and Lineage tracking.
+
+### Added
+- **Architecture Handbook**: Published `auth_reuse_detection_cascade_revocation.md` detailing the threat model, race condition defenses (Three Pillars), and test verification invariants.
+
 ## [0.1.0] - 2026-06-23
 
 ### Added

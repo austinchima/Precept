@@ -278,7 +278,7 @@ export default function Settings() {
                   <button 
                     type="submit" 
                     disabled={isUpdatingProfile}
-                    className="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
+                    className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
                   >
                     {isUpdatingProfile ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : <i className="fa-solid fa-check text-xs"></i>}
                     {isUpdatingProfile ? 'Updating...' : 'Update Details'}
@@ -358,7 +358,7 @@ export default function Settings() {
                   <button 
                     type="submit" 
                     disabled={isSubmitting || !name.trim()} 
-                    className="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
+                    className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
                   >
                     {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : <i className="fa-solid fa-plus text-xs"></i>}
                     Add Skill
@@ -387,7 +387,7 @@ export default function Settings() {
                     >
                       <button 
                         onClick={() => removeSkill(skill.id)}
-                        className="absolute top-3 right-3 text-text-secondary opacity-0 group-hover:opacity-100 hover:text-[#f87171] transition-all cursor-pointer flex items-center justify-center"
+                        className="absolute top-1 right-1 min-w-[44px] min-h-[44px] text-text-secondary opacity-0 group-hover:opacity-100 hover:text-[#f87171] transition-all cursor-pointer flex items-center justify-center"
                       >
                         <i className="fa-solid fa-xmark text-xs"></i>
                       </button>
@@ -480,7 +480,7 @@ export default function Settings() {
                   <button 
                     type="submit" 
                     disabled={isSubmittingTestimony || !isPublicConfirmed || !testimonyHandle || !testimonyText}
-                    className="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.2)] hover:scale-105 hover:bg-orange-600 disabled:opacity-50 disabled:hover:scale-100 transition-all duration-300 cursor-pointer gap-2"
+                    className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.2)] hover:scale-105 hover:bg-orange-600 disabled:opacity-50 disabled:hover:scale-100 transition-all duration-300 cursor-pointer gap-2"
                   >
                     {isSubmittingTestimony ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div> : <i className="fa-solid fa-paper-plane text-xs"></i>}
                     {isSubmittingTestimony ? 'Publishing...' : 'Publish to Landing Page'}
@@ -553,7 +553,7 @@ export default function Settings() {
               <button 
                 onClick={handleExportData}
                 disabled={isExporting}
-                className="w-full border border-panel-border/30 text-text-secondary hover:border-accent-teal hover:text-accent-teal font-mono text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer bg-transparent hover:shadow-[0_0_10px_rgba(45,212,191,0.1)]"
+                className="w-full border border-panel-border/30 text-text-secondary hover:border-accent-teal hover:text-accent-teal font-mono text-xs uppercase tracking-wider py-2.5 px-4 min-h-[44px] rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer bg-transparent hover:shadow-[0_0_10px_rgba(45,212,191,0.1)]"
               >
                 {isExporting ? <div className="w-4 h-4 rounded-full border-2 border-accent-teal/30 border-t-accent-teal animate-spin"></div> : <i className="fa-solid fa-download text-xs"></i>}
                 {isExporting ? 'Exporting...' : 'Download Payload'}
@@ -573,7 +573,7 @@ export default function Settings() {
               <p className="text-sm text-[#f87171]/70 mb-4 leading-relaxed">Force revoke all active credential caches from this local browser instance.</p>
               <button 
                 onClick={handlePurge}
-                className="w-full bg-transparent border border-rose-400/40 text-rose-400 font-mono text-xs uppercase tracking-wider rounded-xl px-4 py-2.5 hover:bg-rose-500/10 hover:border-rose-400 transition-all cursor-pointer hover:shadow-[0_0_10px_rgba(244,63,94,0.15)]"
+                className="w-full bg-transparent border border-rose-400/40 text-rose-400 font-mono text-xs uppercase tracking-wider min-h-[44px] rounded-xl px-4 py-2.5 hover:bg-rose-500/10 hover:border-rose-400 transition-all cursor-pointer hover:shadow-[0_0_10px_rgba(244,63,94,0.15)] flex items-center justify-center"
               >
                 Execute Purge
               </button>

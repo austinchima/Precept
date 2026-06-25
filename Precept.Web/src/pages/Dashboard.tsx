@@ -197,7 +197,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8 pt-6 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 md:p-8 pt-4 md:pt-6 max-w-[1400px] mx-auto space-y-6">
       
       {/* BEGIN: Hero Welcome */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-2 opacity-0 animate-fade-in-up delay-200">
@@ -406,14 +406,14 @@ export default function Dashboard() {
             ))}
           </div>
           
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
             {/* Left Nav Menu */}
-            <nav className="w-32 mr-8 space-y-2">
+            <nav className="w-full md:w-32 md:mr-8 flex md:block flex-row space-x-2 md:space-x-0 md:space-y-2 mb-4 md:mb-0 overflow-x-auto pb-2 md:pb-0 custom-scrollbar shrink-0">
               {(['situation', 'task', 'action', 'result'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveStarTab(tab)}
-                  className={`block w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:translate-x-1 cursor-pointer capitalize ${
+                  className={`block whitespace-nowrap md:w-full text-center md:text-left px-4 py-2.5 min-h-[44px] md:min-h-0 rounded-xl text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 md:hover:translate-x-1 md:hover:translate-y-0 cursor-pointer capitalize ${
                     activeStarTab === tab 
                       ? 'bg-white/10 text-white border border-white/5' 
                       : 'text-text-secondary hover:bg-white/5 hover:text-white'
@@ -516,7 +516,7 @@ export default function Dashboard() {
 
           {/* Skills Grid */}
           <section className="glass-panel rounded-2xl p-5">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {topSkills.length === 0 && (
                 <div className="col-span-3 text-center text-text-secondary text-sm italic py-4">No skills documented.</div>
               )}
