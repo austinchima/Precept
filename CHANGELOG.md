@@ -12,6 +12,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-06-28
+
+_R1 release candidate. Green CI and production-secret hardening on top of the 0.1.2 OWASP audit._
+
+### Security
+- **JWT key fail-fast**: The API now validates `JwtSettings:SecretKey` at startup and refuses to boot if it is missing or under 32 bytes (the HMAC-SHA256 minimum), instead of failing obscurely on the first token-signing request (`Program.cs`).
+- **Production hardening**: Removed hardcoded secrets and insecure development defaults from committed configuration; required secrets (e.g. `JWT_SECRET_KEY`) are now supplied exclusively via environment variables.
+
+### Fixed
+- **CI test suite (all 52 DB-backed tests)**: A `Migrations/` entry in `.gitignore` kept the EF Core migrations out of source control, so CI checkouts built `Precept.Api` with no migration classes. `MigrateAsync()` then no-op'd and left every per-test database schemaless, failing with `42P01: relation "AspNetUsers"/"RefreshTokens" does not exist` (unit) and `503 Service Unavailable` (integration). Migrations are now committed.
+
+### Changed
+- **Test database provisioning**: The shared `PostgresContainerFixture` now honors `ConnectionStrings__PreceptDb`, using the CI runner's PostgreSQL service (`ikalnytskyi/action-setup-postgres`) when present and falling back to Testcontainers locally.
+- **CI triggers**: Continuous integration now runs on `master` for both pushes and pull requests.
+
 ## [0.1.2] - 2026-06-26
 
 ### Security (OWASP Top 10 Full Compliance Audit)
