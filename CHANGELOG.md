@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-28
+
+_R1 candidate — Technical Readiness (Skills Matrix Visualizer)._
+
+### Added
+- **Technical Readiness page** (`/readiness`): a full-page Skills Matrix radar of current proficiency per skill category, plotted against a labeled interview-ready threshold (75%). All values derive from persisted Skill entities; sparse data (<3 categories) shows an honest empty state instead of placeholder shapes.
+- **Role readiness (JD-derived)**: "target roles" are the user's own saved job descriptions, each surfacing its real `yourMatchScore` and aggregated `missingKeyWords`. Selecting a role drives a data-generated gap-analysis callout and highlights the skill categories that role actually touches — no fabricated benchmark polygons.
+- **Gaps To Close**: aggregated missing keywords across saved JDs, plus per-category coverage bars with an interview-ready marker.
+- Dashboard "Skills Matrix" tile now links through to the full Readiness view; added a **Readiness** sidebar nav item.
+
 ## [0.1.4] - 2026-06-28
 
 _R1 release candidate — dashboard accuracy fixes._

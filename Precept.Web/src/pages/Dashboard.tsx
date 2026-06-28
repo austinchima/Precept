@@ -498,7 +498,14 @@ export default function Dashboard() {
           
           {/* Skills Matrix Radar Chart Container */}
           <section className="glass-panel rounded-2xl p-6 flex-1 flex flex-col relative overflow-hidden group">
-            <h2 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-4 transition-colors duration-300 group-hover:text-white">SKILLS MATRIX</h2>
+            <h2
+              onClick={() => navigate('/readiness')}
+              title="Open Technical Readiness"
+              className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-4 transition-colors duration-300 group-hover:text-white cursor-pointer flex items-center justify-between"
+            >
+              SKILLS MATRIX
+              <i className="fa-solid fa-up-right-and-down-left-from-center text-[10px] opacity-40 group-hover:opacity-90 transition-opacity"></i>
+            </h2>
             <div className="flex-1 flex items-center justify-center relative w-full h-full min-h-[200px] mt-2 animate-radar-pulse">
               <svg className="w-full max-w-[220px] max-h-[220px] overflow-visible transition-transform duration-500 group-hover:scale-105" viewBox="0 0 200 200">
                 {/* Background Grid */}

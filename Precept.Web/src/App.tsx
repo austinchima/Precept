@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const StoryBank = lazy(() => import('./pages/StoryBank'));
 const QuizMode = lazy(() => import('./pages/QuizMode'));
 const JDMatcher = lazy(() => import('./pages/JDMatcher'));
+const Readiness = lazy(() => import('./pages/Readiness'));
 const AppTracker = lazy(() => import('./pages/AppTracker'));
 const Settings = lazy(() => import('./pages/Settings'));
 const NotFound1 = lazy(() => import('./components/ui/8bit-not-found1'));
@@ -71,6 +72,7 @@ export default function App() {
               <Route path="dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
               <Route path="story-bank" element={<PageTransition><StoryBank /></PageTransition>} />
               <Route path="jd-matcher" element={<PageTransition><JDMatcher /></PageTransition>} />
+              <Route path="readiness" element={<PageTransition><Readiness /></PageTransition>} />
               <Route path="applications" element={<PageTransition><AppTracker /></PageTransition>} />
               <Route path="settings" element={<PageTransition><Settings /></PageTransition>} />
             </Route>
