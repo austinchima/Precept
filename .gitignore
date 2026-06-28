@@ -92,3 +92,8 @@ IMPLEMENTATION_TUTORIAL.md
 
 
 precept_testing_strategy.md
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
