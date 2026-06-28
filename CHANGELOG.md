@@ -15,6 +15,9 @@ _R1 candidate — Technical Readiness (Skills Matrix Visualizer)._
 - **Gaps To Close**: aggregated missing keywords across saved JDs, plus per-category coverage bars with an interview-ready marker.
 - Dashboard "Skills Matrix" tile now links through to the full Readiness view; added a **Readiness** sidebar nav item.
 
+### Fixed
+- **Mouse-wheel scrolling on app pages**: Lenis smooth-scroll was initialized on `window` at the app root, but authenticated pages scroll an inner container (`#main-scroller`) while `body` is fixed — so the wheel was captured but nothing moved (only dragging the scrollbar worked). Lenis is now scoped to the landing page; app pages use native scrolling.
+
 ## [0.1.4] - 2026-06-28
 
 _R1 release candidate — dashboard accuracy fixes._

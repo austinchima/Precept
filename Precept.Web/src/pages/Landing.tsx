@@ -11,6 +11,7 @@ import PageTransition from "../components/ui/PageTransition";
 import { gsap, useGSAP, prefersReducedMotion } from "../lib/animations";
 import { AnimatedSection } from "../components/animation/AnimatedSection";
 import { TextReveal } from "../components/animation/TextReveal";
+import { SmoothScroll } from "../components/animation/SmoothScroll";
 
 /* ─────────────────────────── DESIGN TOKENS ─────────────────────────── */
 
@@ -732,6 +733,7 @@ export default function Landing() {
   }, [isAuthenticated, navigate]);
 
   return (
+    <SmoothScroll>
     <PageTransition>
       <div className="min-h-screen w-full" style={{ background: c.bgPrimary, color: c.txtPrimary }}>
         <MagneticInitializer />
@@ -746,5 +748,6 @@ export default function Landing() {
         <Footer />
       </div>
     </PageTransition>
+    </SmoothScroll>
   );
 }
