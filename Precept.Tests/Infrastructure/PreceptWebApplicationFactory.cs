@@ -13,7 +13,8 @@ namespace Precept.Tests.Infrastructure;
 
 /// <summary>
 /// WebApplicationFactory that boots a test instance of the Precept API
-/// against a real PostgreSQL Testcontainer database.
+/// against a real PostgreSQL database (Testcontainer by default, or the
+/// server pointed to by <c>ConnectionStrings__PreceptDb</c> in CI).
 ///
 /// Per-class isolation: each instance creates a uniquely-named database,
 /// so xUnit's parallel test class execution never sees shared state.
