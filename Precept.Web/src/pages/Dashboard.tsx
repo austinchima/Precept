@@ -186,15 +186,17 @@ export default function Dashboard() {
   };
 
   // Radar chart dynamic calculations (6 axes)
-  const categoriesList = ['Frontend', 'Backend', 'DevOps', 'Cloud', 'Tools', 'Languages'];
+  // Compact preview of the readiness radar — axes use the canonical skill
+  // categories (see Settings dropdown / SkillCategories.cs). Full view: /readiness.
+  const categoriesList = ['Language', 'Framework', 'Tool', 'Database', 'DevOps'];
   const radarPoints = categoriesList.map((cat, idx) => {
     const catSkills = skills.filter(s => s.category?.toLowerCase() === cat.toLowerCase());
     const avgProf = catSkills.length > 0
       ? catSkills.reduce((acc, s) => acc + getProficiencyPercentage(s.proficiencyLevel), 0) / catSkills.length
       : 0; // No skills in this category — render at center, don't fake a value
-    
+
     // Compute SVG point (center is 100,100, max radius is 80)
-    const angle = (idx * 2 * Math.PI) / 6 - Math.PI / 2;
+    const angle = (idx * 2 * Math.PI) / categoriesList.length - Math.PI / 2;
     const r = (avgProf / 100) * 80;
     const x = 100 + r * Math.cos(angle);
     const y = 100 + r * Math.sin(angle);
@@ -536,10 +538,10 @@ export default function Dashboard() {
                 })}
               </svg>
               {/* Labels positioned absolutely around svg */}
-              <span className="absolute top-0 text-[11px] text-text-primary left-1/2 -translate-x-1/2 mt-1 transition-transform duration-300 group-hover:-translate-y-1">Frontend</span>
-              <span className="absolute top-1/2 right-0 text-[11px] text-text-primary -translate-y-1/2 transition-transform duration-300 group-hover:translate-x-1">Backend</span>
-              <span className="absolute bottom-0 right-10 text-[11px] text-text-primary mb-4 transition-transform duration-300 group-hover:translate-y-1">Tools</span>
-              <span className="absolute bottom-0 left-8 text-[11px] text-text-primary mb-4 transition-transform duration-300 group-hover:translate-y-1">Languages</span>
+              <span className="absolute top-0 text-[11px] text-text-primary left-1/2 -translate-x-1/2 mt-1 transition-transform duration-300 group-hover:-translate-y-1">Language</span>
+              <span className="absolute top-1/2 right-0 text-[11px] text-text-primary -translate-y-1/2 transition-transform duration-300 group-hover:translate-x-1">Framework</span>
+              <span className="absolute bottom-0 right-10 text-[11px] text-text-primary mb-4 transition-transform duration-300 group-hover:translate-y-1">Tool</span>
+              <span className="absolute bottom-0 left-8 text-[11px] text-text-primary mb-4 transition-transform duration-300 group-hover:translate-y-1">Database</span>
               <span className="absolute top-1/2 left-0 text-[11px] text-text-primary -translate-y-1/2 transition-transform duration-300 group-hover:-translate-x-1">DevOps</span>
             </div>
           </section>

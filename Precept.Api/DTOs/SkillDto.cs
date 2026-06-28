@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Precept.Api.Models;
+using Precept.Api.Validation;
 
 namespace Precept.Api.DTOs;
 
@@ -13,6 +14,7 @@ public class CreateSkillRequest
     public string Name { get; set; } = string.Empty;
 
     [MaxLength(50)]
+    [SkillCategory]
     public string? Category { get; set; }
 
     public SkillProficiency ProficiencyLevel { get; set; } = SkillProficiency.Beginner;
@@ -30,6 +32,7 @@ public class UpdateSkillRequest
     public string Name { get; set; } = string.Empty;
 
     [MaxLength(50)]
+    [SkillCategory]
     public string? Category { get; set; }
 
     public SkillProficiency ProficiencyLevel { get; set; }

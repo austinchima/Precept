@@ -15,8 +15,11 @@ _R1 candidate — Technical Readiness (Skills Matrix Visualizer)._
 - **Gaps To Close**: aggregated missing keywords across saved JDs, plus per-category coverage bars with an interview-ready marker.
 - Dashboard "Skills Matrix" tile now links through to the full Readiness view; added a **Readiness** sidebar nav item.
 
+- **Skill categories are now a controlled vocabulary**: the Settings skill form uses a dropdown (Language, Framework, Library, Database, Tool, Cloud, DevOps, Testing, Mobile, Concept) instead of free text. The set is enforced server-side via a `[SkillCategory]` allow-list validation attribute (out-of-set values are rejected with 400) and normalised to canonical casing on save — so the readiness radar groups consistently. Single source of truth: `Precept.Api/Models/SkillCategories.cs` ↔ `SKILL_CATEGORIES` in the frontend.
+
 ### Fixed
 - **Mouse-wheel scrolling on app pages**: Lenis smooth-scroll was initialized on `window` at the app root, but authenticated pages scroll an inner container (`#main-scroller`) while `body` is fixed — so the wheel was captured but nothing moved (only dragging the scrollbar worked). Lenis is now scoped to the landing page; app pages use native scrolling.
+- **Dashboard skills radar axes** realigned to the canonical categories (fixing a prior 6-categories-on-a-5-axis-grid mismatch).
 
 ## [0.1.4] - 2026-06-28
 

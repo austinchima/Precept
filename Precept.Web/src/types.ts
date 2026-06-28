@@ -83,6 +83,22 @@ export interface UserContextType {
 
 export type SkillProficiency = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 
+// Canonical skill-category vocabulary. Must match the backend allow-list in
+// Precept.Api/Models/SkillCategories.cs — the API rejects values outside this set.
+export const SKILL_CATEGORIES = [
+  'Language',
+  'Framework',
+  'Library',
+  'Database',
+  'Tool',
+  'Cloud',
+  'DevOps',
+  'Testing',
+  'Mobile',
+  'Concept',
+] as const;
+export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
+
 export interface Skill {
   id: string;
   userId: string;

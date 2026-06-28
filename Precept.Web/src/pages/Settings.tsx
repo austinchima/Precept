@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Skill, SkillProficiency } from '../types';
+import { Skill, SkillProficiency, SKILL_CATEGORIES } from '../types';
 import { getSkillIcon } from '../lib/utils';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
@@ -321,13 +321,16 @@ export default function Settings() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Category</label>
-                    <input 
-                      type="text" 
+                    <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="input-base w-full text-sm" 
-                      placeholder="e.g. Frontend, DevOps" 
-                    />
+                      className="input-base w-full text-sm"
+                    >
+                      <option value="">— Select category —</option>
+                      {SKILL_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Proficiency</label>

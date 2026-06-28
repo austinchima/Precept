@@ -30,7 +30,7 @@ public class SkillService(PreceptDbContext dbContext, ILogger<SkillService> logg
             Id = Guid.NewGuid(),
             UserId = userId,
             Name = request.Name,
-            Category = request.Category,
+            Category = SkillCategories.Normalize(request.Category),
             ProficiencyLevel = request.ProficiencyLevel,
             Notes = request.Notes,
             CreatedAt = DateTime.UtcNow,
@@ -98,7 +98,7 @@ public class SkillService(PreceptDbContext dbContext, ILogger<SkillService> logg
         }
 
         skill.Name = request.Name;
-        skill.Category = request.Category;
+        skill.Category = SkillCategories.Normalize(request.Category);
         skill.ProficiencyLevel = request.ProficiencyLevel;
         skill.Notes = request.Notes;
         skill.UpdatedAt = DateTime.UtcNow;
