@@ -65,3 +65,43 @@ public class AuthResponse
     public string Email { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Request body for POST /api/auth/forgot-password.
+/// </summary>
+public class ForgotPasswordRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for POST /api/auth/reset-password.
+/// </summary>
+public class ResetPasswordRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string Token { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(128, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters.")]
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for POST /api/auth/verify-email.
+/// </summary>
+public class VerifyEmailRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string Token { get; set; } = string.Empty;
+}

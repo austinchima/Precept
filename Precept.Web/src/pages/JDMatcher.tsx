@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import { getSkillIcon } from '../lib/utils';
+import { AnimatedSection } from '../components/animation/AnimatedSection';
 
 interface MatchResults {
   id: string;
@@ -141,7 +142,7 @@ export default function JDMatcher() {
       </div>
 
       {/* 2-Column Bento Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 opacity-0 animate-fade-in-up delay-200">
+      <AnimatedSection animation="staggerFadeUp" stagger={0.1} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Input (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           <div className="glass-panel rounded-2xl p-6 flex flex-col gap-6 relative overflow-hidden">
@@ -222,7 +223,7 @@ export default function JDMatcher() {
             <button 
               onClick={handleAnalyze}
               disabled={isAnalyzing || !jdText.trim()}
-              className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-[1.02] transition-all duration-300 cursor-pointer gap-2 disabled:opacity-50 disabled:scale-100"
+              className="w-full inline-flex items-center justify-center px-4 py-3 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-[1.02] transition-all duration-300 cursor-pointer gap-2 disabled:opacity-50 disabled:scale-100"
             >
               <i className="fa-solid fa-bolt"></i>
               {isAnalyzing ? 'Analyzing...' : 'Analyze Description'}
@@ -334,7 +335,7 @@ export default function JDMatcher() {
                 <button 
                   onClick={handleAddToApplications}
                   disabled={isAdding}
-                  className="mt-auto w-full border border-panel-border/30 text-text-secondary hover:border-accent-teal hover:text-accent-teal font-mono text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer bg-transparent hover:shadow-[0_0_10px_rgba(45,212,191,0.1)]"
+                  className="mt-auto w-full border border-panel-border/30 text-text-secondary hover:border-accent-teal hover:text-accent-teal font-mono text-xs uppercase tracking-wider py-2.5 px-4 min-h-[44px] rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer bg-transparent hover:shadow-[0_0_10px_rgba(45,212,191,0.1)]"
                 >
                   <i className="fa-solid fa-plus text-[10px]"></i>
                   {isAdding ? 'Adding...' : 'Add to Applications'}
@@ -343,7 +344,7 @@ export default function JDMatcher() {
             </>
           )}
         </div>
-      </div>
+      </AnimatedSection>
     </div>
   );
 }

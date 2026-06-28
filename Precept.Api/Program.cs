@@ -9,6 +9,8 @@ using Precept.Api.Services;
 using Precept.Api.Services.Interfaces;
 using Scalar.AspNetCore;
 using Serilog;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -167,6 +169,38 @@ builder.Services.AddScoped<IJobDescriptionService, JobDescriptionService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<ICookieOptionsFactory, CookieOptionsFactory>();
 
+// ─────────────────────────────────────────────────────────────
+//  8. Rate Limiting (prevents brute-force and abuse)
+// ─────────────────────────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    // Auth endpoints: stricter limits
+    options.AddFixedWindowLimiter("auth", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+
+    // General API: generous limits for normal use
+    options.AddFixedWindowLimiter("general", opt =>
+    {
+        opt.PermitLimit = 100;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { message = "Too many requests. Please slow down and try again." },
+            token);
+    };
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowViteDev", policy =>
@@ -174,6 +208,16 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
               .AllowAnyHeader()
               .AllowAnyMethod()
+              .AllowCredentials();
+    });
+
+    // Production CORS: restrict to known origins, headers, and methods
+    // ⚠️ UPDATE: Replace with your actual production domain before deploying
+    options.AddPolicy("Production", policy =>
+    {
+        policy.WithOrigins("https://your-production-domain.com")
+              .WithHeaders("Content-Type", "Authorization", "X-Requested-With")
+              .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
               .AllowCredentials();
     });
 });
@@ -188,20 +232,25 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 // ─────────────────────────────────────────────────────────────
-//  Initialize Database (Apply Migrations)
+//  Initialize Database (Apply Migrations) — DEV ONLY
 // ─────────────────────────────────────────────────────────────
-using (var scope = app.Services.CreateScope())
+// In production, migrations should be applied explicitly during deployment
+// to avoid race conditions and ensure schema changes are audited.
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("RunMigrationsOnStartup"))
 {
-    var services = scope.ServiceProvider;
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var context = services.GetRequiredService<PreceptDbContext>();
-        context.Database.Migrate();
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<PreceptDbContext>();
+            context.Database.Migrate();
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while migrating the database.");
+        }
     }
 }
 
@@ -232,7 +281,9 @@ app.Use(async (context, next) =>
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
 
-        var response = new { message, detail = exception.Message };
+        // Only expose exception details in development (OWASP A05)
+        var detail = app.Environment.IsDevelopment() ? exception.Message : null;
+        var response = new { message, detail };
         await context.Response.WriteAsJsonAsync(response);
     }
 });
@@ -241,7 +292,29 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
-app.UseCors("AllowViteDev");
+
+// Security headers (OWASP A05) — applied to all environments for defense-in-depth
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("X-Permitted-Cross-Domain-Policies", "none");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers.Append("Permissions-Policy", "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()");
+    // CSP is relaxed for the Scalar dev UI; tighten for production front-end deployments
+    context.Response.Headers.Append("Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'");
+    await next();
+});
+
+// CORS: use dev policy in development, production policy otherwise
+if (app.Environment.IsDevelopment())
+    app.UseCors("AllowViteDev");
+else
+    app.UseCors("Production");
+
+app.UseRateLimiter(); // MUST be after CORS, before auth
 app.UseAuthentication(); // MUST be before UseAuthorization
 app.UseAuthorization();
 app.MapControllers();

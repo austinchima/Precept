@@ -5,6 +5,8 @@ import { api } from '../api';
 import { Application, Story, Skill, BehavioralStory } from '../types';
 import { useAuth } from '../AuthContext';
 import { getSkillIcon, getCompanyIcon } from '../lib/utils';
+import { CountUp } from '../components/animation/CountUp';
+import { AnimatedSection } from '../components/animation/AnimatedSection';
 
 interface DashboardStats {
   storyStats: {
@@ -197,7 +199,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8 pt-6 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 md:p-8 pt-4 md:pt-6 max-w-[1400px] mx-auto space-y-6">
       
       {/* BEGIN: Hero Welcome */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-2 opacity-0 animate-fade-in-up delay-200">
@@ -218,46 +220,55 @@ export default function Dashboard() {
 
       {/* BEGIN: Active Applications & Stats Section */}
       <section className="glass-panel rounded-2xl overflow-hidden shadow-2xl flex flex-col mb-6 opacity-0 animate-fade-in-up delay-300">
-        <div className="p-4 md:p-6 pb-2 md:pb-4 border-b border-panel-border/30 flex flex-col md:flex-row justify-between md:items-center gap-4">
-          <div className="flex flex-col md:flex-row md:items-center">
-            <div className="flex flex-col mr-8 mb-4 md:mb-0">
+        <div className="p-4 md:p-6 pb-2 md:pb-4 border-b border-panel-border/30 flex flex-col md:flex-row justify-between items-center gap-4">
+          {/* Left: Title & Count */}
+          <div className="w-full md:w-auto flex justify-start items-center md:flex-1">
+            <div className="flex flex-col">
               <h2 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-1">ACTIVE APPLICATIONS</h2>
               <div className="text-3xl font-bold text-white transition-transform duration-300 hover:scale-105 origin-left">
-                {activeAppTab === 'Total' && applications.length}
-                {activeAppTab === 'Active' && activeApps.length}
-                {activeAppTab === 'Interviews' && (stats?.applicationStats.interviewingCount || 0)}
-                {activeAppTab === 'Offers' && (stats?.applicationStats.offersCount || 0)}
+                <span key={activeAppTab}>
+                  <CountUp
+                    end={activeAppTab === 'Total' ? applications.length : activeAppTab === 'Active' ? activeApps.length : activeAppTab === 'Interviews' ? (stats?.applicationStats.interviewingCount || 0) : (stats?.applicationStats.offersCount || 0)}
+                    duration={1.2}
+                    className="text-3xl font-bold text-white"
+                  />
+                </span>
               </div>
             </div>
-            {/* Tab-like filters */}
-            <div className="w-full md:w-auto mt-4 md:mt-0">
-              <nav className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium self-end justify-start md:justify-end">
-                <div className="flex flex-col items-center group cursor-pointer" onClick={() => setActiveAppTab('Total')}>
+          </div>
+
+          {/* Center: Tabs */}
+          <div className="w-full md:w-auto flex justify-center items-center my-2 md:my-0">
+            <nav className="flex flex-wrap items-center justify-center gap-6 md:gap-8 text-sm font-medium">
+              <div className="flex flex-col items-center group cursor-pointer px-1" onClick={() => setActiveAppTab('Total')}>
                 <span className={`pb-2 transition-colors duration-300 ${activeAppTab === 'Total' ? 'text-white' : 'text-text-secondary group-hover:text-white'}`}>Total</span>
                 <div className={`h-1 w-full rounded-t-sm transition-all duration-300 ${activeAppTab === 'Total' ? 'bg-accent-teal shadow-[0_0_8px_rgba(45,212,191,0.8)]' : 'bg-transparent group-hover:bg-accent-teal/50'}`}></div>
               </div>
-              <div className="flex flex-col items-center group cursor-pointer" onClick={() => setActiveAppTab('Active')}>
+              <div className="flex flex-col items-center group cursor-pointer px-1" onClick={() => setActiveAppTab('Active')}>
                 <span className={`pb-2 transition-colors duration-300 ${activeAppTab === 'Active' ? 'text-white' : 'text-text-secondary group-hover:text-white'}`}>Active</span>
                 <div className={`h-1 w-full rounded-t-sm transition-all duration-300 ${activeAppTab === 'Active' ? 'bg-accent-blue shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'bg-transparent group-hover:bg-accent-blue/50'}`}></div>
               </div>
-              <div className="flex flex-col items-center group cursor-pointer" onClick={() => setActiveAppTab('Interviews')}>
+              <div className="flex flex-col items-center group cursor-pointer px-1" onClick={() => setActiveAppTab('Interviews')}>
                 <span className={`pb-2 transition-colors duration-300 ${activeAppTab === 'Interviews' ? 'text-white' : 'text-text-secondary group-hover:text-white'}`}>Interviews</span>
                 <div className={`h-1 w-full rounded-t-sm transition-all duration-300 ${activeAppTab === 'Interviews' ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]' : 'bg-transparent group-hover:bg-blue-400/50'}`}></div>
               </div>
-              <div className="flex flex-col items-center group cursor-pointer" onClick={() => setActiveAppTab('Offers')}>
+              <div className="flex flex-col items-center group cursor-pointer px-1" onClick={() => setActiveAppTab('Offers')}>
                 <span className={`pb-2 transition-colors duration-300 ${activeAppTab === 'Offers' ? 'text-white' : 'text-text-secondary group-hover:text-white'}`}>Offers</span>
                 <div className={`h-1 w-full rounded-t-sm transition-all duration-300 ${activeAppTab === 'Offers' ? 'bg-accent-purple shadow-[0_0_8px_rgba(139,92,246,0.8)]' : 'bg-transparent group-hover:bg-accent-purple/50'}`}></div>
               </div>
             </nav>
-            </div>
           </div>
-          <button onClick={() => navigate('/applications', { state: { openNewForm: true } })} className="bg-white/5 hover:bg-white/10 hover:scale-105 hover:shadow-lg text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 border border-white/10 hover:border-white/20 flex items-center justify-center w-full md:w-auto group cursor-pointer mt-4 md:mt-0">
-            <i className="fa-solid fa-plus mr-2 text-text-secondary group-hover:text-white transition-colors duration-300 group-hover:rotate-90"></i> New App
-          </button>
+
+          {/* Right: New App Button */}
+          <div className="w-full md:w-auto flex justify-end items-center md:flex-1">
+            <button onClick={() => navigate('/applications', { state: { openNewForm: true } })} className="bg-white/5 hover:bg-white/10 hover:scale-105 hover:shadow-lg text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 border border-white/10 hover:border-white/20 flex items-center justify-center w-full md:w-auto group cursor-pointer">
+              <i className="fa-solid fa-plus mr-2 text-text-secondary group-hover:text-white transition-colors duration-300 group-hover:rotate-90"></i> New App
+            </button>
+          </div>
         </div>
         
         {/* Desktop Applications Table */}
-        <div className="hidden md:block flex-1 overflow-x-auto custom-scrollbar">
+        <AnimatedSection animation="staggerFadeUp" stagger={0.05} childSelector="tbody tr" className="hidden md:block flex-1 overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="border-b border-panel-border/30 bg-black/20">
@@ -303,7 +314,7 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
-        </div>
+        </AnimatedSection>
 
         {/* Mobile Applications List */}
         <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-4">
@@ -338,19 +349,19 @@ export default function Dashboard() {
         <div className="p-4 md:p-6 border-t border-panel-border/30 grid grid-cols-2 md:grid-cols-4 gap-4 items-end bg-black/10">
           <div className="transition-transform duration-300 hover:-translate-y-1">
             <div className="text-xs text-text-secondary mb-1 font-medium">Total</div>
-            <div className="text-[22px] font-bold text-white">{applications.length}</div>
+            <div className="text-[22px] font-bold text-white"><CountUp end={applications.length} duration={1.2} /></div>
           </div>
           <div className="transition-transform duration-300 hover:-translate-y-1">
             <div className="text-xs text-text-secondary mb-1 font-medium">Active</div>
-            <div className="text-[22px] font-bold text-white flex items-center">{activeApps.length} <span className="w-1.5 h-1.5 rounded-full bg-accent-teal ml-2 shadow-[0_0_8px_rgba(45,212,191,0.8)] animate-pulse"></span></div>
+            <div className="text-[22px] font-bold text-white flex items-center"><CountUp end={activeApps.length} duration={1.2} /> <span className="w-1.5 h-1.5 rounded-full bg-accent-teal ml-2 shadow-[0_0_8px_rgba(45,212,191,0.8)] animate-pulse"></span></div>
           </div>
           <div className="transition-transform duration-300 hover:-translate-y-1">
             <div className="text-xs text-text-secondary mb-1 font-medium">Interviews</div>
-            <div className="text-[22px] font-bold text-white">{stats?.applicationStats.interviewingCount || 0}</div>
+            <div className="text-[22px] font-bold text-white"><CountUp end={stats?.applicationStats.interviewingCount || 0} duration={1.2} /></div>
           </div>
           <div className="transition-transform duration-300 hover:-translate-y-1">
             <div className="text-xs text-text-secondary mb-1 font-medium">Offers</div>
-            <div className="text-[22px] font-bold text-white flex items-center">{stats?.applicationStats.offersCount || 0} <span className="w-1.5 h-1.5 rounded-full bg-accent-purple ml-2 shadow-[0_0_8px_rgba(139,92,246,0.8)]"></span></div>
+            <div className="text-[22px] font-bold text-white flex items-center"><CountUp end={stats?.applicationStats.offersCount || 0} duration={1.2} /> <span className="w-1.5 h-1.5 rounded-full bg-accent-purple ml-2 shadow-[0_0_8px_rgba(139,92,246,0.8)]"></span></div>
           </div>
 
         </div>
@@ -364,7 +375,7 @@ export default function Dashboard() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <h2 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-1">STAR STORY BANK</h2>
-              <div className="text-3xl font-bold text-white transition-transform duration-300 hover:translate-x-1">{behavioralStories.length} Stories</div>
+              <div className="text-3xl font-bold text-white transition-transform duration-300 hover:translate-x-1"><CountUp end={behavioralStories.length} duration={1.2} /> Stories</div>
             </div>
             <div className="flex gap-3">
               <button onClick={() => navigate('/story-bank')} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 border border-white/10 hover:border-white/20 cursor-pointer flex items-center group">
@@ -406,14 +417,14 @@ export default function Dashboard() {
             ))}
           </div>
           
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
             {/* Left Nav Menu */}
-            <nav className="w-32 mr-8 space-y-2">
+            <nav className="w-full md:w-32 md:mr-8 flex md:block flex-row space-x-2 md:space-x-0 md:space-y-2 mb-4 md:mb-0 overflow-x-auto pb-2 md:pb-0 custom-scrollbar shrink-0">
               {(['situation', 'task', 'action', 'result'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveStarTab(tab)}
-                  className={`block w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:translate-x-1 cursor-pointer capitalize ${
+                  className={`block whitespace-nowrap md:w-full text-center md:text-left px-4 py-2.5 min-h-[44px] md:min-h-0 rounded-xl text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 md:hover:translate-x-1 md:hover:translate-y-0 cursor-pointer capitalize ${
                     activeStarTab === tab 
                       ? 'bg-white/10 text-white border border-white/5' 
                       : 'text-text-secondary hover:bg-white/5 hover:text-white'
@@ -425,7 +436,7 @@ export default function Dashboard() {
             </nav>
             
             {/* Story Cards List */}
-            <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+            <AnimatedSection animation="staggerFadeUp" stagger={0.08} childSelector="> div" className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
               {recentBehavioralStories.length === 0 && (
                 <div className="text-center text-text-secondary text-sm italic pt-10">
                   No stories found. Create a STAR narrative to populate!
@@ -466,7 +477,7 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-            </div>
+            </AnimatedSection>
           </div>
         </section>
 
@@ -516,7 +527,7 @@ export default function Dashboard() {
 
           {/* Skills Grid */}
           <section className="glass-panel rounded-2xl p-5">
-            <div className="grid grid-cols-3 gap-4">
+            <AnimatedSection animation="staggerFadeUp" stagger={0.06} childSelector="> div" className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {topSkills.length === 0 && (
                 <div className="col-span-3 text-center text-text-secondary text-sm italic py-4">No skills documented.</div>
               )}
@@ -552,7 +563,7 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-            </div>
+            </AnimatedSection>
           </section>
         </div>
       </div>
@@ -571,7 +582,7 @@ export default function Dashboard() {
             <div>
               <h3 className="text-sm font-medium text-text-secondary mb-1">Application Pipeline</h3>
               <div className="text-2xl font-bold text-white mb-6">
-                {stats?.applicationStats.totalApplications || 0} Total
+                <CountUp end={stats?.applicationStats.totalApplications || 0} duration={1.2} /> Total
               </div>
             </div>
 
@@ -648,7 +659,7 @@ export default function Dashboard() {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-3xl font-bold text-white">
-                  {stats?.jobDescriptionStats.averageMatchScore ? stats.jobDescriptionStats.averageMatchScore.toFixed(0) : 0}
+                  <CountUp end={stats?.jobDescriptionStats.averageMatchScore ? parseInt(stats.jobDescriptionStats.averageMatchScore.toFixed(0)) : 0} duration={1.5} />
                 </span>
                 <span className="text-[10px] text-text-secondary font-medium">%</span>
               </div>
@@ -660,13 +671,13 @@ export default function Dashboard() {
             <div>
               <h3 className="text-sm font-medium text-text-secondary mb-1">Story Readiness</h3>
               <div className="text-xs text-text-secondary mb-4">
-                <span className="text-white font-medium">{stats?.storyStats.totalReviewed || 0}</span> reviewed out of {stats?.storyStats.totalStories || 0}
+                <span className="text-white font-medium"><CountUp end={stats?.storyStats.totalReviewed || 0} duration={1.2} /></span> reviewed out of <CountUp end={stats?.storyStats.totalStories || 0} duration={1.2} />
               </div>
             </div>
 
             <div className="h-40 w-full">
               {stats?.storyStats.confidenceBreakdown && Object.keys(stats.storyStats.confidenceBreakdown).length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
                   <BarChart data={Object.entries(stats.storyStats.confidenceBreakdown).map(([key, value]) => ({ name: key, count: value }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />

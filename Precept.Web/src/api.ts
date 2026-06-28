@@ -3,6 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// OWASP NOTE: Access token is stored in localStorage for development convenience.
+// localStorage is accessible to JavaScript, making it vulnerable to XSS token theft.
+// For production, migrate to http-only cookies by having the backend set the access
+// token cookie alongside the refresh token cookie. This requires:
+//   1. Backend: Add an endpoint that returns the access token in an http-only cookie
+//   2. Frontend: Remove setAccessToken/localStorage usage; the browser sends cookies automatically
+//   3. Frontend: Update apiFetch to not manually attach Authorization header; the cookie is sent by the browser
+//
+// Until then, ensure all dependencies are kept up-to-date and XSS vectors are minimized.
+
 let _accessToken: string | null = localStorage.getItem('precept_access_token');
 
 export function getAccessToken(): string | null {
@@ -43,6 +53,29 @@ async function refreshAccessToken(): Promise<string> {
   });
 
   if (!response.ok) {
+    try {
+      const errorData = await response.json();
+      if (errorData?.message === 'Token just refreshed') {
+        // [Benign Retry Interceptor]: Another concurrent browser tab or overlapping request
+        // just successfully rotated the refresh token within the grace window.
+        // Poll localStorage briefly (up to 500ms) for the winning tab to save the new access token.
+        for (let i = 0; i < 5; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          const latestToken = localStorage.getItem('precept_access_token');
+          if (latestToken && latestToken !== _accessToken) {
+            setAccessToken(latestToken);
+            return latestToken;
+          }
+        }
+        const fallbackToken = localStorage.getItem('precept_access_token');
+        if (fallbackToken) {
+          setAccessToken(fallbackToken);
+          return fallbackToken;
+        }
+      }
+    } catch {
+      // Body parsing failed or unrelated 401 — fall through to error
+    }
     throw new Error('Refresh token expired or invalid');
   }
 

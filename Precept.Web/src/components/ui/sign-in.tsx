@@ -94,7 +94,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               </div>
               <div>
                 <span className="font-heading font-bold text-xl tracking-tight text-brand-text leading-none block">Precept</span>
-                <span className="font-mono text-[10px] text-brand-text-muted uppercase tracking-wider block mt-1">JobHunt OS</span>
+                <span className="font-mono text-[10px] text-brand-text-muted uppercase tracking-wider block mt-1">Job Hunt OS</span>
               </div>
             </div>
 
@@ -102,7 +102,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <button 
                 onClick={onBack}
                 type="button"
-                className="flex items-center gap-2 text-brand-text-muted hover:text-brand-primary transition-colors font-mono text-xs uppercase tracking-wider cursor-pointer"
+                className="flex items-center justify-center min-h-[44px] px-2 -ml-2 gap-2 text-brand-text-muted hover:text-brand-primary transition-colors font-mono text-xs uppercase tracking-wider cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">arrow_back</span>
                 Return to Base
@@ -151,14 +151,14 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                 <div className="flex items-center justify-between mb-2">
                    <label className="font-mono text-[11px] uppercase tracking-wider text-brand-text-muted">Password</label>
                    {isLogin && (
-                     <a href="#" onClick={(e) => { e.preventDefault(); onResetPassword?.(); }} className="font-mono text-[11px] hover:text-brand-primary text-brand-text-muted transition-colors">Forgot protocol?</a>
+                     <a href="#" onClick={(e) => { e.preventDefault(); onResetPassword?.(); }} className="font-mono text-[11px] hover:text-brand-primary text-brand-text-muted transition-colors min-h-[44px] inline-flex items-center px-2 -mr-2">Forgot protocol?</a>
                    )}
                 </div>
                 <GlassInputWrapper isError={!!error}>
                   <span className="material-symbols-outlined ml-4 text-brand-text-muted text-[18px]">lock</span>
                   <div className="relative w-full">
-                    <input name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••••••••" className="w-full bg-transparent text-sm p-4 pr-12 font-mono tracking-widest focus:outline-none placeholder:text-brand-text-muted/50" required />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-3 flex items-center cursor-pointer">
+                    <input name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••••••••" className="w-full bg-transparent text-sm p-4 pr-14 font-mono tracking-widest focus:outline-none placeholder:text-brand-text-muted/50" required />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-1 min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer">
                       {showPassword ? <span className="material-symbols-outlined text-[20px] text-brand-text-muted hover:text-brand-primary transition-colors">visibility_off</span> : <span className="material-symbols-outlined text-[20px] text-brand-text-muted hover:text-brand-primary transition-colors">visibility</span>}
                     </button>
                   </div>
@@ -180,7 +180,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <button type="submit" disabled={isLoading} className="animate-element animate-delay-700 w-full rounded-md bg-brand-primary py-4 font-mono font-bold text-brand-secondary hover:bg-brand-primary-container hover:-translate-y-0.5 transition-all shadow-[0_0_20px_rgba(50,185,200,0.2)] hover:shadow-[0_0_30px_rgba(50,185,200,0.4)] mt-6 cursor-pointer flex items-center justify-center gap-2">
                 {isLoading ? <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> : (
                    <>
-                      {isLogin ? "Initialize Protocol" : "Initialize Protocol"}
+                      {isLogin ? "Initialize Protocol" : "Deploy Account"}
                       <span className="material-symbols-outlined text-[18px]">{isLogin ? "login" : "rocket_launch"}</span>
                    </>
                 )}
@@ -214,9 +214,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               </button>
             </div>
 
-            <p className="animate-element animate-delay-1000 text-center text-sm font-sans text-brand-text-muted mt-6">
-              {isLogin ? "New operator? " : "Already deployed? "} 
-              <button onClick={onToggleMode} type="button" className="text-brand-primary font-medium hover:underline transition-colors cursor-pointer">
+            <p className="animate-element animate-delay-1000 text-center text-sm font-sans text-brand-text-muted mt-6 flex items-center justify-center flex-wrap gap-1">
+              {isLogin ? "New operator?" : "Already deployed?"} 
+              <button onClick={onToggleMode} type="button" className="text-brand-primary font-medium hover:underline transition-colors cursor-pointer min-h-[44px] px-2 -mx-2">
                 {isLogin ? "Create Account" : "Sign In"}
               </button>
             </p>

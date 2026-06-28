@@ -2,16 +2,20 @@ services:
   db:
     image: postgres:18-alpine
     container_name: precept_db
+    # DEV NOTE: In production, use strong passwords via environment variables or secrets manager.
+    # Do NOT commit production credentials to this file.
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: precept_db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-precept_db}
+    # DEV ONLY: Exposing the DB port to the host is convenient for local development tools.
+    # In production, REMOVE the ports section so the database is only reachable internally.
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d precept_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-precept_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -28,7 +32,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - ConnectionStrings__DefaultConnection=Host=db;Database=precept_db;Username=postgres;Password=postgres
+      - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB:-precept_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       - ASPNETCORE_ENVIRONMENT=Development
       - DOTNET_USE_POLLING_FILE_WATCHER=1
 

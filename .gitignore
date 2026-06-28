@@ -1,6 +1,6 @@
 ## Build Results & Artifacts
-[Db]in/
-[Ob]j/
+[Bb]in/
+[Oo]bj/
 [Dd]ebug/
 [Rr]elease/
 x64/
@@ -90,10 +90,7 @@ EVALUATION.md
 
 IMPLEMENTATION_TUTORIAL.md
 
-testing_masterclass.md
+*masterclass.md
 
-Release_1_testing_implementation_plan.md
 
 precept_testing_strategy.md
-
-Refresh-Token Rotation Masterclass.md

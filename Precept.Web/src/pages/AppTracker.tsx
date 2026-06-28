@@ -6,6 +6,8 @@ import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import confetti from 'canvas-confetti';
 import { getCompanyIcon } from '../lib/utils';
+import { AnimatedSection } from '../components/animation/AnimatedSection';
+import { CountUp } from '../components/animation/CountUp';
 
 const COLUMNS: ApplicationStatus[] = ['Applied', 'PhoneScreen', 'Interviewing', 'Offer', 'Rejected', 'Ghosted'];
 
@@ -309,7 +311,7 @@ export default function AppTracker() {
           <h1 className="text-[28px] font-medium text-white flex items-center tracking-tight">
             Active <span className="font-bold ml-2 hover:text-accent-teal transition-colors duration-300 cursor-default">Pipelines</span>
             <span className="mx-3 text-text-secondary/30 text-3xl font-light">|</span>
-            <span className="text-text-secondary font-normal text-lg">{apps.length} tracked</span>
+            <span className="text-text-secondary font-normal text-lg"><CountUp end={apps.length} duration={1.2} /> tracked</span>
           </h1>
           <p className="text-text-secondary text-sm mt-1">Status tracking for outbound connections.</p>
         </div>
@@ -319,19 +321,19 @@ export default function AppTracker() {
           <div className="flex glass-panel rounded-xl p-1 gap-1">
             <button 
               onClick={() => setView('board')}
-              className={`p-2 rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center ${view === 'board' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
+              className={`p-2 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center ${view === 'board' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
             >
               <i className="fa-solid fa-table-columns text-sm"></i>
             </button>
             <button 
               onClick={() => setView('table')}
-              className={`p-2 rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center ${view === 'table' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
+              className={`p-2 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center ${view === 'table' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
             >
               <i className="fa-solid fa-list text-sm"></i>
             </button>
           </div>
 
-          <button onClick={handleOpenCreateModal} className="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] animate-pulse-glow-teal hover:scale-105 transition-all duration-300 cursor-pointer">
+          <button onClick={handleOpenCreateModal} className="inline-flex items-center justify-center px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] animate-pulse-glow-teal hover:scale-105 transition-all duration-300 cursor-pointer">
             <i className="fa-solid fa-plus mr-2"></i> Init Pipeline
           </button>
         </div>
@@ -365,7 +367,7 @@ export default function AppTracker() {
                   </div>
                   
                   {/* Column Body */}
-                  <div className="flex-1 space-y-3 glass-panel rounded-xl p-3 border-dashed border-white/5! overflow-y-auto min-h-[300px] custom-scrollbar">
+                  <AnimatedSection animation="staggerFadeUp" stagger={0.05} childSelector="> div" className="flex-1 space-y-3 glass-panel rounded-xl p-3 border-dashed border-white/5! overflow-y-auto min-h-[300px] custom-scrollbar">
                     {apps.filter(a => a.status === col).map(app => (
                       <div 
                         key={app.id} 
@@ -374,7 +376,7 @@ export default function AppTracker() {
                         onClick={() => handleOpenEditModal(app)}
                         className={`glass-panel rounded-xl p-4 hover:border-white/15 transition-all duration-300 cursor-move group relative ${getStatusGlow(app.status)} ${draggedAppId === app.id ? 'opacity-40 border-accent-teal!' : ''}`}
                       >
-                         <button className="absolute top-3.5 right-3.5 text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity hover:text-accent-teal cursor-pointer flex items-center justify-center">
+                         <button className="absolute top-2 right-2 min-h-[44px] min-w-[44px] text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity hover:text-accent-teal cursor-pointer flex items-center justify-center">
                            <i className="fa-solid fa-ellipsis text-xs"></i>
                          </button>
                          <div className="flex items-center gap-2 mb-1 pr-6">
@@ -387,14 +389,14 @@ export default function AppTracker() {
                          </div>
                       </div>
                     ))}
-                  </div>
+                  </AnimatedSection>
                 </div>
               ))}
             </div>
           ) : (
             <section className="glass-panel rounded-2xl overflow-hidden shadow-2xl">
               {/* Desktop Table */}
-              <div className="hidden md:block overflow-x-auto custom-scrollbar">
+              <AnimatedSection animation="staggerFadeUp" stagger={0.04} childSelector="tbody tr" className="hidden md:block overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
                   <tr className="border-b border-panel-border/30">
@@ -429,7 +431,7 @@ export default function AppTracker() {
                         {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => handleOpenEditModal(app)} className="text-text-secondary hover:text-accent-teal transition-colors cursor-pointer">
+                        <button onClick={() => handleOpenEditModal(app)} className="text-text-secondary hover:text-accent-teal transition-colors cursor-pointer min-h-[44px] min-w-[44px] inline-flex items-center justify-end">
                            <i className="fa-solid fa-ellipsis text-sm"></i>
                         </button>
                       </td>
@@ -444,10 +446,10 @@ export default function AppTracker() {
                   )}
                 </tbody>
               </table>
-              </div>
+              </AnimatedSection>
 
               {/* Mobile Cards */}
-              <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-4">
+              <AnimatedSection animation="staggerFadeUp" stagger={0.05} childSelector="> div" className="md:hidden flex-1 overflow-y-auto p-4 space-y-4">
                 {apps.length === 0 && (
                   <div className="py-12 text-center text-text-secondary font-mono text-sm italic">
                     No pipelines tracked yet. Initialise outbound connections above.
@@ -474,7 +476,7 @@ export default function AppTracker() {
                     </div>
                   </div>
                 ))}
-              </div>
+              </AnimatedSection>
             </section>
           )}
         </div>
@@ -492,7 +494,7 @@ export default function AppTracker() {
                 <i className={`${selectedApp ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-plus'} text-accent-teal text-sm`}></i>
                 {selectedApp ? 'Update Connection' : 'Initialize Connection'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-text-secondary hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer">
+              <button onClick={() => setIsModalOpen(false)} className="text-text-secondary hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center">
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
@@ -644,7 +646,7 @@ export default function AppTracker() {
                     <button 
                       type="button" 
                       onClick={() => confirmDelete(selectedApp.id)}
-                      className="text-[11px] font-mono border border-[#f87171]/40 text-[#f87171] hover:bg-[#f87171]/10 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="text-[11px] font-mono border border-[#f87171]/40 text-[#f87171] hover:bg-[#f87171]/10 px-3 py-2 min-h-[44px] rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <i className="fa-regular fa-trash-can text-xs"></i> Delete
                     </button>
@@ -652,11 +654,11 @@ export default function AppTracker() {
                 ) : <div />}
                 
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 min-h-[44px] rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
                   <button 
                     type="submit" 
                     disabled={isSubmitting || !companyName.trim() || !roleTitle.trim()}
-                    className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
+                    className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
                   >
                     {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : null}
                     {selectedApp ? 'Save Pipeline' : 'Initialize Connection'}

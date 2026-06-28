@@ -25,6 +25,12 @@ export default defineConfig(() => {
               if (id.includes('lucide-react')) {
                 return 'vendor-icons';
               }
+              if (id.includes('gsap') || id.includes('@gsap/react')) {
+                return 'vendor-gsap';
+              }
+              if (id.includes('lenis')) {
+                return 'vendor-lenis';
+              }
               return 'vendor';
             }
           }

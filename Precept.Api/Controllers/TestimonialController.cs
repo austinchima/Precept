@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Precept.Api.Data;
 using Precept.Api.Models;
@@ -9,6 +11,7 @@ namespace Precept.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("general")]
     public class TestimonialController(PreceptDbContext context, ICurrentUser currentUser) : ControllerBase
     {
         /// <summary>
@@ -63,9 +66,16 @@ namespace Precept.Api.Controllers
 
     public class TestimonialDto
     {
+        [Required, StringLength(100)]
         public string Name { get; set; } = string.Empty;
+
+        [Required, StringLength(50)]
         public string Handle { get; set; } = string.Empty;
+
+        [Required, StringLength(2000)]
         public string Text { get; set; } = string.Empty;
+
+        [StringLength(500)]
         public string? AvatarSrc { get; set; }
     }
 }

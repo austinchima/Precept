@@ -59,7 +59,7 @@ export default function ConfirmationModal({
             <button 
               type="button" 
               onClick={onCancel}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium text-text-secondary hover:text-white border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 transition-all cursor-pointer"
+              className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-medium text-text-secondary hover:text-white border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 transition-all cursor-pointer"
             >
               {cancelText}
             </button>
@@ -68,7 +68,7 @@ export default function ConfirmationModal({
               onClick={() => {
                 onConfirm();
               }}
-              className={`px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer flex items-center gap-2 ${
+              className={`px-5 py-2.5 min-h-[44px] justify-center rounded-xl text-sm font-semibold shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer flex items-center gap-2 ${
                 danger 
                   ? 'bg-[#f87171] text-black shadow-[0_0_15px_rgba(248,113,113,0.3)] hover:bg-[#f87171]/90' 
                   : 'bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.3)] hover:bg-accent-teal/90'

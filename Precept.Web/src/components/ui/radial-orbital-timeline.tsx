@@ -337,7 +337,7 @@ export default function RadialOrbitalTimeline({
                                   key={relatedId}
                                   variant="outline"
                                   size="sm"
-                                  className="flex items-center h-6 px-2 py-0 text-[10px] font-mono rounded-md border-brand-border bg-brand-surface hover:bg-brand-surface-high text-brand-text hover:text-brand-primary transition-colors"
+                                  className="flex items-center min-h-[44px] px-2 py-0 text-[10px] font-mono rounded-md border-brand-border bg-brand-surface hover:bg-brand-surface-high text-brand-text hover:text-brand-primary transition-colors"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     toggleItem(relatedId);

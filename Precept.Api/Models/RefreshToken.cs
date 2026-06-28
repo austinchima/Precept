@@ -35,14 +35,21 @@ public class RefreshToken
 
     /// <summary>
     /// When this token was revoked (null if still active).
+    /// [Pillar II - Optimistic Concurrency]: Annotated with [ConcurrencyCheck] so EF Core appends
+    /// 'WHERE RevokedAt IS NULL' during updates. If two concurrent requests hit the database at the exact
+    /// same millisecond racing to rotate this token, the second update affects 0 rows and throws
+    /// DbUpdateConcurrencyException, preventing dead-heat phantom session creation.
     /// </summary>
     [ConcurrencyCheck]
     public DateTime? RevokedAt { get; set; }
 
     /// <summary>
-    /// Hash of the token that replaced this one during rotation.
-    /// Used for reuse detection: if a revoked token with a replacement
-    /// is presented again, the entire token family is compromised.
+    /// SHA-256 hash of the token that replaced this one during rotation.
+    /// [Pillar I - Lineage Guard]: Acts as a family pointer (A -> B -> C).
+    /// When a revoked token is presented during refresh, we verify if it is the immediate parent
+    /// of the active token. If direct parent + within 10s grace window, it is a benign concurrent retry.
+    /// If an older ancestor (e.g. token A replayed when C is active), it is flagged as a replay attack
+    /// triggering immediate family-wide cascade revocation.
     /// </summary>
     [MaxLength(128)]
     public string? ReplacedByToken { get; set; }

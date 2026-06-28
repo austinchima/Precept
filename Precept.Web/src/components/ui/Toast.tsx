@@ -113,7 +113,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
       <button
         onClick={() => onDismiss(toast.id)}
-        className="text-text-secondary hover:text-white transition-colors shrink-0 mt-0.5 cursor-pointer flex items-center justify-center"
+        className="text-text-secondary hover:text-white transition-colors shrink-0 cursor-pointer flex items-center justify-center min-w-[44px] min-h-[44px] -my-3 -mr-3"
         aria-label="Dismiss notification"
       >
         <i className="fa-solid fa-xmark text-xs"></i>

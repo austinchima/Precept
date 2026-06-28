@@ -180,7 +180,7 @@
     @apply bg-brand-surface border border-brand-border rounded-lg shadow-sm;
   }
   .input-base {
-    @apply bg-brand-surface-high border border-brand-border rounded-md px-3 py-2 text-brand-text placeholder-brand-text-muted focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary;
+    @apply bg-brand-surface-high border border-brand-border rounded-md px-3 py-2 min-h-[44px] text-brand-text placeholder-brand-text-muted focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary;
   }
   .btn-primary {
     @apply bg-brand-primary text-on-primary font-mono font-medium rounded-md px-4 py-2 hover:bg-brand-primary-container transition-colors;
@@ -452,3 +452,22 @@
   box-shadow: 0 0 15px rgba(244, 63, 94, 0.15);
 }
 
+
+/* Landing page font utilities (from app-precept design) */
+@layer utilities {
+  .font-display {
+    font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  }
+  .font-body {
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}

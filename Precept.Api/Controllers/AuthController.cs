@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Precept.Api.Data;
@@ -31,8 +32,10 @@ public class AuthController(
 
     /// <summary>
     /// Creates a new user account and returns tokens.
+    /// In production, consider requiring email verification before returning tokens.
     /// </summary>
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         if (!ModelState.IsValid)
@@ -48,7 +51,7 @@ public class AuthController(
 
         var user = new ApplicationUser
         {
-            UserName = request.Email,           // This ensures that multiples users with the same name can use their name without a hassle
+            UserName = request.Email,
             Email = request.Email,
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
@@ -66,6 +69,12 @@ public class AuthController(
             return BadRequest(ModelState);
         }
 
+        // Generate email confirmation token (dev: logged below; prod: sent via email)
+        user.EmailConfirmed = false;
+        await userManager.UpdateAsync(user);
+        var emailToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        logger.LogWarning("[DEV ONLY] Email verification token for {Email}: {Token}", request.Email, emailToken);
+
         logger.UserRegistered(request.Email);
 
         // Generate tokens for the newly registered user
@@ -81,6 +90,7 @@ public class AuthController(
     /// Authenticates a user and returns an access token + refresh cookie.
     /// </summary>
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (!ModelState.IsValid)
@@ -116,6 +126,7 @@ public class AuthController(
     /// </summary>
     [Authorize]
     [HttpGet("me")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> GetCurrentUser()
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -147,6 +158,7 @@ public class AuthController(
     /// Reads the refresh token from the HTTP-only cookie.
     /// </summary>
     [HttpPost("refresh")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Refresh()
     {
         // 1. Read refresh token from cookie
@@ -167,30 +179,44 @@ public class AuthController(
             return Unauthorized(new { message = "Invalid refresh token." });
         }
 
-        // 3. Reuse detection: if the token was already revoked, someone may be replaying a stolen token
+        // =================================================================================================
+        // STAGE 3: REUSE DETECTION & REPLAY INTERCEPTION (THE CROWN JEWEL)
+        // Threat Model: If an attacker intercepts or steals a refresh token, they will attempt to exchange
+        // it for an access token. If the legitimate client has already rotated this token, storedToken.IsRevoked
+        // is TRUE. Presenting a revoked token triggers immediate breach containment.
+        // =================================================================================================
         if (storedToken.IsRevoked)
         {
-            // Determine if this revoked token is the direct parent of the current active token
+            // [Pillar I - Lineage Guard]: We must distinguish between malicious replay attacks and benign
+            // network anomalies (dual browser tabs refreshing simultaneously or double-click retries).
+            // First, find the user's currently active session token in this lineage.
             var activeToken = await dbContext.RefreshTokens
                 .Where(rt => rt.UserId == storedToken.UserId && rt.RevokedAt == null)
-                .OrderByDescending(rt => rt.CreatedAt)
+                // gets the most recent token in this lineage by arranging it from top to show the newest token,
+                // and FirstOrDefaultAsync() gets the first one, which is the newest token in this case
+                .OrderByDescending(rt => rt.CreatedAt)  
                 .FirstOrDefaultAsync();
 
+            // Check if the presented revoked token is the EXACT immediate predecessor (parent) of the active token.
+            // If an attacker replays a token 2 generations old (A -> B -> C), A.ReplacedByToken == B (not C).
+            // This lineage guard prevents deep historical replay bypasses.
             var isDirectParent = activeToken != null &&
                                  storedToken.ReplacedByToken != null &&
                                  storedToken.ReplacedByToken == activeToken.Token;
 
+            // Check if the rotation occurred within a 10-second concurrency grace window.
             var withinGrace = storedToken.RevokedAt.HasValue &&
                               (DateTime.UtcNow - storedToken.RevokedAt.Value).TotalSeconds <= 10;
 
-            // Graceful handling only if direct parent and within grace window
+            // Benign Anomaly: If direct parent AND within grace window, treat as concurrent client retry.
             if (isDirectParent && withinGrace)
             {
-                // Graceful handling of a concurrent retry – do not cascade revoke
+                // Suppress cascade revocation. Return gentle 401 allowing client HTTP interceptor to resync.
                 return Unauthorized(new { message = "Token just refreshed" });
             }
 
-            // Otherwise treat as a replay attack – revoke all sessions
+            // Confirmed Breach: Replay attack detected outside grace window or across broken lineage.
+            // Execute Family-Wide Cascade Revocation to lock down all devices immediately.
             await RevokeAllUserTokens(storedToken.UserId);
             ClearRefreshCookie();
             return Unauthorized(new { message = "Token reuse detection. All sessions have been revoked. Please log in again." });
@@ -202,19 +228,22 @@ public class AuthController(
             return Unauthorized(new { message = "Refresh token has expired. Please log in again." });
         }
 
-        // 5. Rotate: revoke the old token and issue a new one
+        // =================================================================================================
+        // STAGE 5: CRYPTOGRAPHIC TOKEN ROTATION
+        // Every refresh exchange invalidates the spent token and binds it to a newly generated SHA-256 hash.
+        // =================================================================================================
         var user = storedToken.User;
         var roles = await userManager.GetRolesAsync(user);
 
-        // Generate new refresh token
+        // Generate new 64-byte CSPRNG refresh token and compute its SHA-256 hash for DB storage
         var newRawToken = tokenService.GenerateRefreshToken();
         var newTokenHash = HashToken(newRawToken);
 
-        // Mark old token as revoked and link to replacement
+        // Mark spent token as revoked and record its successor hash to preserve family lineage tracking
         storedToken.RevokedAt = DateTime.UtcNow;
         storedToken.ReplacedByToken = newTokenHash;
 
-        // Persist the new refresh token
+        // Persist the replacement refresh token entity
         var newRefreshToken = new RefreshToken
         {
             Token = newTokenHash,
@@ -229,14 +258,17 @@ public class AuthController(
         
         try
         {
-            // The [ConcurrencyCheck] on RevokedAt ensures this is atomic.
-            // If another thread already updated RevokedAt, this throws.
+            // [Pillar II & III - Single-Save Atomic Rotation & Optimistic Concurrency]:
+            // Both parent revocation (UPDATE) and child creation (INSERT) execute in ONE atomic transaction.
+            // The [ConcurrencyCheck] attribute on RevokedAt forces EF Core to append 'WHERE RevokedAt IS NULL'.
+            // If two overlapping network requests race to rotate this token at the exact same millisecond,
+            // the second query affects 0 rows, throwing DbUpdateConcurrencyException.
             await dbContext.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)
         {
-            // Dead-heat race condition: another concurrent request just revoked this token.
-            // The DbContext state is dirty but since we return here, it evaporates.
+            // [Dead-Heat Race Defense]: Another overlapping thread rotated this token 1 millisecond ago.
+            // Catching this prevents split-brain duplicate child tokens. Uncommitted changes evaporate safely.
             return Unauthorized(new { message = "Token just refreshed" });
         }
 
@@ -268,6 +300,7 @@ public class AuthController(
     /// </summary>
     [Authorize]
     [HttpPost("revoke")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Revoke()
     {
         var rawToken = Request.Cookies["refreshToken"];
@@ -292,6 +325,96 @@ public class AuthController(
 
         ClearRefreshCookie();
         return Ok(new { message = "Token revoked successfully." });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /api/auth/forgot-password
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Initiates a password reset for the given email address.
+    /// In development, the reset token is logged to the console.
+    /// In production, configure an email service (e.g. SendGrid) to send the token.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            // Generic response to prevent user enumeration
+            return Ok(new { message = "If an account exists, a password reset email has been sent." });
+        }
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+
+        // DEV ONLY: log the token so the developer can test without an email provider
+        logger.LogWarning("[DEV ONLY] Password reset token for {Email}: {Token}", request.Email, token);
+
+        // TODO: In production, send this token via a secure email service.
+        // Example: await _emailService.SendPasswordResetEmail(request.Email, token);
+
+        return Ok(new { message = "If an account exists, a password reset email has been sent." });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /api/auth/reset-password
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Resets the password using a token from the forgot-password flow.
+    /// </summary>
+    [HttpPost("reset-password")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return BadRequest(new { message = "Invalid request." });
+
+        var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { message = "Invalid or expired token." });
+        }
+
+        // Revoke all refresh tokens for this user as a security measure
+        await RevokeAllUserTokens(user.Id);
+
+        return Ok(new { message = "Password reset successfully. Please sign in again." });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /api/auth/verify-email
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Confirms the email address using a token.
+    /// In development, the token is logged during registration.
+    /// </summary>
+    [HttpPost("verify-email")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return BadRequest(new { message = "Invalid request." });
+
+        var result = await userManager.ConfirmEmailAsync(user, request.Token);
+        if (!result.Succeeded)
+            return BadRequest(new { message = "Invalid or expired token." });
+
+        return Ok(new { message = "Email verified successfully." });
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -370,6 +493,7 @@ public class AuthController(
 
     [HttpPut("profile")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
     {
         if (!ModelState.IsValid)
@@ -402,7 +526,12 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Revokes all refresh tokens for a user (used when reuse is detected).
+    /// [Fail-Safe Identity-Wide Cascade Revocation]: Invalidates all active sessions for a user identity.
+    /// Design Scope Note: While our replay detection mechanism is strictly "Lineage-Aware" (using ReplacedByToken
+    /// to trace parent-child lineages and filter out benign concurrent tab retries), the revocation action
+    /// itself is intentionally "Identity-Wide" (WHERE UserId == userId). Under the OWASP Fail-Safe doctrine,
+    /// a confirmed token theft on Device A (e.g. laptop) assumes the user's underlying credentials or machine
+    /// are compromised, nuking all active sessions (phone, tablet) to contain lateral threat movement.
     /// </summary>
     private async Task RevokeAllUserTokens(string userId)
     {

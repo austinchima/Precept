@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { gsap, useGSAP, prefersReducedMotion } from '../lib/animations';
 import CommandPalette from './ui/CommandPalette';
 
 export default function Layout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const layoutRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -13,6 +15,16 @@ export default function Layout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem('precept-sidebar-collapsed') === 'true';
   });
+
+  useGSAP(() => {
+    if (!layoutRef.current || prefersReducedMotion()) return;
+    gsap.from(layoutRef.current, {
+      opacity: 0,
+      scale: 0.99,
+      duration: 0.6,
+      ease: 'power2.out',
+    });
+  }, { scope: layoutRef });
 
   useEffect(() => {
     localStorage.setItem('precept-sidebar-collapsed', String(isSidebarCollapsed));
@@ -45,7 +57,7 @@ export default function Layout() {
 
   return (
     <>
-      <div className="bg-dashboard-bg text-text-primary font-sans h-screen flex overflow-hidden antialiased relative">
+      <div ref={layoutRef} className="bg-dashboard-bg text-text-primary font-sans h-screen flex overflow-hidden antialiased relative">
       
       {/* Background is now handled by body in index.css, so we can remove the old Background Decorative Elements */}
 
@@ -153,7 +165,7 @@ export default function Layout() {
           <div className="flex items-center gap-4">
             {/* Hamburger for Mobile */}
             <button 
-              className="md:hidden text-text-secondary hover:text-white flex items-center justify-center p-2 -ml-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              className="md:hidden text-text-secondary hover:text-white flex items-center justify-center p-2 -ml-2 min-h-[44px] min-w-[44px] rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <i className="fa-solid fa-bars text-lg"></i>
@@ -198,7 +210,7 @@ export default function Layout() {
         {/* END: Topbar */}
 
         {/* Scrollable Area */}
-        <div className="flex-1 overflow-y-auto relative z-10 scroll-smooth custom-scrollbar">
+        <div id="main-scroller" className="flex-1 overflow-y-auto relative z-10 scroll-smooth custom-scrollbar">
           <Outlet />
         </div>
 
