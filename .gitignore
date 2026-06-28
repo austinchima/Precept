@@ -54,8 +54,6 @@ secrets.json
 appsettings.*.json
 !appsettings.json
 
-Migrations/
-
 .vscode/
 
 node_modules/

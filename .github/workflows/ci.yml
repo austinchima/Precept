@@ -39,17 +39,15 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore
-        env:
-          ConnectionStrings__PreceptDb: "Host=localhost;Port=5432;Username=${{ env.TEST_DB_USER }};Password=${{ steps.db-password.outputs.password }};Database=${{ env.TEST_DB_NAME }}"
 
       - name: Build
         run: dotnet build --configuration Release --no-restore
-        env:
-          ConnectionStrings__PreceptDb: "Host=localhost;Port=5432;Username=${{ env.TEST_DB_USER }};Password=${{ steps.db-password.outputs.password }};Database=${{ env.TEST_DB_NAME }}"
 
       - name: Test
         run: dotnet test --configuration Release --no-build --logger "trx" --results-directory "TestResults"
         env:
+          # Tell the shared test fixture to use the CI-provisioned Postgres
+          # server instead of starting a Testcontainers container.
           ConnectionStrings__PreceptDb: "Host=localhost;Port=5432;Username=${{ env.TEST_DB_USER }};Password=${{ steps.db-password.outputs.password }};Database=${{ env.TEST_DB_NAME }}"
 
       # OWASP A06: Scan for vulnerable NuGet packages

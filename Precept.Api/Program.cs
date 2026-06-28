@@ -97,7 +97,25 @@ builder.Services.Configure<JwtSettings>(
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException("JwtSettings configuration section is missing.");
 
+// Fail fast at startup if the signing key is missing or too weak, instead of
+// surfacing an obscure error on the first token-signing request. HMAC-SHA256
+// requires a key of at least 256 bits (32 bytes).
+if (string.IsNullOrWhiteSpace(jwtSettings.SecretKey))
+{
+    throw new InvalidOperationException(
+        "JwtSettings:SecretKey is not configured. Set it via the JWT_SECRET_KEY " +
+        "environment variable (or JwtSettings:SecretKey in configuration).");
+}
+
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings.SecretKey);
+
+if (secretKey.Length < 32)
+{
+    throw new InvalidOperationException(
+        $"JwtSettings:SecretKey must be at least 32 bytes (256 bits) for HMAC-SHA256, " +
+        $"but the configured value is {secretKey.Length} bytes. Provide a stronger " +
+        "JWT_SECRET_KEY (e.g. `openssl rand -hex 32`).");
+}
 
 // ─────────────────────────────────────────────────────────────
 //  4. JWT Authentication
