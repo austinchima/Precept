@@ -10,27 +10,27 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: precept_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d precept_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
-      ConnectionStrings__PreceptDb: "Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=precept_test"
+      TEST_DB_USER: postgres
+      TEST_DB_NAME: precept_test
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Generate ephemeral test database password
+        id: db-password
+        run: |
+          PASSWORD=$(openssl rand -hex 32)
+          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
+
+      - name: Start PostgreSQL service
+        uses: ikalnytskyi/action-setup-postgres@v6
+        with:
+          username: ${{ env.TEST_DB_USER }}
+          password: ${{ steps.db-password.outputs.password }}
+          database: ${{ env.TEST_DB_NAME }}
+          port: 5432
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -39,12 +39,18 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore
+        env:
+          ConnectionStrings__PreceptDb: "Host=localhost;Port=5432;Username=${{ env.TEST_DB_USER }};Password=${{ steps.db-password.outputs.password }};Database=${{ env.TEST_DB_NAME }}"
 
       - name: Build
         run: dotnet build --configuration Release --no-restore
+        env:
+          ConnectionStrings__PreceptDb: "Host=localhost;Port=5432;Username=${{ env.TEST_DB_USER }};Password=${{ steps.db-password.outputs.password }};Database=${{ env.TEST_DB_NAME }}"
 
       - name: Test
         run: dotnet test --configuration Release --no-build --logger "trx" --results-directory "TestResults"
+        env:
+          ConnectionStrings__PreceptDb: "Host=localhost;Port=5432;Username=${{ env.TEST_DB_USER }};Password=${{ steps.db-password.outputs.password }};Database=${{ env.TEST_DB_NAME }}"
 
       # OWASP A06: Scan for vulnerable NuGet packages
       - name: Scan for vulnerable NuGet packages

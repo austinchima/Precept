@@ -22,6 +22,7 @@ public class AuthController(
     ICookieOptionsFactory cookieOptionsFactory,
     PreceptDbContext dbContext,
     IOptions<JwtSettings> jwtSettings,
+    IWebHostEnvironment environment,
     ILogger<AuthController> logger) : ControllerBase
 {
     private readonly JwtSettings _jwtSettings = jwtSettings.Value;
@@ -73,7 +74,11 @@ public class AuthController(
         user.EmailConfirmed = false;
         await userManager.UpdateAsync(user);
         var emailToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
-        logger.LogWarning("[DEV ONLY] Email verification token for {Email}: {Token}", request.Email, emailToken);
+
+        if (environment.IsDevelopment())
+        {
+            logger.LogWarning("[DEV ONLY] Email verification token for {Email}: {Token}", request.Email, emailToken);
+        }
 
         logger.UserRegistered(request.Email);
 
@@ -352,8 +357,11 @@ public class AuthController(
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
 
-        // DEV ONLY: log the token so the developer can test without an email provider
-        logger.LogWarning("[DEV ONLY] Password reset token for {Email}: {Token}", request.Email, token);
+        if (environment.IsDevelopment())
+        {
+            // DEV ONLY: log the token so the developer can test without an email provider
+            logger.LogWarning("[DEV ONLY] Password reset token for {Email}: {Token}", request.Email, token);
+        }
 
         // TODO: In production, send this token via a secure email service.
         // Example: await _emailService.SendPasswordResetEmail(request.Email, token);
