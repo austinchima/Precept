@@ -2,20 +2,15 @@ services:
   db:
     image: postgres:18-alpine
     container_name: precept_db
-    # DEV NOTE: In production, use strong passwords via environment variables or secrets manager.
-    # Do NOT commit production credentials to this file.
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-precept_db}
-    # DEV ONLY: Exposing the DB port to the host is convenient for local development tools.
-    # In production, REMOVE the ports section so the database is only reachable internally.
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # Database is only reachable internally by the API. Do not expose to the host.
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-precept_db}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,7 +19,7 @@ services:
     build:
       context: ./Precept.Api
       dockerfile: Dockerfile
-      target: dev
+      target: final
     container_name: precept_api
     depends_on:
       db:
@@ -32,23 +27,23 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB:-precept_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
-      - ASPNETCORE_ENVIRONMENT=Development
-      - DOTNET_USE_POLLING_FILE_WATCHER=1
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://0.0.0.0:8080
+      - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
 
   web:
     build:
       context: ./Precept.Web
       dockerfile: Dockerfile
-      target: dev
+      target: final
     container_name: precept_web
     depends_on:
       - api
     ports:
-      - "3000:3000"
+      - "80:80"
     environment:
-      - CHOKIDAR_USEPOLLING=true
-      - VITE_USE_POLLING=true
       - API_TARGET=http://api:8080
 
 volumes:

@@ -211,12 +211,27 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 
-    // Production CORS: restrict to known origins, headers, and methods
-    // ⚠️ UPDATE: Replace with your actual production domain before deploying
+    // Production CORS: origins are read from the CORS_ORIGINS environment variable
+    // as a comma-separated list (e.g. https://app.example.com,https://www.example.com).
+    var corsOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS");
+    var allowedOrigins = string.IsNullOrWhiteSpace(corsOrigins)
+        ? Array.Empty<string>()
+        : corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     options.AddPolicy("Production", policy =>
     {
-        policy.WithOrigins("https://your-production-domain.com")
-              .WithHeaders("Content-Type", "Authorization", "X-Requested-With")
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins);
+        }
+        else
+        {
+            // No origins configured: deny cross-origin requests by default.
+            // Set CORS_ORIGINS before deploying.
+            policy.WithOrigins("https://localhost");
+        }
+
+        policy.WithHeaders("Content-Type", "Authorization", "X-Requested-With")
               .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
               .AllowCredentials();
     });
