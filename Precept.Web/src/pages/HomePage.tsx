@@ -218,7 +218,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/20 text-brand-primary text-xs font-mono shadow-[0_0_20px_rgba(20,184,166,0.15)]"
             >
               <Activity size={14} />
-              <span>JobHunt OS is Live</span>
+              <span>Job Hunt OS is Live</span>
             </motion.div>
             
             <motion.h1 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Precept.Api.Models;
 using Precept.Api.Services.Interfaces;
 
@@ -8,6 +9,7 @@ namespace Precept.Api.Controllers
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("general")]
     public class SearchController(ISearchService searchService, ICurrentUser currentUser) : ControllerBase
     {
         /// <summary>

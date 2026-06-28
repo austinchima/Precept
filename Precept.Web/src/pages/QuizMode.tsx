@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Story, ConfidenceLevel } from '../types';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
+import { AnimatedSection } from '../components/animation/AnimatedSection';
 
 const getIncrementedConfidence = (current: ConfidenceLevel): ConfidenceLevel => {
   switch (current) {
@@ -165,7 +166,7 @@ export default function QuizMode() {
           <i className="fa-solid fa-brain text-accent-teal text-sm"></i>
           <span>Quiz Mode</span>
           <span className="text-text-secondary/30">—</span>
-          <span className="text-accent-teal">{story.category}</span>
+          <span className="text-accent-teal">{story.category === 'SystemDesign' ? 'System Design' : story.category}</span>
         </div>
         <button 
           onClick={() => {
@@ -186,9 +187,9 @@ export default function QuizMode() {
         {/* Constrained Area for Focus */}
         <div className="w-full max-w-[840px] flex flex-col gap-8">
           {/* Phase 1 & 2 Composite Card */}
-          <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-6 relative overflow-hidden opacity-0 animate-fade-in-up">
+          <AnimatedSection animation="fadeUp" className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-6 relative overflow-hidden">
             {/* Subtle Top Accent */}
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-linear-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
             
             {/* Technical Snippet Display */}
             <div className="bg-dashboard-bg/70 rounded-xl p-5 border border-panel-border/40 relative group shadow-inner">
@@ -289,11 +290,11 @@ export default function QuizMode() {
                 </div>
               </>
             )}
-          </div>
+          </AnimatedSection>
 
           {/* Loop Continuation */}
           {phase === 'reveal' && (
-            <div className="flex justify-end pt-2 opacity-0 animate-fade-in-up delay-200">
+            <AnimatedSection animation="fadeUp" delay={0.2} className="flex justify-end pt-2">
               <button 
                 onClick={loadNextStory}
                 className="inline-flex items-center justify-center px-6 py-3.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
@@ -301,7 +302,7 @@ export default function QuizMode() {
                 Next Random Story
                 <i className="fa-solid fa-arrow-right text-xs"></i>
               </button>
-            </div>
+            </AnimatedSection>
           )}
         </div>
       </main>

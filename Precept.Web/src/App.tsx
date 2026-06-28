@@ -10,10 +10,10 @@ import { ToastProvider } from './components/ui/Toast';
 
 // Eagerly loaded components (critical path)
 import Layout from './components/Layout';
-import HomePage from './pages/HomePage';
+import Landing from './pages/Landing';
 
 // Lazy loaded components (code splitting)
-const Landing = lazy(() => import('./pages/Landing'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const StoryBank = lazy(() => import('./pages/StoryBank'));
 const QuizMode = lazy(() => import('./pages/QuizMode'));
@@ -60,8 +60,8 @@ export default function App() {
       <Router>
         <Suspense fallback={<RouteLoader />}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/login" element={<PageTransition><Landing /></PageTransition>} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
             
             <Route path="/" element={
               <ProtectedRoute>
@@ -90,4 +90,3 @@ export default function App() {
     </ToastProvider>
   );
 }
-

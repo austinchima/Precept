@@ -26,9 +26,65 @@ const TypewriterText = ({ text, className, delay = 0 }: { text: string, classNam
   );
 };
 
-export default function HeroShader() {
+interface HeroShaderProps {
+  badgeText?: string;
+  headline?: React.ReactNode;
+  subheadline?: string;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  onPrimaryClick?: () => void;
+  onSecondaryClick?: () => void;
+}
+
+export default function HeroShader({
+  badgeText = "Command Center Active",
+  headline = (
+    <>
+      ENGINEER YOUR <br />
+      <motion.span
+        className="block mt-2 font-light text-transparent bg-clip-text"
+        style={{
+          background: "linear-gradient(135deg, #ffffff 0%, #32b9c8 40%, #1d4ed8 70%, #ffffff 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+          backgroundSize: "200% auto",
+          filter: "url(#text-glow)",
+        }}
+        animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      >
+        CAREER
+      </motion.span>
+    </>
+  ),
+  subheadline = "A private, fullstack job-hunting command center for the modern developer. Master your stories, track your pipeline, and close skill gaps with precision.",
+  primaryLabel = "Get Started",
+  secondaryLabel = "Watch Demo",
+  onPrimaryClick,
+  onSecondaryClick,
+}: HeroShaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const handlePrimary = () => {
+    if (onPrimaryClick) {
+      onPrimaryClick();
+    } else {
+      navigate('/login');
+    }
+  };
+
+  const handleSecondary = () => {
+    if (onSecondaryClick) {
+      onSecondaryClick();
+    } else {
+      const demoElement = document.getElementById('demo');
+      if (demoElement) {
+        demoElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
 
   return (
     <section ref={containerRef} className="relative h-screen w-full bg-[#030811] overflow-hidden border-b border-brand-border/50">
@@ -62,42 +118,21 @@ export default function HeroShader() {
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <span className="material-symbols-outlined text-[14px]">terminal</span>
-          Command Center Active
+          {badgeText}
         </motion.div>
 
         <motion.h1
-          className="font-heading font-bold text-6xl md:text-8xl lg:text-9xl tracking-tighter mb-6 text-white leading-none drop-shadow-2xl"
+          className="font-bold text-6xl md:text-8xl lg:text-9xl tracking-tighter mb-6 text-white leading-none drop-shadow-2xl font-['Space_Grotesk']"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
-          ENGINEER YOUR <br/>
-          <motion.span
-            className="block mt-2 font-light text-transparent bg-clip-text"
-            style={{
-              background: "linear-gradient(135deg, #ffffff 0%, #32b9c8 40%, #1d4ed8 70%, #ffffff 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              backgroundSize: "200% auto",
-              filter: "url(#text-glow)",
-            }}
-            animate={{
-              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-            }}
-            transition={{
-              duration: 8,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-          >
-            CAREER
-          </motion.span>
+          {headline}
         </motion.h1>
 
-        <div className="min-h-24 md:min-h-20 mb-12"> {/* Fixed height wrapper to prevent layout shift during typing */}
-          <TypewriterText 
-            text="A private, fullstack job-hunting command center for the modern developer. Master your stories, track your pipeline, and close skill gaps with precision."
+        <div className="min-h-24 md:min-h-20 mb-12">
+          <TypewriterText
+            text={subheadline}
             className="text-lg md:text-xl text-white/80 font-mono leading-relaxed max-w-2xl font-light block"
             delay={1.2}
           />
@@ -109,8 +144,8 @@ export default function HeroShader() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 5.5 }}
         >
-          <motion.button 
-            onClick={() => navigate('/login')}
+          <motion.button
+            onClick={handlePrimary}
             className="px-8 py-4 bg-brand-primary text-brand-secondary rounded-md font-bold text-lg cursor-pointer flex items-center justify-center gap-2"
             initial="rest"
             animate="rest"
@@ -122,8 +157,8 @@ export default function HeroShader() {
               tap: { scale: 0.95 }
             }}
           >
-            Get Started
-            <motion.span 
+            {primaryLabel}
+            <motion.span
               className="material-symbols-outlined text-[20px] inline-block"
               variants={{
                 rest: { x: 0 },
@@ -134,19 +169,14 @@ export default function HeroShader() {
               arrow_forward
             </motion.span>
           </motion.button>
-          <motion.button 
-            onClick={() => {
-              const demoElement = document.getElementById('demo');
-              if (demoElement) {
-                demoElement.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
+          <motion.button
+            onClick={handleSecondary}
             className="px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-md font-medium text-lg flex items-center justify-center gap-2 cursor-pointer hover:bg-white/20 transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             <span className="material-symbols-outlined text-brand-primary">play_circle</span>
-            Watch Demo
+            {secondaryLabel}
           </motion.button>
         </motion.div>
       </main>

@@ -6,6 +6,7 @@ import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
+import { AnimatedSection } from '../components/animation/AnimatedSection';
 
 const PROFICIENCY_COLORS: Record<SkillProficiency, string> = {
   Beginner: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -233,7 +234,7 @@ export default function Settings() {
         <p className="text-text-secondary text-sm mt-1">Manage operator profile, capabilities, and system diagnostics.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <AnimatedSection animation="staggerFadeUp" stagger={0.12} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column (Main Content) */}
         <div className="lg:col-span-2 space-y-8">
           
@@ -379,7 +380,7 @@ export default function Settings() {
                   <span>Scanning databases...</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <AnimatedSection animation="staggerFadeUp" stagger={0.04} childSelector="> div" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {skills.map(skill => (
                     <div 
                       key={skill.id} 
@@ -421,7 +422,7 @@ export default function Settings() {
                       Inventory empty. Ingest technical skills above to compute compatibility.
                     </div>
                   )}
-                </div>
+                </AnimatedSection>
               )}
             </div>
           </section>
@@ -580,7 +581,7 @@ export default function Settings() {
             </div>
           </section>
         </div>
-      </div>
+      </AnimatedSection>
 
       <ConfirmationModal 
         isOpen={confirmConfig.isOpen}

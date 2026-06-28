@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Precept.Api.Data;
 using Precept.Api.DTOs;
@@ -15,6 +16,7 @@ namespace Precept.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableRateLimiting("general")]
 public class DashboardController(IDashboardService dashboardService, PreceptDbContext dbContext) : ControllerBase
 {
     private string GetUserId() =>

@@ -3,6 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// OWASP NOTE: Access token is stored in localStorage for development convenience.
+// localStorage is accessible to JavaScript, making it vulnerable to XSS token theft.
+// For production, migrate to http-only cookies by having the backend set the access
+// token cookie alongside the refresh token cookie. This requires:
+//   1. Backend: Add an endpoint that returns the access token in an http-only cookie
+//   2. Frontend: Remove setAccessToken/localStorage usage; the browser sends cookies automatically
+//   3. Frontend: Update apiFetch to not manually attach Authorization header; the cookie is sent by the browser
+//
+// Until then, ensure all dependencies are kept up-to-date and XSS vectors are minimized.
+
 let _accessToken: string | null = localStorage.getItem('precept_access_token');
 
 export function getAccessToken(): string | null {

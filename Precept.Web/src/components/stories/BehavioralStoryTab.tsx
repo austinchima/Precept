@@ -5,6 +5,7 @@ import { useToast } from '../ui/Toast';
 import { BehavioralStoryCard } from './BehavioralStoryCard';
 import { BehavioralStoryForm } from './BehavioralStoryForm';
 import ConfirmationModal from '../ui/ConfirmationModal';
+import { AnimatedSection } from '../animation/AnimatedSection';
 
 export const BehavioralStoryTab: React.FC = () => {
   const [stories, setStories] = useState<BehavioralStory[]>([]);
@@ -89,7 +90,7 @@ export const BehavioralStoryTab: React.FC = () => {
           <span className="font-mono text-sm">Accessing Behavioral Memory...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <AnimatedSection animation="staggerFadeUp" stagger={0.07} childSelector="> div" className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {stories.map(story => (
             <BehavioralStoryCard 
               key={story.id} 
@@ -108,7 +109,7 @@ export const BehavioralStoryTab: React.FC = () => {
               </button>
             </div>
           )}
-        </div>
+        </AnimatedSection>
       )}
 
       <ConfirmationModal 

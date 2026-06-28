@@ -94,7 +94,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               </div>
               <div>
                 <span className="font-heading font-bold text-xl tracking-tight text-brand-text leading-none block">Precept</span>
-                <span className="font-mono text-[10px] text-brand-text-muted uppercase tracking-wider block mt-1">JobHunt OS</span>
+                <span className="font-mono text-[10px] text-brand-text-muted uppercase tracking-wider block mt-1">Job Hunt OS</span>
               </div>
             </div>
 
@@ -180,7 +180,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <button type="submit" disabled={isLoading} className="animate-element animate-delay-700 w-full rounded-md bg-brand-primary py-4 font-mono font-bold text-brand-secondary hover:bg-brand-primary-container hover:-translate-y-0.5 transition-all shadow-[0_0_20px_rgba(50,185,200,0.2)] hover:shadow-[0_0_30px_rgba(50,185,200,0.4)] mt-6 cursor-pointer flex items-center justify-center gap-2">
                 {isLoading ? <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> : (
                    <>
-                      {isLogin ? "Initialize Protocol" : "Initialize Protocol"}
+                      {isLogin ? "Initialize Protocol" : "Deploy Account"}
                       <span className="material-symbols-outlined text-[18px]">{isLogin ? "login" : "rocket_launch"}</span>
                    </>
                 )}

@@ -6,6 +6,8 @@ import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import confetti from 'canvas-confetti';
 import { getCompanyIcon } from '../lib/utils';
+import { AnimatedSection } from '../components/animation/AnimatedSection';
+import { CountUp } from '../components/animation/CountUp';
 
 const COLUMNS: ApplicationStatus[] = ['Applied', 'PhoneScreen', 'Interviewing', 'Offer', 'Rejected', 'Ghosted'];
 
@@ -309,7 +311,7 @@ export default function AppTracker() {
           <h1 className="text-[28px] font-medium text-white flex items-center tracking-tight">
             Active <span className="font-bold ml-2 hover:text-accent-teal transition-colors duration-300 cursor-default">Pipelines</span>
             <span className="mx-3 text-text-secondary/30 text-3xl font-light">|</span>
-            <span className="text-text-secondary font-normal text-lg">{apps.length} tracked</span>
+            <span className="text-text-secondary font-normal text-lg"><CountUp end={apps.length} duration={1.2} /> tracked</span>
           </h1>
           <p className="text-text-secondary text-sm mt-1">Status tracking for outbound connections.</p>
         </div>
@@ -365,7 +367,7 @@ export default function AppTracker() {
                   </div>
                   
                   {/* Column Body */}
-                  <div className="flex-1 space-y-3 glass-panel rounded-xl p-3 border-dashed border-white/5! overflow-y-auto min-h-[300px] custom-scrollbar">
+                  <AnimatedSection animation="staggerFadeUp" stagger={0.05} childSelector="> div" className="flex-1 space-y-3 glass-panel rounded-xl p-3 border-dashed border-white/5! overflow-y-auto min-h-[300px] custom-scrollbar">
                     {apps.filter(a => a.status === col).map(app => (
                       <div 
                         key={app.id} 
@@ -387,14 +389,14 @@ export default function AppTracker() {
                          </div>
                       </div>
                     ))}
-                  </div>
+                  </AnimatedSection>
                 </div>
               ))}
             </div>
           ) : (
             <section className="glass-panel rounded-2xl overflow-hidden shadow-2xl">
               {/* Desktop Table */}
-              <div className="hidden md:block overflow-x-auto custom-scrollbar">
+              <AnimatedSection animation="staggerFadeUp" stagger={0.04} childSelector="tbody tr" className="hidden md:block overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
                   <tr className="border-b border-panel-border/30">
@@ -444,10 +446,10 @@ export default function AppTracker() {
                   )}
                 </tbody>
               </table>
-              </div>
+              </AnimatedSection>
 
               {/* Mobile Cards */}
-              <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-4">
+              <AnimatedSection animation="staggerFadeUp" stagger={0.05} childSelector="> div" className="md:hidden flex-1 overflow-y-auto p-4 space-y-4">
                 {apps.length === 0 && (
                   <div className="py-12 text-center text-text-secondary font-mono text-sm italic">
                     No pipelines tracked yet. Initialise outbound connections above.
@@ -474,7 +476,7 @@ export default function AppTracker() {
                     </div>
                   </div>
                 ))}
-              </div>
+              </AnimatedSection>
             </section>
           )}
         </div>

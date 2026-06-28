@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import { getSkillIcon } from '../lib/utils';
+import { AnimatedSection } from '../components/animation/AnimatedSection';
 
 interface MatchResults {
   id: string;
@@ -141,7 +142,7 @@ export default function JDMatcher() {
       </div>
 
       {/* 2-Column Bento Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 opacity-0 animate-fade-in-up delay-200">
+      <AnimatedSection animation="staggerFadeUp" stagger={0.1} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Input (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           <div className="glass-panel rounded-2xl p-6 flex flex-col gap-6 relative overflow-hidden">
@@ -343,7 +344,7 @@ export default function JDMatcher() {
             </>
           )}
         </div>
-      </div>
+      </AnimatedSection>
     </div>
   );
 }

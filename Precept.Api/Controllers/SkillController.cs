@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Precept.Api.DTOs;
 using Precept.Api.Services.Interfaces;
 
@@ -13,6 +14,7 @@ namespace Precept.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableRateLimiting("general")]
 public class SkillController(ISkillService skillService) : ControllerBase
 {
     private string GetUserId() =>

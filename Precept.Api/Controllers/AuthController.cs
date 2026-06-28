@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Precept.Api.Data;
@@ -31,8 +32,10 @@ public class AuthController(
 
     /// <summary>
     /// Creates a new user account and returns tokens.
+    /// In production, consider requiring email verification before returning tokens.
     /// </summary>
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         if (!ModelState.IsValid)
@@ -48,7 +51,7 @@ public class AuthController(
 
         var user = new ApplicationUser
         {
-            UserName = request.Email,           // This ensures that multiples users with the same name can use their name without a hassle
+            UserName = request.Email,
             Email = request.Email,
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
@@ -66,6 +69,12 @@ public class AuthController(
             return BadRequest(ModelState);
         }
 
+        // Generate email confirmation token (dev: logged below; prod: sent via email)
+        user.EmailConfirmed = false;
+        await userManager.UpdateAsync(user);
+        var emailToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        logger.LogWarning("[DEV ONLY] Email verification token for {Email}: {Token}", request.Email, emailToken);
+
         logger.UserRegistered(request.Email);
 
         // Generate tokens for the newly registered user
@@ -81,6 +90,7 @@ public class AuthController(
     /// Authenticates a user and returns an access token + refresh cookie.
     /// </summary>
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (!ModelState.IsValid)
@@ -116,6 +126,7 @@ public class AuthController(
     /// </summary>
     [Authorize]
     [HttpGet("me")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> GetCurrentUser()
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -147,6 +158,7 @@ public class AuthController(
     /// Reads the refresh token from the HTTP-only cookie.
     /// </summary>
     [HttpPost("refresh")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Refresh()
     {
         // 1. Read refresh token from cookie
@@ -288,6 +300,7 @@ public class AuthController(
     /// </summary>
     [Authorize]
     [HttpPost("revoke")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Revoke()
     {
         var rawToken = Request.Cookies["refreshToken"];
@@ -312,6 +325,96 @@ public class AuthController(
 
         ClearRefreshCookie();
         return Ok(new { message = "Token revoked successfully." });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /api/auth/forgot-password
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Initiates a password reset for the given email address.
+    /// In development, the reset token is logged to the console.
+    /// In production, configure an email service (e.g. SendGrid) to send the token.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            // Generic response to prevent user enumeration
+            return Ok(new { message = "If an account exists, a password reset email has been sent." });
+        }
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+
+        // DEV ONLY: log the token so the developer can test without an email provider
+        logger.LogWarning("[DEV ONLY] Password reset token for {Email}: {Token}", request.Email, token);
+
+        // TODO: In production, send this token via a secure email service.
+        // Example: await _emailService.SendPasswordResetEmail(request.Email, token);
+
+        return Ok(new { message = "If an account exists, a password reset email has been sent." });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /api/auth/reset-password
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Resets the password using a token from the forgot-password flow.
+    /// </summary>
+    [HttpPost("reset-password")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return BadRequest(new { message = "Invalid request." });
+
+        var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { message = "Invalid or expired token." });
+        }
+
+        // Revoke all refresh tokens for this user as a security measure
+        await RevokeAllUserTokens(user.Id);
+
+        return Ok(new { message = "Password reset successfully. Please sign in again." });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /api/auth/verify-email
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Confirms the email address using a token.
+    /// In development, the token is logged during registration.
+    /// </summary>
+    [HttpPost("verify-email")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return BadRequest(new { message = "Invalid request." });
+
+        var result = await userManager.ConfirmEmailAsync(user, request.Token);
+        if (!result.Succeeded)
+            return BadRequest(new { message = "Invalid or expired token." });
+
+        return Ok(new { message = "Email verified successfully." });
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -390,6 +493,7 @@ public class AuthController(
 
     [HttpPut("profile")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
     {
         if (!ModelState.IsValid)

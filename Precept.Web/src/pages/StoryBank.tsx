@@ -4,9 +4,11 @@ import { api } from '../api';
 import { BehavioralStoryTab } from '../components/stories/BehavioralStoryTab';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
+import { AnimatedSection } from '../components/animation/AnimatedSection';
 
 const CATEGORIES: ('All' | StoryCategory)[] = ['All', 'Auth', 'Database', 'Ai', 'ML', 'DevOps', 'Frontend', 'Backend', 'SystemDesign', 'Security', 'Testing', 'Cloud', 'Architecture'];
 const CONFIDENCE_LEVELS: ConfidenceLevel[] = ['Panic', 'Shaky', 'Okay', 'Solid', 'CanTeach'];
+const formatWord = (str: string) => str === 'CanTeach' ? 'Can Teach' : str === 'SystemDesign' ? 'System Design' : str;
 
 const CONFIDENCE_VALUES: Record<ConfidenceLevel, number> = {
   Panic: 1,
@@ -191,7 +193,7 @@ export default function StoryBank() {
                   onChange={(e) => setFilter(e.target.value as any)}
                   className="appearance-none bg-transparent text-text-secondary border border-panel-border/50 rounded-xl pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal cursor-pointer hover:border-white/20 transition-all"
                 >
-                  {CATEGORIES.map(c => <option key={c} value={c} className="bg-slate-900 text-white">{c}</option>)}
+                  {CATEGORIES.map(c => <option key={c} value={c} className="bg-slate-900 text-white">{formatWord(c)}</option>)}
                 </select>
                 <i className="fa-solid fa-filter absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none"></i>
               </div>
@@ -208,16 +210,16 @@ export default function StoryBank() {
           <span className="font-mono text-sm">Accessing Memory Enclaves...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 opacity-0 animate-fade-in-up delay-200">
+        <AnimatedSection animation="staggerFadeUp" stagger={0.06} childSelector="> div" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {stories.map(story => (
             <div key={story.id} className="glass-panel rounded-2xl flex flex-col group hover:border-white/15 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
               <div className="p-5 flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-start justify-between mb-3">
                     <span className={`px-2.5 py-0.5 rounded-full border text-xs font-mono font-medium ${CATEGORY_COLORS[story.category] || 'bg-white/5 text-text-secondary'}`}>
-                      {story.category}
+                      {formatWord(story.category)}
                     </span>
-                    <div className="flex gap-0.5" title={`Confidence: ${story.confidenceLevel}`}>
+                    <div className="flex gap-0.5" title={`Confidence: ${formatWord(story.confidenceLevel)}`}>
                       {[1, 2, 3, 4, 5].map(star => (
                         <i 
                           key={star} 
@@ -272,7 +274,7 @@ export default function StoryBank() {
               </button>
             </div>
           )}
-        </div>
+        </AnimatedSection>
       )}
 
         {/* Add/Edit Modal */}
@@ -319,7 +321,7 @@ export default function StoryBank() {
                       onChange={(e) => setCategory(e.target.value as StoryCategory)}
                       className="input-base w-full text-sm"
                     >
-                      {CATEGORIES.slice(1).map(c => <option key={c} value={c} className="bg-slate-900 text-white">{c}</option>)}
+                      {CATEGORIES.slice(1).map(c => <option key={c} value={c} className="bg-slate-900 text-white">{formatWord(c)}</option>)}
                     </select>
                   </div>
                   
@@ -350,7 +352,7 @@ export default function StoryBank() {
                           onChange={() => setConfidenceLevel(level)}
                           className="accent-accent-teal"
                         />
-                        {level}
+                        {formatWord(level)}
                       </label>
                     ))}
                   </div>
