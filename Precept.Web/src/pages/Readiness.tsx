@@ -91,7 +91,7 @@ export default function Readiness() {
       const key = s.category?.trim();
       if (!key) continue; // uncategorised skills can't sit on an axis
       const arr = map.get(key) ?? [];
-      arr.push(PROFICIENCY_PCT[s.proficiencyLevel] ?? 50);
+      arr.push(PROFICIENCY_PCT[s.proficiencyLevel]);
       map.set(key, arr);
     }
     return [...map.entries()]
@@ -153,7 +153,7 @@ export default function Readiness() {
 
         return { role, jdCount: group.length, matchScore, missing, emphasized };
       })
-      .sort((a, b) => (a.matchScore ?? 999) - (b.matchScore ?? 999)); // weakest match first
+      .sort((a, b) => (a.matchScore ?? Number.POSITIVE_INFINITY) - (b.matchScore ?? Number.POSITIVE_INFINITY)); // weakest match first; unknown last
   }, [jds, skills]);
 
   // Aggregated gaps across all saved JDs (Phase 1 gap list).
