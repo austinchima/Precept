@@ -149,6 +149,18 @@ export default function Dashboard() {
     }
   };
 
+  // Map each real ConfidenceLevel (Panic..CanTeach) to a color, worst → best.
+  const getConfidenceColor = (level: string): string => {
+    switch (level.toLowerCase()) {
+      case 'panic': return '#f43f5e';     // rose
+      case 'shaky': return '#fb923c';     // orange
+      case 'okay': return '#f59e0b';      // amber
+      case 'solid': return '#2dd4bf';     // teal
+      case 'canteach': return '#10b981';  // emerald
+      default: return '#8b5cf6';          // purple fallback
+    }
+  };
+
   const getCompanyLogo = (name: string) => {
     const { icon, color, isText, initials } = getCompanyIcon(name);
     
@@ -179,7 +191,7 @@ export default function Dashboard() {
     const catSkills = skills.filter(s => s.category?.toLowerCase() === cat.toLowerCase());
     const avgProf = catSkills.length > 0
       ? catSkills.reduce((acc, s) => acc + getProficiencyPercentage(s.proficiencyLevel), 0) / catSkills.length
-      : 40; // Default fallback to populate visual grid
+      : 0; // No skills in this category — render at center, don't fake a value
     
     // Compute SVG point (center is 100,100, max radius is 80)
     const angle = (idx * 2 * Math.PI) / 6 - Math.PI / 2;
@@ -670,8 +682,11 @@ export default function Dashboard() {
           <div className="bg-black/20 rounded-xl p-5 border border-white/5 flex flex-col justify-between">
             <div>
               <h3 className="text-sm font-medium text-text-secondary mb-1">Story Readiness</h3>
-              <div className="text-xs text-text-secondary mb-4">
+              <div className="text-xs text-text-secondary mb-1">
                 <span className="text-white font-medium"><CountUp end={stats?.storyStats.totalReviewed || 0} duration={1.2} /></span> reviewed out of <CountUp end={stats?.storyStats.totalStories || 0} duration={1.2} />
+              </div>
+              <div className="text-xs text-text-secondary mb-4">
+                <span className="text-accent-teal font-medium"><CountUp end={stats?.storyStats.needsReview || 0} duration={1.2} /></span> due for review
               </div>
             </div>
 
@@ -684,7 +699,7 @@ export default function Dashboard() {
                     <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
                     <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]}>
                       {Object.entries(stats.storyStats.confidenceBreakdown).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry[0].toLowerCase() === 'high' ? '#2dd4bf' : entry[0].toLowerCase() === 'medium' ? '#f59e0b' : '#f43f5e'} />
+                        <Cell key={`cell-${index}`} fill={getConfidenceColor(entry[0])} />
                       ))}
                     </Bar>
                   </BarChart>

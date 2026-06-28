@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-06-28
+
+_R1 release candidate — dashboard accuracy fixes._
+
+### Fixed
+- **Skills Matrix radar**: empty skill categories no longer render at a fabricated 40% placeholder; they now collapse to 0 so the radar reflects actual coverage (`Dashboard.tsx`).
+- **Story confidence chart**: bars are now colored by the real confidence levels (Panic → CanTeach, worst → best) instead of dead `high`/`medium` branches that left every bar the same rose color.
+
+### Added
+- **Story Readiness "due for review" count**: the dashboard now surfaces the existing server-side `needsReview` metric as "_N_ due for review", reinforcing the review-health view.
+
 ## [0.1.3] - 2026-06-28
 
 _R1 release candidate. Green CI and production-secret hardening on top of the 0.1.2 OWASP audit._
