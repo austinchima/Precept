@@ -56,6 +56,10 @@ appsettings.*.json
 
 .vscode/
 
+# Emergent / AI Studio platform artifacts
+.emergent/
+.gitconfig
+
 node_modules/
 
 dist/

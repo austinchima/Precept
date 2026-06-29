@@ -10,6 +10,16 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
+      // Force a single React instance. Without this, when several React-consuming
+      // libraries are present, Vite can pre-bundle react and react-dom into
+      // separate optimize chunks, producing two React copies in dev — which
+      // surfaces as "Invalid hook call / Cannot read properties of null
+      // (reading 'useState'/'useRef')" and a blank page.
+      dedupe: ['react', 'react-dom'],
+    },
+    optimizeDeps: {
+      // Pre-bundle the React entrypoints together so they share one instance.
+      include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
     },
     build: {
       rollupOptions: {
@@ -38,22 +48,15 @@ export default defineConfig(() => {
       }
     },
     server: {
-      host: '0.0.0.0', // Important for Docker
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {
-        usePolling: process.env.VITE_USE_POLLING === 'true',
-      },
-      allowedHosts: ['upgrade-finder-weekend-media.trycloudflare.com'],
+      port: 3000,
+      host: '0.0.0.0', // bind all interfaces (Docker-friendly)
       proxy: {
         '/api': {
           target: process.env.API_TARGET || 'http://localhost:5177',
           changeOrigin: true,
           secure: false,
-        }
-      }
+        },
+      },
     },
   };
 });

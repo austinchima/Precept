@@ -1,20 +1,32 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Precept — Web
 
-# Run and deploy your AI Studio app
+The React frontend for Precept, the career command center for software engineers.
 
-This contains everything you need to run your app locally.
+## Stack
 
-View your app in AI Studio: https://ai.studio/apps/b306a752-aafe-4e0a-8227-c3db20f9f14d
+- React 19 + TypeScript
+- Vite 6
+- Tailwind CSS v4
+- React Router 7
 
-## Run Locally
+## Run locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js 20+
 
+```bash
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+The dev server runs on [http://localhost:3000](http://localhost:3000) and proxies `/api`
+to the backend (`API_TARGET`, default `http://localhost:5177`). Start the API
+(`Precept.Api`) alongside it.
+
+## Scripts
+
+| Script          | Description                          |
+| --------------- | ------------------------------------ |
+| `npm run dev`   | Start the Vite dev server (port 3000) |
+| `npm run build` | Production build to `dist/`          |
+| `npm run preview` | Preview the production build       |
+| `npm run lint`  | Type-check with `tsc --noEmit`       |
