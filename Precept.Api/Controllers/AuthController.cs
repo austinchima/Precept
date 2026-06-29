@@ -533,6 +533,45 @@ public class AuthController(
         });
     }
 
+    // ─────────────────────────────────────────────────────────────
+    //  DELETE /api/auth/account
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Permanently deletes the authenticated user's account and ALL of their data.
+    /// Deleting the AspNetUsers row triggers ON DELETE CASCADE on every owned table
+    /// (stories, applications + events, job descriptions, skills, behavioral stories,
+    /// testimonials, refresh tokens, and the Identity claim/login/role/token tables),
+    /// so nothing is left behind in PostgreSQL. This is irreversible.
+    /// </summary>
+    [Authorize]
+    [HttpDelete("account")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> DeleteAccount()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await userManager.FindByIdAsync(userId);
+        if (user == null)
+            return NotFound();
+
+        // Single DELETE FROM "AspNetUsers" — the database cascades to all dependent rows.
+        var result = await userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+        {
+            logger.AccountDeletionFailed(userId);
+            return BadRequest(result.Errors);
+        }
+
+        // Refresh-token rows are gone via cascade; clear the client cookie too.
+        ClearRefreshCookie();
+        logger.AccountDeleted(userId);
+
+        return Ok(new { message = "Account and all associated data have been permanently deleted." });
+    }
+
     /// <summary>
     /// [Fail-Safe Identity-Wide Cascade Revocation]: Invalidates all active sessions for a user identity.
     /// Design Scope Note: While our replay detection mechanism is strictly "Lineage-Aware" (using ReplacedByToken
@@ -573,4 +612,10 @@ public static partial class AuthControllerLoggerExtensions
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Refresh token revoked for user {UserId}")]
     public static partial void TokenRevoked(this ILogger logger, string? userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Account permanently deleted for user {UserId}")]
+    public static partial void AccountDeleted(this ILogger logger, string? userId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Account deletion failed for user {UserId}")]
+    public static partial void AccountDeletionFailed(this ILogger logger, string? userId);
 }

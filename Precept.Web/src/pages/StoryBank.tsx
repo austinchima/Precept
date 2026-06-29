@@ -5,7 +5,7 @@ import { BehavioralStoryTab } from '../components/stories/BehavioralStoryTab';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
-import { Plus, X, Code2, Star as StarIcon, Loader2, FilterIcon, Trash2, Pencil } from 'lucide-react';
+import { Plus, X, Code2, Star as StarIcon, Loader2, FilterIcon, Trash2, Pencil, Terminal } from 'lucide-react';
 
 const C = {
   bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
@@ -176,7 +176,36 @@ export default function StoryBank() {
         </div>
       </div>
 
-      {activeTab === 'technical' ? (
+      <div
+        className="rounded-2xl overflow-hidden flex flex-col opacity-0 animate-fade-in-up delay-200"
+        style={{
+          background: `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
+          border: `1px solid ${C.hair2}`,
+          boxShadow: `0 40px 100px -30px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.06)`,
+          backdropFilter: "blur(20px)",
+        }}
+      >
+        {/* Window Chrome Header */}
+        <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.hair}`, background: C.bg1 }}>
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
+          </div>
+          <div
+            className="hidden sm:flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[11px]"
+            style={{ background: C.bg2, color: C.inkDim, border: `1px solid ${C.hair}` }}
+          >
+            <Terminal size={12} style={{ color: C.teal }} /> precept · ~/career/story-bank
+          </div>
+          <div className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: C.inkDim }}>
+            <span className="inline-block h-1.5 w-1.5 rounded-full animate-ping" style={{ background: C.emerald }} />
+            <span style={{ color: C.emerald }}>{stories.length} stories banked</span>
+          </div>
+        </div>
+
+        <div className="p-4 md:p-6 space-y-6" style={{ background: C.bg1 }}>
+          {activeTab === 'technical' ? (
         <>
           <div className="flex flex-wrap justify-between items-center gap-3 opacity-0 animate-fade-in-up delay-100">
             <div className="relative">
@@ -370,6 +399,8 @@ export default function StoryBank() {
           <BehavioralStoryTab />
         </div>
       )}
+        </div>
+      </div>
 
       <ConfirmationModal
         isOpen={!!storyToDelete}

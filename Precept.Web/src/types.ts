@@ -79,6 +79,7 @@ export interface UserContextType {
   register: (firstName: string, lastName: string, email: string, passcode: string) => Promise<void>;
   updateProfile: (firstName: string, lastName: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 export type SkillProficiency = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';

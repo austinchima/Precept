@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, Cell } from 'recharts';
 import { api } from '../api';
-import { Application, Story, Skill, BehavioralStory } from '../types';
+import { Application, Story, Skill, BehavioralStory, ConfidenceLevel } from '../types';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../components/ui/Toast';
 import { getSkillIcon, getCompanyIcon } from '../lib/utils';
 import { CountUp } from '../components/animation/CountUp';
-import { AnimatedSection } from '../components/animation/AnimatedSection';
 import SkillRadar from '../components/SkillRadar';
 import { computeSkillAxes, READINESS_TARGET } from '../lib/skills';
-import { ArrowRight, ArrowUpRight, Plus, Hash } from 'lucide-react';
+import { 
+  Layers, 
+  FileCode2, 
+  RefreshCw, 
+  GitBranch, 
+  Activity, 
+  Terminal, 
+  Hash, 
+  ArrowUpRight, 
+  Plus, 
+  Sparkles,
+  ArrowRight,
+  Zap,
+  Check,
+  ChevronDown
+} from 'lucide-react';
 
-/* ─────── DESIGN TOKENS (Landing.tsx) ─────── */
+/* ─────── DESIGN TOKENS (Matching Landing.tsx) ─────── */
 const C = {
   bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
   ink: '#E6EBF2', inkDim: '#9CA8B8', inkMute: '#5A6678',
@@ -20,22 +34,13 @@ const C = {
   violet: '#8b5cf6', rose: '#f43f5e', amber: '#f59e0b', sky: '#38bdf8', emerald: '#10b981',
 } as const;
 
-const cardStyle = (): React.CSSProperties => ({
-  background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
-  border: `1px solid ${C.hair}`,
-  borderRadius: 18,
-  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
-});
-
-const Eyebrow = ({ children, color = C.teal }: { children: React.ReactNode; color?: string }) => (
-  <span
-    className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]"
-    style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}
-  >
-    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-    {children}
-  </span>
-);
+const ConfidenceRungs: { key: ConfidenceLevel; label: string; color: string; pct: number }[] = [
+  { key: 'Panic',    label: 'Panic',    color: C.rose,    pct: 18 },
+  { key: 'Shaky',    label: 'Shaky',    color: C.amber,   pct: 36 },
+  { key: 'Okay',     label: 'Okay',     color: C.sky,     pct: 56 },
+  { key: 'Solid',    label: 'Solid',    color: C.teal,    pct: 80 },
+  { key: 'CanTeach', label: 'Can Teach',color: C.emerald, pct: 100 },
+];
 
 interface DashboardStats {
   storyStats: {
@@ -62,6 +67,7 @@ interface DashboardStats {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -70,9 +76,10 @@ export default function Dashboard() {
   const [behavioralStories, setBehavioralStories] = useState<BehavioralStory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [activeAppTab, setActiveAppTab] = useState<'Total' | 'Active' | 'Interviews' | 'Offers'>('Total');
-  const [activeStoryTag, setActiveStoryTag] = useState<string | null>(null);
-  const [activeStarTab, setActiveStarTab] = useState<'situation' | 'task' | 'action' | 'result'>('situation');
+  // Spotlight controls
+  const [spotlightType, setSpotlightType] = useState<'technical' | 'behavioral'>('technical');
+  const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
+  const [selectedBehavioralIndex, setSelectedBehavioralIndex] = useState(0);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -99,549 +106,439 @@ export default function Dashboard() {
   }, []);
 
   const activeApps = applications.filter((a) => ['Applied', 'PhoneScreen', 'Interviewing'].includes(a.status));
-  const interviewApps = applications.filter((a) => ['PhoneScreen', 'Interviewing'].includes(a.status));
-  const offerApps = applications.filter((a) => a.status === 'Offer');
-
-  const getFilteredApps = () => {
-    switch (activeAppTab) {
-      case 'Active': return activeApps;
-      case 'Interviews': return interviewApps;
-      case 'Offers': return offerApps;
-      default: return applications;
-    }
-  };
-
-  const recentApps = getFilteredApps()
+  const recentApps = [...applications]
     .sort((a, b) => new Date(b.dateApplied || b.followUpDate).getTime() - new Date(a.dateApplied || a.followUpDate).getTime())
-    .slice(0, 3);
-
-  const storyTags: string[] = Array.from(
-    new Set<string>(
-      behavioralStories.flatMap((s) =>
-        s.tags ? s.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
-      ),
-    ),
-  ).slice(0, 4);
-
-  const filteredBehavioralStories = activeStoryTag
-    ? behavioralStories.filter((s) => s.tags?.toLowerCase().includes(activeStoryTag.toLowerCase()))
-    : behavioralStories;
-
-  const recentBehavioralStories = filteredBehavioralStories.slice(0, 3);
-
-  const topSkills = [...skills]
-    .sort((a, b) => {
-      const pA = a.proficiencyLevel === 'Expert' ? 4 : a.proficiencyLevel === 'Advanced' ? 3 : a.proficiencyLevel === 'Intermediate' ? 2 : 1;
-      const pB = b.proficiencyLevel === 'Expert' ? 4 : b.proficiencyLevel === 'Advanced' ? 3 : b.proficiencyLevel === 'Intermediate' ? 2 : 1;
-      return pB - pA;
-    })
     .slice(0, 6);
 
-  const statusPill = (status: string): React.CSSProperties => {
+  const skillAxes = computeSkillAxes(skills);
+
+  const statusPill = (status: string): { bg: string; color: string; border: string } => {
     let color: string = C.teal;
     if (status === 'Applied') color = C.teal;
     else if (status === 'PhoneScreen' || status === 'Interviewing' || status === 'Tech Interview') color = C.sky;
     else if (status === 'Offer') color = C.emerald;
     else if (status === 'Rejected') color = C.rose;
     else color = C.inkDim;
-    return { background: `${color}1c`, color, border: `1px solid ${color}44` };
-  };
-
-  const getProficiencyPercentage = (level: string) => {
-    switch (level) {
-      case 'Expert': return 95;
-      case 'Advanced': return 80;
-      case 'Intermediate': return 60;
-      case 'Beginner': return 30;
-      default: return 50;
-    }
-  };
-
-  const getConfidenceColor = (level: string): string => {
-    switch (level.toLowerCase()) {
-      case 'panic': return C.rose;
-      case 'shaky': return '#fb923c';
-      case 'okay': return C.amber;
-      case 'solid': return C.teal;
-      case 'canteach': return C.emerald;
-      default: return C.violet;
-    }
+    return { bg: `${color}1c`, color, border: `1px solid ${color}44` };
   };
 
   const getCompanyLogo = (name: string) => {
     const { icon, color, isText, initials } = getCompanyIcon(name);
     if (isText) {
       return (
-        <div className="h-8 w-8 rounded-lg grid place-items-center shrink-0 font-display font-bold text-[12px]" style={{ background: color, color: '#fff' }}>
+        <div className="h-7 w-7 rounded-md grid place-items-center shrink-0 font-display font-bold text-[11px]" style={{ background: color, color: '#fff' }}>
           {initials}
         </div>
       );
     }
     return (
-      <div className="h-8 w-8 rounded-lg grid place-items-center shrink-0" style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}>
-        <i className={`${icon} text-base`} />
+      <div className="h-7 w-7 rounded-md grid place-items-center shrink-0" style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}>
+        <i className={`${icon} text-sm`} />
       </div>
     );
   };
 
-  const skillAxes = computeSkillAxes(skills);
+  // Interactive handlers
+  const handleUpdateConfidence = async (newRung: ConfidenceLevel) => {
+    if (spotlightType === 'behavioral') return;
+    const currentStory = stories[selectedStoryIndex % stories.length];
+    if (!currentStory) return;
+
+    try {
+      const updated = await api.put<Story>(`/api/story/${currentStory.id}`, { ...currentStory, confidenceLevel: newRung });
+      setStories((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      toast.success(`Updated confidence to ${newRung}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update story confidence.');
+    }
+  };
+
+  const handleUpdateAppStatus = async (appId: string, newStatus: any) => {
+    try {
+      await api.patch(`/api/application/${appId}/status`, { status: newStatus });
+      setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, status: newStatus } : a)));
+      toast.success(`Moved application to ${newStatus}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update status.');
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-3 font-mono text-sm" style={{ color: C.inkDim }}>
-        <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: `${C.teal}1c`, borderTopColor: C.teal }} />
-        <span>Booting command center…</span>
+        <div className="w-10 h-10 rounded-full border-2 animate-spin" style={{ borderColor: `${C.teal}22`, borderTopColor: C.teal }} />
+        <span>Initializing Precept Command Center…</span>
       </div>
     );
   }
 
-  const appCount = activeAppTab === 'Total' ? applications.length :
-    activeAppTab === 'Active' ? activeApps.length :
-    activeAppTab === 'Interviews' ? (stats?.applicationStats.interviewingCount || 0) :
-    (stats?.applicationStats.offersCount || 0);
+  // Active spotlight item
+  const activeTechStory = stories.length > 0 ? stories[selectedStoryIndex % stories.length] : null;
+  const activeSTARStory = behavioralStories.length > 0 ? behavioralStories[selectedBehavioralIndex % behavioralStories.length] : null;
+
+  const currentConfidence = activeTechStory ? activeTechStory.confidenceLevel : 'Okay';
+  const currentRungIndex = Math.max(0, ConfidenceRungs.findIndex(r => r.key.toLowerCase() === currentConfidence.toLowerCase()));
+
+  // Stories due for review
+  const dueForReview = stories.filter(s => s.confidenceLevel === 'Panic' || s.confidenceLevel === 'Shaky');
 
   return (
     <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1400px] mx-auto space-y-6" data-testid="dashboard-page" style={{ color: C.ink }}>
-
-      {/* HERO WELCOME */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 opacity-0 animate-fade-in-up delay-200">
+      
+      {/* HEADER COCKPIT BAR */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 opacity-0 animate-fade-in-up">
         <div>
-          <Eyebrow color={C.teal}>Command center</Eyebrow>
-          <h1 className="mt-4 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(28px,4vw,40px)' }}>
+          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]" style={{ background: `${C.teal}14`, border: `1px solid ${C.teal}33`, color: C.teal }}>
+            <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: C.teal, boxShadow: `0 0 8px ${C.teal}` }} />
+            Career OS Cockpit
+          </div>
+          <h1 className="mt-3 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(26px,3.5vw,36px)' }}>
             Welcome back,{' '}
             <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>
               {user?.firstName || 'developer'}.
             </span>
           </h1>
-          <p className="mt-2 font-body text-[14.5px]" style={{ color: C.inkDim }}>
-            Your pipeline, stories and skills — in one cockpit.
+          <p className="mt-1 font-body text-[14px]" style={{ color: C.inkDim }}>
+            All systems nominal. Track your pipeline, drill stories, and defend your readiness.
           </p>
         </div>
-        <button
-          onClick={() => navigate('/applications')}
-          data-testid="dash-applied-btn"
-          className="group inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] transition-all cursor-pointer"
-          style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}, 0 18px 60px -20px rgba(45,212,191,0.45)` }}
-        >
-          New application <ArrowUpRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-        </button>
-      </div>
 
-      {/* ACTIVE APPS + STATS */}
-      <section className="overflow-hidden opacity-0 animate-fade-in-up delay-300" style={cardStyle()}>
-        <div className="p-5 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4" style={{ borderBottom: `1px solid ${C.hair}` }}>
-          <div>
-            <div className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>
-              Active applications · {activeAppTab.toLowerCase()}
-            </div>
-            <div className="mt-1 font-display text-[34px] font-bold leading-none" style={{ color: C.ink }}>
-              <CountUp end={appCount} duration={1.2} />
-            </div>
-          </div>
-
-          <nav className="flex flex-wrap gap-2">
-            {(['Total', 'Active', 'Interviews', 'Offers'] as const).map((t) => {
-              const isActive = activeAppTab === t;
-              const colorMap: Record<typeof t, string> = { Total: C.teal as string, Active: C.sky as string, Interviews: C.amber as string, Offers: C.emerald as string };
-              const color = colorMap[t];
-              return (
-                <button
-                  key={t}
-                  onClick={() => setActiveAppTab(t)}
-                  data-testid={`apps-tab-${t.toLowerCase()}`}
-                  className="px-3.5 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-[0.16em] transition-all cursor-pointer"
-                  style={{
-                    background: isActive ? `${color}1c` : 'transparent',
-                    color: isActive ? color : C.inkDim,
-                    border: `1px solid ${isActive ? `${color}55` : C.hair}`,
-                    boxShadow: isActive ? `0 0 14px -2px ${color}66` : 'none',
-                  }}
-                >
-                  {t}
-                </button>
-              );
-            })}
-          </nav>
-
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => navigate('/story-bank', { state: { openNewForm: true } })}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors cursor-pointer hover:border-white/30"
+            style={{ background: C.bg2, border: `1px solid ${C.hair2}`, color: C.ink }}
+          >
+            <Plus size={13} style={{ color: C.violet }} /> Bank Story
+          </button>
           <button
             onClick={() => navigate('/applications', { state: { openNewForm: true } })}
-            data-testid="dash-new-app-btn"
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
-            style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair2}`, color: C.ink }}
+            data-testid="dash-applied-btn"
+            className="group inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] transition-all cursor-pointer"
+            style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}, 0 12px 40px -15px rgba(45,212,191,0.4)` }}
           >
-            <Plus size={13} /> New
+            New Application <ArrowUpRight size={13} className="transition-transform group-hover:translate-x-0.5" />
           </button>
-        </div>
-
-        {/* Desktop table */}
-        <AnimatedSection animation="staggerFadeUp" stagger={0.05} childSelector="tbody tr" className="hidden md:block overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[640px]">
-            <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: `1px solid ${C.hair}` }}>
-                <th className="px-6 py-3.5 font-mono text-[10.5px] uppercase tracking-[0.16em]" style={{ color: C.inkMute }}>Company</th>
-                <th className="px-6 py-3.5 font-mono text-[10.5px] uppercase tracking-[0.16em]" style={{ color: C.inkMute }}>Role</th>
-                <th className="px-6 py-3.5 font-mono text-[10.5px] uppercase tracking-[0.16em]" style={{ color: C.inkMute }}>Status</th>
-                <th className="px-6 py-3.5 font-mono text-[10.5px] uppercase tracking-[0.16em]" style={{ color: C.inkMute }}>Applied</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {recentApps.length === 0 && (
-                <tr><td colSpan={5} className="py-14 text-center font-mono text-sm" style={{ color: C.inkMute }}>No active records yet. Add one above.</td></tr>
-              )}
-              {recentApps.map((app) => (
-                <tr
-                  key={app.id}
-                  onClick={() => navigate('/applications')}
-                  className="transition-colors cursor-pointer group"
-                  style={{ borderBottom: `1px solid ${C.hair}` }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      {getCompanyLogo(app.companyName)}
-                      <span className="font-body font-semibold transition-colors" style={{ color: C.ink }}>{app.companyName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-body text-[13.5px]" style={{ color: C.inkDim }}>{app.roleTitle}</td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-mono uppercase tracking-widest" style={statusPill(app.status)}>
-                      {app.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-[11.5px]" style={{ color: C.inkDim }}>
-                    {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <ArrowRight size={14} style={{ color: C.inkMute }} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </AnimatedSection>
-
-        {/* Mobile list */}
-        <div className="md:hidden p-4 space-y-3">
-          {recentApps.length === 0 && (
-            <div className="py-8 text-center font-mono text-sm" style={{ color: C.inkMute }}>No active records yet.</div>
-          )}
-          {recentApps.map((app) => (
-            <div key={app.id} onClick={() => navigate('/applications')} className="p-4 cursor-pointer transition-colors" style={{ ...cardStyle(), borderRadius: 14 }}>
-              <div className="flex justify-between items-start gap-2">
-                <div className="flex items-center gap-3 min-w-0">
-                  {getCompanyLogo(app.companyName)}
-                  <div className="min-w-0">
-                    <div className="font-body font-semibold truncate" style={{ color: C.ink }}>{app.companyName}</div>
-                    <div className="font-mono text-[11px] truncate" style={{ color: C.inkMute }}>{app.roleTitle}</div>
-                  </div>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={statusPill(app.status)}>{app.status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Quick stats footer */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-5" style={{ borderTop: `1px solid ${C.hair}`, background: 'rgba(255,255,255,0.015)' }}>
-          {[
-            { l: 'Total', n: applications.length, c: C.teal },
-            { l: 'Active', n: activeApps.length, c: C.sky },
-            { l: 'Interviews', n: stats?.applicationStats.interviewingCount || 0, c: C.amber },
-            { l: 'Offers', n: stats?.applicationStats.offersCount || 0, c: C.emerald },
-          ].map((s) => (
-            <div key={s.l} className="rounded-xl p-3" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
-              <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: C.inkMute }}>{s.l}</div>
-              <div className="font-display text-[24px] font-bold leading-none mt-1.5" style={{ color: s.c }}>
-                <CountUp end={s.n} duration={1.2} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* LOWER GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* STAR Story Bank */}
-        <section className="lg:col-span-2 p-6 flex flex-col h-[620px] opacity-0 animate-fade-in-up delay-400" style={cardStyle()}>
-          <div className="flex justify-between items-start gap-3 mb-5">
-            <div>
-              <Eyebrow color={C.violet}>Story bank · STAR</Eyebrow>
-              <div className="mt-3 font-display text-[28px] font-bold leading-none" style={{ color: C.ink }}>
-                <CountUp end={behavioralStories.length} duration={1.2} /> <span className="text-[16px] font-normal" style={{ color: C.inkDim }}>narratives</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => navigate('/story-bank')}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
-                style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair2}`, color: C.ink }}
-              >
-                Browse <ArrowUpRight size={12} />
-              </button>
-              <button
-                onClick={() => navigate('/story-bank', { state: { openNewForm: true } })}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
-                style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}
-              >
-                <Plus size={12} /> New
-              </button>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            <button
-              onClick={() => setActiveStoryTag(null)}
-              className="px-3 py-1 rounded-full font-mono text-[11px] uppercase tracking-[0.16em] transition-colors cursor-pointer"
-              style={{
-                background: !activeStoryTag ? C.tealDim : 'transparent',
-                color: !activeStoryTag ? C.teal : C.inkDim,
-                border: `1px solid ${!activeStoryTag ? `${C.teal}44` : C.hair}`,
-              }}
-            >
-              All
-            </button>
-            {(storyTags.length === 0 ? ['Problem Solving', 'Leadership', 'System Design'] : storyTags).map((tag) => {
-              const isActive = activeStoryTag === tag;
-              return (
-                <button
-                  key={tag}
-                  onClick={() => setActiveStoryTag(tag)}
-                  className="px-3 py-1 rounded-full font-mono text-[11px] uppercase tracking-[0.16em] transition-colors cursor-pointer"
-                  style={{
-                    background: isActive ? C.tealDim : 'transparent',
-                    color: isActive ? C.teal : C.inkDim,
-                    border: `1px solid ${isActive ? `${C.teal}44` : C.hair}`,
-                  }}
-                >
-                  {tag}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Body */}
-          <div className="flex flex-col md:flex-row flex-1 overflow-hidden gap-5">
-            <nav className="md:w-32 flex md:flex-col gap-2 md:gap-1.5 overflow-x-auto md:overflow-visible">
-              {(['situation', 'task', 'action', 'result'] as const).map((t) => {
-                const active = activeStarTab === t;
-                return (
-                  <button
-                    key={t}
-                    onClick={() => setActiveStarTab(t)}
-                    data-testid={`star-tab-${t}`}
-                    className="whitespace-nowrap md:w-full text-center md:text-left px-3 py-2 rounded-lg font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
-                    style={{
-                      background: active ? C.tealDim : 'transparent',
-                      color: active ? C.teal : C.inkDim,
-                      border: `1px solid ${active ? `${C.teal}44` : C.hair}`,
-                    }}
-                  >
-                    {t}
-                  </button>
-                );
-              })}
-            </nav>
-
-            <AnimatedSection animation="staggerFadeUp" stagger={0.08} childSelector="> div" className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-              {recentBehavioralStories.length === 0 && (
-                <div className="text-center font-mono text-sm py-12" style={{ color: C.inkMute }}>
-                  No narratives yet — bank one to start.
-                </div>
-              )}
-              {recentBehavioralStories.map((story) => {
-                const preview =
-                  activeStarTab === 'situation' ? story.situation :
-                  activeStarTab === 'task' ? story.task :
-                  activeStarTab === 'action' ? story.action :
-                  story.result;
-                return (
-                  <div
-                    key={story.id}
-                    onClick={() => navigate('/story-bank')}
-                    className="p-4 cursor-pointer transition-all duration-300 group"
-                    style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 14 }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = C.hair2)}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.hair)}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Hash size={12} style={{ color: C.violet }} />
-                        <h3 className="font-display text-[14.5px] font-semibold truncate" style={{ color: C.ink }}>{story.title}</h3>
-                      </div>
-                      <span className="font-mono text-[9.5px] uppercase tracking-widest" style={{ color: C.inkMute }}>{activeStarTab}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {story.tags ? story.tags.split(',').map((t, i) => (
-                        <span key={i} className="px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-widest" style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}`, borderRadius: 6 }}>
-                          {t.trim()}
-                        </span>
-                      )) : (
-                        <span className="px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-widest" style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}`, borderRadius: 6 }}>behavioral</span>
-                      )}
-                    </div>
-                    <p className="font-body text-[13px] leading-relaxed line-clamp-2" style={{ color: C.inkDim }}>
-                      {preview || 'No context recorded.'}
-                    </p>
-                  </div>
-                );
-              })}
-            </AnimatedSection>
-          </div>
-        </section>
-
-        {/* SKILLS SIDE */}
-        <div className="flex flex-col gap-5 h-[620px] opacity-0 animate-fade-in-up delay-500">
-          <section
-            onClick={() => navigate('/readiness')}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/readiness'); }}
-            className="p-6 flex flex-col relative overflow-hidden cursor-pointer group"
-            style={cardStyle()}
-            data-testid="dash-skills-radar"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <Eyebrow color={C.sky}>Skills matrix</Eyebrow>
-              <ArrowUpRight size={14} style={{ color: C.inkMute }} className="opacity-50 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <div className="flex-1 flex items-center justify-center min-h-[200px]">
-              {skillAxes.length >= 3 ? (
-                <SkillRadar axes={skillAxes} size={220} target={READINESS_TARGET} className="w-full max-w-[240px] transition-transform duration-500 group-hover:scale-105" />
-              ) : (
-                <div className="text-center font-mono text-xs" style={{ color: C.inkMute }}>
-                  Add skills in ≥3 categories<br />to chart your matrix.
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="p-5 flex-1 overflow-hidden" style={cardStyle()}>
-            <Eyebrow color={C.amber}>Top skills</Eyebrow>
-            <AnimatedSection animation="staggerFadeUp" stagger={0.06} childSelector="> div" className="grid grid-cols-2 gap-2.5 mt-4">
-              {topSkills.length === 0 && (
-                <div className="col-span-2 py-4 text-center font-mono text-sm" style={{ color: C.inkMute }}>No skills yet.</div>
-              )}
-              {topSkills.map((skill) => {
-                const details = getSkillIcon(skill.name);
-                const pct = getProficiencyPercentage(skill.proficiencyLevel);
-                return (
-                  <div key={skill.id} className="p-3 transition-all duration-300" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderLeft: `2px solid ${details.color}55`, borderRadius: 10 }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <i className={details.icon} style={{ color: details.color, fontSize: 14 }} />
-                      <span className="font-body font-semibold text-[12.5px] truncate" style={{ color: C.ink }}>{skill.name}</span>
-                    </div>
-                    <div className="flex justify-between font-mono text-[9.5px] uppercase tracking-widest mt-1.5" style={{ color: C.inkMute }}>
-                      <span>level</span><span style={{ color: C.ink }}>{pct}%</span>
-                    </div>
-                    <div className="mt-1 h-1 overflow-hidden rounded-full" style={{ background: C.hair }}>
-                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pct}%`, background: details.color }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </AnimatedSection>
-          </section>
         </div>
       </div>
 
-      {/* ANALYTICS */}
-      <section className="p-6 opacity-0 animate-fade-in-up delay-500" style={cardStyle()}>
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <Eyebrow color={C.violet}>Analytics</Eyebrow>
-            <h2 className="mt-3 font-display text-[22px] font-bold leading-tight" style={{ color: C.ink }}>
-              Pipeline <span className="font-editorial" style={{ color: C.violet, fontWeight: 400 }}>insights.</span>
-            </h2>
+      {/* TOP METRICS RIBBON */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 opacity-0 animate-fade-in-up delay-100">
+        {[
+          { label: 'Active Pipeline', val: activeApps.length, sub: `${applications.length} total tracked`, color: C.teal, route: '/applications' },
+          { label: 'Story Inventory', val: stories.length + behavioralStories.length, sub: `${stories.length} tech · ${behavioralStories.length} STAR`, color: C.violet, route: '/story-bank' },
+          { label: 'Drill Readiness', val: stats?.storyStats.totalReviewed || 0, sub: `${dueForReview.length} items due for review`, color: C.amber, route: '/readiness' },
+          { label: 'JD Match Score', val: stats?.jobDescriptionStats.averageMatchScore ? `${Math.round(stats.jobDescriptionStats.averageMatchScore)}%` : '—', sub: `${stats?.jobDescriptionStats.totalJobDescriptions || 0} analyses run`, color: C.sky, route: '/job-descriptions' },
+        ].map((m, idx) => (
+          <div 
+            key={idx}
+            onClick={() => navigate(m.route)}
+            className="p-4 rounded-xl cursor-pointer transition-all duration-300 group hover:border-white/20"
+            style={{ background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`, border: `1px solid ${C.hair}` }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10.5px] uppercase tracking-widest" style={{ color: C.inkMute }}>{m.label}</span>
+              <ArrowUpRight size={13} style={{ color: C.inkMute }} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <div className="font-display text-[26px] font-bold mt-1.5 leading-none" style={{ color: m.color }}>
+              {typeof m.val === 'number' ? <CountUp end={m.val} duration={1.2} /> : m.val}
+            </div>
+            <div className="font-mono text-[10.5px] mt-1.5 truncate" style={{ color: C.inkDim }}>{m.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* FUNCTIONAL COMMAND CENTER WORKSPACE */}
+      <div
+        className="relative w-full rounded-2xl overflow-hidden opacity-0 animate-fade-in-up delay-200"
+        style={{
+          background: `linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)`,
+          border: `1px solid ${C.hair2}`,
+          boxShadow: `0 40px 100px -30px rgba(45,212,191,0.2), inset 0 1px 0 rgba(255,255,255,0.06)`,
+          backdropFilter: "blur(20px)",
+        }}
+      >
+        {/* Window Chrome Header */}
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${C.hair}`, background: C.bg1 }}>
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
+          </div>
+          <div
+            className="hidden sm:flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[11px]"
+            style={{ background: C.bg2, color: C.inkDim, border: `1px solid ${C.hair}` }}
+          >
+            <Terminal size={12} style={{ color: C.teal }} /> precept · ~/career/cockpit
+          </div>
+          <div className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: C.inkDim }}>
+            <span className="inline-block h-1.5 w-1.5 rounded-full animate-ping" style={{ background: C.emerald }} />
+            <span style={{ color: C.emerald }}>live session</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Pipeline funnel */}
-          <div className="lg:col-span-2 p-5 flex flex-col gap-5" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 14 }}>
+        {/* Functional 3-Column Control Workspace Grid */}
+        <div className="grid grid-cols-12 gap-4 p-4 md:p-6" style={{ background: C.bg1 }}>
+          
+          {/* Column 1: Interactive Story Drill & Spotlight (5 Cols) */}
+          <div className="col-span-12 lg:col-span-5 rounded-xl flex flex-col justify-between" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
             <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Application pipeline</div>
-              <div className="font-display text-[24px] font-bold mt-1" style={{ color: C.ink }}>
-                <CountUp end={stats?.applicationStats.totalApplications || 0} duration={1.2} /> total
+              {/* Top Bar with Mode Switcher */}
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${C.hair}` }}>
+                <div className="flex items-center gap-1 p-0.5 rounded-lg font-mono text-[10px] uppercase tracking-wider" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
+                  <button
+                    onClick={() => setSpotlightType('technical')}
+                    className="px-2.5 py-1 rounded transition-colors cursor-pointer"
+                    style={{ background: spotlightType === 'technical' ? C.tealDim : 'transparent', color: spotlightType === 'technical' ? C.teal : C.inkDim }}
+                  >
+                    Tech ({stories.length})
+                  </button>
+                  <button
+                    onClick={() => setSpotlightType('behavioral')}
+                    className="px-2.5 py-1 rounded transition-colors cursor-pointer"
+                    style={{ background: spotlightType === 'behavioral' ? `${C.violet}22` : 'transparent', color: spotlightType === 'behavioral' ? C.violet : C.inkDim }}
+                  >
+                    STAR ({behavioralStories.length})
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {(spotlightType === 'technical' ? stories.length : behavioralStories.length) > 1 && (
+                    <button 
+                      onClick={() => spotlightType === 'technical' ? setSelectedStoryIndex(i => i + 1) : setSelectedBehavioralIndex(i => i + 1)}
+                      className="text-[10px] font-mono uppercase px-2 py-1 rounded cursor-pointer transition-colors hover:bg-white/10"
+                      style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}` }}
+                    >
+                      Next Item →
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Story Content Card */}
+              <div className="p-4 md:p-5">
+                {spotlightType === 'technical' ? (
+                  activeTechStory ? (
+                    <>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="rounded-full px-2.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider" style={{ background: `${C.teal}22`, color: C.teal, border: `1px solid ${C.teal}33` }}>
+                          {activeTechStory.category}
+                        </span>
+                        <span className="font-mono text-[10px]" style={{ color: C.inkMute }}>{activeTechStory.sourceProject || 'General'}</span>
+                      </div>
+                      <h3 className="font-display text-[18px] font-semibold leading-snug" style={{ color: C.ink }}>
+                        {activeTechStory.title}
+                      </h3>
+                      <p className="mt-2 font-body text-[13px] leading-relaxed line-clamp-3" style={{ color: C.inkDim }}>
+                        {activeTechStory.explanation}
+                      </p>
+                      {activeTechStory.codeSnippet && (
+                        <pre className="mt-3.5 overflow-x-auto rounded-xl p-3.5 font-mono text-[11.5px] leading-[1.6] custom-scrollbar max-h-[160px]" style={{ background: C.bg0, color: C.inkDim, border: `1px solid ${C.hair}` }}>
+                          <code>{activeTechStory.codeSnippet}</code>
+                        </pre>
+                      )}
+                    </>
+                  ) : (
+                    <div className="py-12 text-center font-mono text-xs" style={{ color: C.inkMute }}>
+                      No technical stories banked yet. Bank stories to enable instant recall drilling.
+                    </div>
+                  )
+                ) : (
+                  activeSTARStory ? (
+                    <>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="rounded-full px-2.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider" style={{ background: `${C.violet}22`, color: C.violet, border: `1px solid ${C.violet}33` }}>
+                          STAR Method
+                        </span>
+                        <span className="font-mono text-[10px]" style={{ color: C.inkMute }}>{activeSTARStory.company || 'General'}</span>
+                      </div>
+                      <h3 className="font-display text-[18px] font-semibold leading-snug" style={{ color: C.ink }}>
+                        {activeSTARStory.title}
+                      </h3>
+                      <div className="mt-3 space-y-2 font-body text-[12.5px] leading-relaxed" style={{ color: C.inkDim }}>
+                        <p><strong className="text-purple-400 font-mono text-[11px] uppercase">Situation:</strong> {activeSTARStory.situation}</p>
+                        <p className="line-clamp-2"><strong className="text-teal-400 font-mono text-[11px] uppercase">Action:</strong> {activeSTARStory.action}</p>
+                        <p className="line-clamp-2"><strong className="text-emerald-400 font-mono text-[11px] uppercase">Result:</strong> {activeSTARStory.result}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-12 text-center font-mono text-xs" style={{ color: C.inkMute }}>
+                      No STAR behavioral stories banked yet.
+                    </div>
+                  )
+                )}
               </div>
             </div>
-            {[
-              { l: 'Response rate', v: stats?.applicationStats.responseRate || 0, c: C.sky },
-              { l: 'Offer conversion', v: stats?.applicationStats.interviewingCount ? (stats.applicationStats.offersCount / stats.applicationStats.interviewingCount) * 100 : 0, c: C.teal },
-              { l: 'Rejection rate', v: stats?.applicationStats.rejectionRate || 0, c: C.rose },
-            ].map((m) => (
-              <div key={m.l}>
-                <div className="flex justify-between font-mono text-[10.5px] mb-1">
-                  <span style={{ color: C.inkMute }}>{m.l}</span>
-                  <span style={{ color: C.ink }}>{m.v.toFixed(1)}%</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: C.hair }}>
-                  <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, m.v)}%`, background: m.c, boxShadow: `0 0 10px ${m.c}55` }} />
-                </div>
-              </div>
-            ))}
-          </div>
 
-          {/* JD match gauge */}
-          <div className="p-5 flex flex-col items-center justify-center" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 14 }}>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] mb-3" style={{ color: C.inkMute }}>JD match avg.</div>
-            <div className="relative w-32 h-32">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 128 128">
-                <circle cx="64" cy="64" r="56" stroke={C.hair} strokeWidth="8" fill="transparent" />
-                <circle
-                  cx="64" cy="64" r="56"
-                  stroke={C.teal}
-                  strokeWidth="8"
-                  fill="transparent"
-                  strokeDasharray={351.86}
-                  strokeDashoffset={351.86 - (351.86 * (stats?.jobDescriptionStats.averageMatchScore || 0)) / 100}
-                  strokeLinecap="round"
-                  style={{ filter: `drop-shadow(0 0 8px ${C.teal}88)`, transition: 'stroke-dashoffset 1.5s ease-out' }}
-                />
-              </svg>
-              <div className="absolute inset-0 grid place-items-center">
-                <div>
-                  <div className="font-display text-[28px] font-bold leading-none text-center" style={{ color: C.ink }}>
-                    <CountUp end={stats?.jobDescriptionStats.averageMatchScore ? parseInt(stats.jobDescriptionStats.averageMatchScore.toFixed(0)) : 0} duration={1.5} />
+            {/* Interactive Confidence Update Bar & Drill CTA */}
+            <div className="p-4 md:p-5 pt-0 space-y-3">
+              {spotlightType === 'technical' && activeTechStory && (
+                <div className="p-3.5 rounded-xl space-y-2" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: C.inkMute }}>
+                      Click to Update Confidence
+                    </span>
+                    <span className="font-mono text-[11px] font-semibold" style={{ color: ConfidenceRungs[currentRungIndex]?.color || C.teal }}>
+                      {activeTechStory.confidenceLevel}
+                    </span>
                   </div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-center mt-0.5" style={{ color: C.inkMute }}>percent</div>
+                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                    {ConfidenceRungs.map((r) => {
+                      const isCurrent = r.key.toLowerCase() === activeTechStory.confidenceLevel.toLowerCase();
+                      return (
+                        <button
+                          key={r.key}
+                          onClick={() => handleUpdateConfidence(r.key)}
+                          title={`Set confidence to ${r.label}`}
+                          className="py-1.5 rounded text-[9.5px] font-mono uppercase transition-all cursor-pointer truncate text-center"
+                          style={{
+                            background: isCurrent ? `${r.color}22` : C.bg0,
+                            color: isCurrent ? r.color : C.inkMute,
+                            border: `1px solid ${isCurrent ? r.color : C.hair}`,
+                            boxShadow: isCurrent ? `0 0 10px ${r.color}33` : 'none'
+                          }}
+                        >
+                          {r.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              <button
+                onClick={() => navigate('/readiness')}
+                className="w-full py-2.5 rounded-xl font-mono text-[11px] font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer hover:border-white/30"
+                style={{ background: C.tealDim, color: C.teal, border: `1px solid ${C.teal}44` }}
+              >
+                <Zap size={14} /> Launch Spaced Repetition Drill
+              </button>
             </div>
           </div>
 
-          {/* Story confidence */}
-          <div className="p-5" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 14 }}>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Story readiness</div>
-            <div className="font-display text-[16px] font-semibold mt-1" style={{ color: C.ink }}>
-              <CountUp end={stats?.storyStats.totalReviewed || 0} duration={1.2} /> / <CountUp end={stats?.storyStats.totalStories || 0} duration={1.2} /> reviewed
+          {/* Column 2: Live Pipeline Action Center (4 Cols) */}
+          <div className="col-span-12 lg:col-span-4 rounded-xl p-4 md:p-5 flex flex-col justify-between" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
+            <div>
+              <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider mb-3 pb-2" style={{ color: C.inkDim, borderBottom: `1px solid ${C.hair}` }}>
+                <span className="flex items-center gap-1.5"><GitBranch size={13} style={{ color: C.teal }} /> Active Pipeline</span>
+                <span style={{ color: C.teal }}>{activeApps.length} active</span>
+              </div>
+
+              <div className="space-y-2">
+                {recentApps.length === 0 && (
+                  <div className="py-12 text-center font-mono text-xs" style={{ color: C.inkMute }}>No applications logged yet.</div>
+                )}
+                {recentApps.map((a) => {
+                  const pill = statusPill(a.status);
+                  return (
+                    <div 
+                      key={a.id} 
+                      onClick={() => navigate('/applications')}
+                      className="flex items-center justify-between rounded-xl p-3 cursor-pointer transition-colors hover:border-white/20" 
+                      style={{ background: C.bg1, border: `1px solid ${C.hair}` }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        {getCompanyLogo(a.companyName)}
+                        <div className="min-w-0">
+                          <div className="font-body text-[13px] font-semibold truncate" style={{ color: C.ink }}>{a.companyName}</div>
+                          <div className="font-mono text-[10.5px] truncate" style={{ color: C.inkMute }}>{a.roleTitle}</div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Quick Status Changer */}
+                      <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={a.status}
+                          onChange={(e) => handleUpdateAppStatus(a.id, e.target.value)}
+                          className="appearance-none rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-wider font-semibold cursor-pointer pr-6 focus:outline-none transition-all"
+                          style={{ background: pill.bg, color: pill.color, border: pill.border }}
+                        >
+                          <option value="Applied" style={{ background: C.bg1, color: C.ink }}>Applied</option>
+                          <option value="PhoneScreen" style={{ background: C.bg1, color: C.ink }}>Phone Screen</option>
+                          <option value="Interviewing" style={{ background: C.bg1, color: C.ink }}>Interviewing</option>
+                          <option value="Offer" style={{ background: C.bg1, color: C.emerald }}>Offer</option>
+                          <option value="Rejected" style={{ background: C.bg1, color: C.rose }}>Rejected</option>
+                        </select>
+                        <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: pill.color }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="font-mono text-[10.5px] mt-1" style={{ color: C.teal }}>
-              <CountUp end={stats?.storyStats.needsReview || 0} duration={1.2} /> due for drill
-            </div>
-            <div className="h-32 mt-3">
-              {stats?.storyStats.confidenceBreakdown && Object.keys(stats.storyStats.confidenceBreakdown).length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={Object.entries(stats.storyStats.confidenceBreakdown).map(([k, v]) => ({ name: k, count: v }))} margin={{ top: 6, right: 4, left: -22, bottom: 0 }}>
-                    <XAxis dataKey="name" tick={{ fill: C.inkMute, fontSize: 9 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: C.inkMute, fontSize: 9 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ background: C.bg0, border: `1px solid ${C.hair2}`, borderRadius: 10, fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {Object.entries(stats.storyStats.confidenceBreakdown).map((entry, i) => (
-                        <Cell key={i} fill={getConfidenceColor(entry[0])} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full grid place-items-center font-mono text-[11px] italic" style={{ color: C.inkMute }}>No confidence data yet</div>
-              )}
-            </div>
+
+            <button 
+              onClick={() => navigate('/applications')}
+              className="mt-4 w-full text-center py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-wider cursor-pointer transition-colors hover:border-white/20 flex items-center justify-center gap-1.5"
+              style={{ background: 'rgba(255,255,255,0.02)', color: C.ink, border: `1px solid ${C.hair}` }}
+            >
+              Manage Full Kanban Board →
+            </button>
           </div>
+
+          {/* Column 3: Readiness Radar & Review Queue (3 Cols) */}
+          <div className="col-span-12 lg:col-span-3 rounded-xl p-4 md:p-5 flex flex-col justify-between" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
+            <div>
+              <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider mb-3 pb-2" style={{ color: C.inkDim, borderBottom: `1px solid ${C.hair}` }}>
+                <span className="flex items-center gap-1.5"><Activity size={13} style={{ color: C.sky }} /> Readiness</span>
+                <span style={{ color: C.amber }}>{dueForReview.length} due</span>
+              </div>
+
+              {/* Radar Preview */}
+              <div 
+                onClick={() => navigate('/readiness')}
+                className="mb-4 flex items-center justify-center min-h-[150px] cursor-pointer rounded-xl p-2 transition-transform hover:scale-[1.02]"
+                style={{ background: C.bg1, border: `1px solid ${C.hair}` }}
+              >
+                {skillAxes.length >= 3 ? (
+                  <SkillRadar axes={skillAxes} size={150} target={READINESS_TARGET} className="w-full max-w-[170px]" />
+                ) : (
+                  <div className="text-center font-mono text-xs p-4" style={{ color: C.inkMute }}>
+                    Add skills across ≥3 categories to generate your radar.
+                  </div>
+                )}
+              </div>
+
+              {/* Due For Review Quick Action List */}
+              <div className="space-y-1.5">
+                <div className="font-mono text-[10px] uppercase tracking-widest px-1 mb-1" style={{ color: C.inkMute }}>Immediate Review Queue</div>
+                {dueForReview.slice(0, 3).map((s) => (
+                  <div 
+                    key={s.id} 
+                    onClick={() => navigate('/readiness')}
+                    className="flex items-center justify-between rounded-lg px-2.5 py-2 font-mono text-[11px] cursor-pointer transition-colors hover:border-white/20" 
+                    style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}` }}
+                  >
+                    <span className="truncate flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0 animate-pulse" style={{ background: s.confidenceLevel === 'Panic' ? C.rose : C.amber }} />
+                      <span className="truncate">{s.title}</span>
+                    </span>
+                    <span className="text-[9.5px] uppercase font-semibold shrink-0 ml-2 px-1.5 py-0.5 rounded" style={{ background: `${C.amber}1c`, color: C.amber }}>Drill</span>
+                  </div>
+                ))}
+                {dueForReview.length === 0 && (
+                  <div className="py-4 text-center font-mono text-xs rounded-lg" style={{ background: C.bg1, color: C.emerald }}>
+                    ✓ All banked stories are solid!
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button 
+              onClick={() => navigate('/readiness')}
+              className="mt-4 w-full text-center py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-wider cursor-pointer transition-colors hover:border-white/20"
+              style={{ background: 'rgba(255,255,255,0.02)', color: C.ink, border: `1px solid ${C.hair}` }}
+            >
+              Open Full Readiness Matrix →
+            </button>
+          </div>
+
         </div>
-      </section>
+      </div>
+
     </div>
   );
 }
+

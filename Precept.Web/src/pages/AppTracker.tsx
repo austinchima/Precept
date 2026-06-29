@@ -8,7 +8,7 @@ import confetti from 'canvas-confetti';
 import { getCompanyIcon } from '../lib/utils';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
 import { CountUp } from '../components/animation/CountUp';
-import { Plus, LayoutGrid, List, X, Trash2, Loader2 } from 'lucide-react';
+import { Plus, LayoutGrid, List, X, Trash2, Loader2, Terminal } from 'lucide-react';
 
 /* ─────── DESIGN TOKENS (Landing.tsx) ─────── */
 const C = {
@@ -308,8 +308,36 @@ export default function AppTracker() {
           <span className="font-mono text-sm">Loading pipeline…</span>
         </div>
       ) : (
-        <div className="flex-1 overflow-auto opacity-0 animate-fade-in-up delay-200">
-          {view === 'board' ? (
+        <div
+          className="flex-1 rounded-2xl overflow-hidden flex flex-col opacity-0 animate-fade-in-up delay-200"
+          style={{
+            background: `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
+            border: `1px solid ${C.hair2}`,
+            boxShadow: `0 40px 100px -30px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.06)`,
+            backdropFilter: "blur(20px)",
+          }}
+        >
+          {/* Window Chrome Header */}
+          <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.hair}`, background: C.bg1 }}>
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
+            </div>
+            <div
+              className="hidden sm:flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[11px]"
+              style={{ background: C.bg2, color: C.inkDim, border: `1px solid ${C.hair}` }}
+            >
+              <Terminal size={12} style={{ color: C.violet }} /> precept · ~/career/pipeline
+            </div>
+            <div className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: C.inkDim }}>
+              <span className="inline-block h-1.5 w-1.5 rounded-full animate-ping" style={{ background: C.emerald }} />
+              <span style={{ color: C.emerald }}>{apps.length} active items</span>
+            </div>
+          </div>
+
+          <div className="p-4 md:p-6 flex-1 overflow-auto" style={{ background: C.bg1 }}>
+            {view === 'board' ? (
             <div className="flex flex-col lg:flex-row gap-4 h-full pb-4">
               {COLUMNS.map((col) => {
                 const color = statusColor(col);
@@ -449,6 +477,7 @@ export default function AppTracker() {
               </div>
             </section>
           )}
+          </div>
         </div>
       )}
 

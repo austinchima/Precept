@@ -124,8 +124,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Permanently deletes the account and all server-side data. Only clears local
+  // session state once the backend confirms the deletion succeeded.
+  const deleteAccount = async () => {
+    await api.delete('/api/auth/account');
+    setIsAuthenticated(false);
+    setUser(null);
+    setAccessToken(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, register, updateProfile, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, register, updateProfile, logout, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

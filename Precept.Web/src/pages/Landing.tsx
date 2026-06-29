@@ -106,7 +106,15 @@ function Navbar() {
             <span className="font-display text-[18px] font-bold tracking-tight" style={{ color: c.ink }}>
               Precept
             </span>
-            <span className="hidden font-mono text-[10px] uppercase tracking-widest sm:inline" style={{ color: c.inkMute }}>
+            <span
+              className="hidden origin-left overflow-hidden whitespace-nowrap font-mono text-[10px] uppercase tracking-widest transition-all duration-500 ease-out sm:inline-block"
+              style={{
+                color: c.inkMute,
+                opacity: scrolled ? 0 : 1,
+                maxWidth: scrolled ? 0 : "140px",
+                transform: scrolled ? "translateX(-10px)" : "translateX(0)",
+              }}
+            >
               ─ Career&nbsp;OS
             </span>
           </a>
@@ -128,7 +136,7 @@ function Navbar() {
           </div>
 
           {/* Right CTA */}
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden items-center gap-6 pl-4 md:flex">
             <a
               href="https://github.com/austinchima/Precept"
               target="_blank"
@@ -152,14 +160,14 @@ function Navbar() {
             <button
               data-testid="nav-cta-btn"
               onClick={() => goLogin("signup")}
-              className="gsap-magnetic group relative overflow-hidden rounded-full px-4 py-2 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] transition-all"
+              className="flex items-center gap-1.5 rounded-full px-4 py-2 font-mono text-[12px] uppercase tracking-[0.14em] transition-colors cursor-pointer"
               style={{
                 background: c.ink,
                 color: c.bg0,
                 boxShadow: `0 0 0 1px ${c.ink}, 0 8px 24px -8px rgba(255,255,255,0.18)`,
               }}
             >
-              Get started <ArrowUpRight className="ml-1 inline -translate-y-px" size={12} />
+              Get started <ArrowUpRight className="ml-1" size={12} />
             </button>
           </div>
 
@@ -311,7 +319,7 @@ function Hero() {
           <button
             data-testid="hero-primary-cta"
             onClick={() => navigate("/login", { state: { mode: "signup" } })}
-            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase tracking-[0.16em] transition-transform"
+            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full border border-transparent px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-transform"
             style={{
               background: c.ink,
               color: c.bg0,
@@ -326,7 +334,7 @@ function Hero() {
             href="https://github.com/austinchima/Precept"
             target="_blank"
             rel="noreferrer"
-            className="gsap-magnetic inline-flex items-center gap-2 rounded-full border px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase tracking-[0.16em] transition-colors"
+            className="gsap-magnetic inline-flex items-center gap-2 rounded-full border px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-colors"
             style={{
               background: "rgba(255,255,255,0.025)",
               borderColor: c.hair2,
@@ -1494,23 +1502,26 @@ export default function Landing() {
   }, [isAuthenticated, navigate]);
 
   return (
-    <SmoothScroll>
-    <PageTransition>
-      <div data-testid="landing-page" className="min-h-screen w-full" style={{ background: c.bg0, color: c.ink }}>
-        <MagneticInitializer />
-        <Navbar />
-        <Hero />
-        <Marquee />
-        <Wedge />
-        <Modules />
-        <ConfidenceLadder />
-        <HowItWorks />
-        <Testimonials testimonials={testimonials} />
-        <R2Teaser />
-        <FinalCTA />
-        <Footer />
-      </div>
-    </PageTransition>
-    </SmoothScroll>
+    <>
+      {/* Navbar is outside SmoothScroll so Lenis transforms don't break position:fixed */}
+      <Navbar />
+      <SmoothScroll>
+      <PageTransition>
+        <div data-testid="landing-page" className="min-h-screen w-full" style={{ background: c.bg0, color: c.ink }}>
+          <MagneticInitializer />
+          <Hero />
+          <Marquee />
+          <Wedge />
+          <Modules />
+          <ConfidenceLadder />
+          <HowItWorks />
+          <Testimonials testimonials={testimonials} />
+          <R2Teaser />
+          <FinalCTA />
+          <Footer />
+        </div>
+      </PageTransition>
+      </SmoothScroll>
+    </>
   );
 }

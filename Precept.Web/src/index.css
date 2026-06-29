@@ -111,16 +111,16 @@
   --font-label-caps: "JetBrains Mono", monospace;
   --font-code: "JetBrains Mono", monospace;
 
-  /* Spacings */
-  --spacing-md: 24px;
-  --spacing-xl: 96px;
-  --spacing-container-max: 1440px;
-  --spacing-sm: 12px;
-  --spacing-lg: 48px;
-  --spacing-margin: 64px;
-  --spacing-gutter: 24px;
-  --spacing-base: 8px;
-  --spacing-xs: 4px;
+  /* Design-system spacings (prefixed --space- to avoid Tailwind v4 collision) */
+  --space-xs: 4px;
+  --space-sm: 12px;
+  --space-base: 8px;
+  --space-md: 24px;
+  --space-lg: 48px;
+  --space-xl: 96px;
+  --space-margin: 64px;
+  --space-gutter: 24px;
+  --space-container-max: 1440px;
 }
 
 @layer base {

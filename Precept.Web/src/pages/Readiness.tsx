@@ -7,7 +7,7 @@ import { computeSkillAxes, READINESS_TARGET, SkillAxis } from '../lib/skills';
 import SkillRadar from '../components/SkillRadar';
 import { CountUp } from '../components/animation/CountUp';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
-import { Target, Layers, AlertTriangle, CircleDot, Circle, Loader2 } from 'lucide-react';
+import { Target, Layers, AlertTriangle, CircleDot, Circle, Loader2, Terminal } from 'lucide-react';
 
 const C = {
   bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
@@ -143,7 +143,36 @@ export default function Readiness() {
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+      <div
+        className="rounded-2xl overflow-hidden flex flex-col opacity-0 animate-fade-in-up delay-200"
+        style={{
+          background: `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
+          border: `1px solid ${C.hair2}`,
+          boxShadow: `0 40px 100px -30px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.06)`,
+          backdropFilter: "blur(20px)",
+        }}
+      >
+        {/* Window Chrome Header */}
+        <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.hair}`, background: C.bg1 }}>
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
+          </div>
+          <div
+            className="hidden sm:flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[11px]"
+            style={{ background: C.bg2, color: C.inkDim, border: `1px solid ${C.hair}` }}
+          >
+            <Terminal size={12} style={{ color: C.teal }} /> precept · ~/career/readiness
+          </div>
+          <div className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: C.inkDim }}>
+            <span className="inline-block h-1.5 w-1.5 rounded-full animate-ping" style={{ background: C.emerald }} />
+            <span style={{ color: C.emerald }}>{axes.length} axes active</span>
+          </div>
+        </div>
+
+        <div className="p-4 md:p-6 space-y-6" style={{ background: C.bg1 }}>
+          <div className="flex flex-col lg:flex-row gap-6 items-stretch">
         {/* Radar */}
         <section className="flex-1 p-6 md:p-8 relative flex items-center justify-center overflow-hidden min-h-[420px] opacity-0 animate-fade-in-up delay-300" style={cardStyle()}>
           <div className="pointer-events-none absolute w-[400px] h-[400px] rounded-full"
@@ -320,6 +349,8 @@ export default function Readiness() {
             </div>
           </div>
         ))}
+      </div>
+        </div>
       </div>
     </div>
   );

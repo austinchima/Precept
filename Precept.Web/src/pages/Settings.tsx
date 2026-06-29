@@ -62,7 +62,7 @@ const SectionHeader = ({ icon, title, sub, color = C.teal }: { icon: React.React
 export default function Settings() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, deleteAccount } = useAuth();
   const toast = useToast();
 
   const [confirmConfig, setConfirmConfig] = useState({
@@ -199,11 +199,19 @@ export default function Settings() {
   const handlePurge = () => {
     setConfirmConfig({
       isOpen: true,
-      title: 'Wipe local data',
-      message: 'This logs you out and clears local storage. Continue?',
-      confirmText: 'Wipe data',
+      title: 'Delete account',
+      message: 'This permanently deletes your account and all your data. This cannot be undone. Continue?',
+      confirmText: 'Delete account',
       danger: true,
-      onConfirm: () => { localStorage.clear(); window.dispatchEvent(new Event('auth-expired')); },
+      onConfirm: async () => {
+        try {
+          await deleteAccount();
+          localStorage.clear();
+          toast.success('Your account and all data have been permanently deleted.');
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to delete account. Please try again.');
+        }
+      },
     });
   };
 
@@ -441,11 +449,11 @@ export default function Settings() {
 
           {/* Danger */}
           <section className="p-6" style={{ ...cardStyle(), borderColor: `${C.rose}33` }}>
-            <SectionHeader icon={<Radiation size={16} />} title="Danger zone" sub="Wipe local data on this device." color={C.rose} />
+            <SectionHeader icon={<Radiation size={16} />} title="Danger zone" sub="Permanently delete your account and all data." color={C.rose} />
             <button onClick={handlePurge} data-testid="settings-purge-btn"
               className="w-full rounded-full py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
               style={{ background: 'transparent', color: C.rose, border: `1px solid ${C.rose}55` }}>
-              Wipe local data
+              Delete account
             </button>
           </section>
         </div>
