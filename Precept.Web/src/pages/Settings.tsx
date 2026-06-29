@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Skill, SkillProficiency, SKILL_CATEGORIES } from '../types';
 import { getSkillIcon } from '../lib/utils';
@@ -55,6 +55,8 @@ export default function Settings() {
   const [proficiency, setProficiency] = useState<SkillProficiency>('Intermediate');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const skillFormRef = useRef<HTMLDivElement>(null);
 
   // Testimonial Form State
   const [testimonyHandle, setTestimonyHandle] = useState('');
@@ -102,28 +104,50 @@ export default function Settings() {
     loadSkills();
   }, []);
 
-  const handleAddSkill = async (e: React.FormEvent) => {
+  const resetSkillForm = () => {
+    setEditingId(null);
+    setName('');
+    setCategory('');
+    setProficiency('Intermediate');
+    setNotes('');
+  };
+
+  const startEditSkill = (skill: Skill) => {
+    setEditingId(skill.id);
+    setName(skill.name);
+    setCategory(skill.category || '');
+    setProficiency(skill.proficiencyLevel);
+    setNotes(skill.notes || '');
+    skillFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const handleSubmitSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
     setIsSubmitting(true);
     try {
-      const added = await api.post<Skill>('/api/skill', {
+      const payload = {
         name: name.trim(),
         category: category.trim() || undefined,
         proficiencyLevel: proficiency,
-        notes: notes.trim() || undefined
-      });
-      setSkills(prev => [...prev, added].sort((a, b) => a.name.localeCompare(b.name)));
-      
-      // Reset form
-      setName('');
-      setCategory('');
-      setProficiency('Intermediate');
-      setNotes('');
+        notes: notes.trim() || undefined,
+      };
+
+      if (editingId) {
+        const updated = await api.put<Skill>(`/api/skill/${editingId}`, payload);
+        setSkills(prev =>
+          prev.map(s => (s.id === editingId ? updated : s)).sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      } else {
+        const added = await api.post<Skill>('/api/skill', payload);
+        setSkills(prev => [...prev, added].sort((a, b) => a.name.localeCompare(b.name)));
+      }
+
+      resetSkillForm();
     } catch (err) {
-      console.error('Failed to add skill:', err);
-      toast.error((err as Error).message || 'Failed to add skill to database.');
+      console.error('Failed to save skill:', err);
+      toast.error((err as Error).message || 'Failed to save skill to database.');
     } finally {
       setIsSubmitting(false);
     }
@@ -301,12 +325,12 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Add Skill Form */}
-            <div className="glass-panel rounded-2xl p-6">
+            {/* Add / Edit Skill Form */}
+            <div ref={skillFormRef} className="glass-panel rounded-2xl p-6">
               <h3 className="text-xs font-mono text-accent-teal uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-plus text-[10px]"></i> Inject New Capability
+                <i className={`fa-solid ${editingId ? 'fa-pen' : 'fa-plus'} text-[10px]`}></i> {editingId ? 'Edit Capability' : 'Inject New Capability'}
               </h3>
-              <form onSubmit={handleAddSkill} className="space-y-4">
+              <form onSubmit={handleSubmitSkill} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Skill Name</label>
@@ -358,14 +382,24 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="flex justify-end pt-1">
-                  <button 
-                    type="submit" 
-                    disabled={isSubmitting || !name.trim()} 
+                <div className="flex justify-end pt-1 gap-3">
+                  {editingId && (
+                    <button
+                      type="button"
+                      onClick={resetSkillForm}
+                      disabled={isSubmitting}
+                      className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold border border-panel-border/40 text-text-secondary hover:text-white hover:border-white/20 transition-all duration-300 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !name.trim()}
                     className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
                   >
-                    {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : <i className="fa-solid fa-plus text-xs"></i>}
-                    Add Skill
+                    {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : <i className={`fa-solid ${editingId ? 'fa-check' : 'fa-plus'} text-xs`}></i>}
+                    {editingId ? 'Update Skill' : 'Add Skill'}
                   </button>
                 </div>
               </form>
@@ -389,13 +423,23 @@ export default function Settings() {
                       key={skill.id} 
                       className="flex flex-col p-4 bg-dashboard-bg/50 border border-panel-border/30 rounded-xl group hover:border-white/15 hover:-translate-y-0.5 transition-all duration-300 relative"
                     >
-                      <button 
-                        onClick={() => removeSkill(skill.id)}
-                        className="absolute top-1 right-1 min-w-[44px] min-h-[44px] text-text-secondary opacity-0 group-hover:opacity-100 hover:text-[#f87171] transition-all cursor-pointer flex items-center justify-center"
-                      >
-                        <i className="fa-solid fa-xmark text-xs"></i>
-                      </button>
-                      <h4 className="font-semibold text-white text-sm pr-6 group-hover:text-accent-teal transition-colors duration-300 flex items-center gap-2">
+                      <div className="absolute top-1 right-1 flex opacity-0 group-hover:opacity-100 transition-all">
+                        <button
+                          onClick={() => startEditSkill(skill)}
+                          title="Edit skill"
+                          className="min-w-[40px] min-h-[40px] text-text-secondary hover:text-accent-teal transition-colors cursor-pointer flex items-center justify-center"
+                        >
+                          <i className="fa-solid fa-pen text-xs"></i>
+                        </button>
+                        <button
+                          onClick={() => removeSkill(skill.id)}
+                          title="Delete skill"
+                          className="min-w-[40px] min-h-[40px] text-text-secondary hover:text-[#f87171] transition-colors cursor-pointer flex items-center justify-center"
+                        >
+                          <i className="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                      </div>
+                      <h4 className="font-semibold text-white text-sm pr-20 group-hover:text-accent-teal transition-colors duration-300 flex items-center gap-2">
                         <i className={`${getSkillIcon(skill.name).icon} text-sm`} style={{ color: getSkillIcon(skill.name).color }}></i>
                         {skill.name}
                       </h4>

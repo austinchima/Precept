@@ -7,6 +7,8 @@ import { useAuth } from '../AuthContext';
 import { getSkillIcon, getCompanyIcon } from '../lib/utils';
 import { CountUp } from '../components/animation/CountUp';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
+import SkillRadar from '../components/SkillRadar';
+import { computeSkillAxes, READINESS_TARGET } from '../lib/skills';
 
 interface DashboardStats {
   storyStats: {
@@ -185,23 +187,9 @@ export default function Dashboard() {
     );
   };
 
-  // Radar chart dynamic calculations (6 axes)
-  // Compact preview of the readiness radar — axes use the canonical skill
-  // categories (see Settings dropdown / SkillCategories.cs). Full view: /readiness.
-  const categoriesList = ['Language', 'Framework', 'Tool', 'Database', 'DevOps'];
-  const radarPoints = categoriesList.map((cat, idx) => {
-    const catSkills = skills.filter(s => s.category?.toLowerCase() === cat.toLowerCase());
-    const avgProf = catSkills.length > 0
-      ? catSkills.reduce((acc, s) => acc + getProficiencyPercentage(s.proficiencyLevel), 0) / catSkills.length
-      : 0; // No skills in this category — render at center, don't fake a value
-
-    // Compute SVG point (center is 100,100, max radius is 80)
-    const angle = (idx * 2 * Math.PI) / categoriesList.length - Math.PI / 2;
-    const r = (avgProf / 100) * 80;
-    const x = 100 + r * Math.cos(angle);
-    const y = 100 + r * Math.sin(angle);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
+  // Skills radar axes — shared helper so the dashboard preview and the full
+  // Readiness page always render identical data.
+  const skillAxes = computeSkillAxes(skills);
 
   if (isLoading) {
     return (
@@ -498,51 +486,33 @@ export default function Dashboard() {
         {/* BEGIN: Skills & Matrix Side */}
         <div className="flex flex-col space-y-6 h-[600px] opacity-0 animate-fade-in-up delay-500">
           
-          {/* Skills Matrix Radar Chart Container */}
-          <section className="glass-panel rounded-2xl p-6 flex-1 flex flex-col relative overflow-hidden group">
-            <h2
-              onClick={() => navigate('/readiness')}
-              title="Open Technical Readiness"
-              className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-4 transition-colors duration-300 group-hover:text-white cursor-pointer flex items-center justify-between"
-            >
+          {/* Skills Matrix preview — whole card links to the full Readiness page */}
+          <section
+            onClick={() => navigate('/readiness')}
+            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/readiness'); }}
+            role="button"
+            tabIndex={0}
+            title="Open Technical Readiness"
+            className="glass-panel rounded-2xl p-6 flex-1 flex flex-col relative overflow-hidden group cursor-pointer hover:border-accent-teal/30 transition-all duration-300"
+          >
+            <h2 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-4 transition-colors duration-300 group-hover:text-white flex items-center justify-between">
               SKILLS MATRIX
               <i className="fa-solid fa-up-right-and-down-left-from-center text-[10px] opacity-40 group-hover:opacity-90 transition-opacity"></i>
             </h2>
-            <div className="flex-1 flex items-center justify-center relative w-full h-full min-h-[200px] mt-2 animate-radar-pulse">
-              <svg className="w-full max-w-[220px] max-h-[220px] overflow-visible transition-transform duration-500 group-hover:scale-105" viewBox="0 0 200 200">
-                {/* Background Grid */}
-                <polygon fill="none" points="100,20 180,75 150,165 50,165 20,75" stroke="#2d3748" strokeWidth="1"></polygon>
-                <polygon fill="none" points="100,40 160,85 135,150 65,150 40,85" stroke="#2d3748" strokeWidth="1"></polygon>
-                <polygon fill="none" points="100,60 140,95 120,135 80,135 60,95" stroke="#2d3748" strokeWidth="1"></polygon>
-                <polygon fill="none" points="100,80 120,105 105,120 95,120 80,105" stroke="#2d3748" strokeWidth="1"></polygon>
-                {/* Axes */}
-                <line x1="100" y1="100" x2="100" y2="20" stroke="#2d3748" strokeWidth="1"></line>
-                <line x1="100" y1="100" x2="180" y2="75" stroke="#2d3748" strokeWidth="1"></line>
-                <line x1="100" y1="100" x2="150" y2="165" stroke="#2d3748" strokeWidth="1"></line>
-                <line x1="100" y1="100" x2="50" y2="165" stroke="#2d3748" strokeWidth="1"></line>
-                <line x1="100" y1="100" x2="20" y2="75" stroke="#2d3748" strokeWidth="1"></line>
-                {/* Gradient Def */}
-                <defs>
-                  <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(59, 130, 246, 0.4)"></stop>
-                    <stop offset="100%" stopColor="rgba(45, 212, 191, 0.1)"></stop>
-                  </radialGradient>
-                </defs>
-                {/* Data Polygon */}
-                <polygon fill="url(#radarGlow)" points={radarPoints} stroke="#2dd4bf" strokeWidth="2"></polygon>
-                {/* Data Points */}
-                {radarPoints.split(' ').map((point, i) => {
-                  if (!point) return null;
-                  const [px, py] = point.split(',');
-                  return <circle key={i} cx={px} cy={py} r="3" fill="#2dd4bf" className="transition-all duration-300 hover:r-5 cursor-pointer"></circle>;
-                })}
-              </svg>
-              {/* Labels positioned absolutely around svg */}
-              <span className="absolute top-0 text-[11px] text-text-primary left-1/2 -translate-x-1/2 mt-1 transition-transform duration-300 group-hover:-translate-y-1">Language</span>
-              <span className="absolute top-1/2 right-0 text-[11px] text-text-primary -translate-y-1/2 transition-transform duration-300 group-hover:translate-x-1">Framework</span>
-              <span className="absolute bottom-0 right-10 text-[11px] text-text-primary mb-4 transition-transform duration-300 group-hover:translate-y-1">Tool</span>
-              <span className="absolute bottom-0 left-8 text-[11px] text-text-primary mb-4 transition-transform duration-300 group-hover:translate-y-1">Database</span>
-              <span className="absolute top-1/2 left-0 text-[11px] text-text-primary -translate-y-1/2 transition-transform duration-300 group-hover:-translate-x-1">DevOps</span>
+            <div className="flex-1 flex items-center justify-center relative w-full h-full min-h-[200px] mt-2">
+              {skillAxes.length >= 3 ? (
+                <SkillRadar
+                  axes={skillAxes}
+                  size={220}
+                  target={READINESS_TARGET}
+                  className="w-full max-w-[240px] transition-transform duration-500 group-hover:scale-105"
+                />
+              ) : (
+                <div className="text-center text-text-secondary text-xs font-mono flex flex-col items-center gap-2 px-4">
+                  <i className="fa-solid fa-diagram-project text-2xl text-text-secondary/30"></i>
+                  Add skills in ≥3 categories to chart your matrix.
+                </div>
+              )}
             </div>
           </section>
 

@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { Skill, SkillProficiency } from '../types';
+import { Skill } from '../types';
+import { computeSkillAxes, READINESS_TARGET, SkillAxis } from '../lib/skills';
+import SkillRadar from '../components/SkillRadar';
 import { CountUp } from '../components/animation/CountUp';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
 
@@ -9,8 +11,9 @@ import { AnimatedSection } from '../components/animation/AnimatedSection';
  * Technical Readiness — Skills Matrix Visualizer.
  *
  * Phase 1 (real): a radar of the user's CURRENT proficiency per skill category,
- * derived entirely from persisted Skill entities, plus an aggregated gap list
- * driven by the JD Analyzer's computed `missingKeyWords`.
+ * derived entirely from persisted Skill entities (via the shared computeSkillAxes
+ * helper, so the dashboard preview shows identical data), plus an aggregated gap
+ * list driven by the JD Analyzer's computed `missingKeyWords`.
  *
  * Phase 2 (real): target-role overlay driven by the user's OWN saved job
  * descriptions — each distinct role title with its real `yourMatchScore` and
@@ -26,29 +29,6 @@ interface JobDescriptionResponse {
   extractedKeyWords: string[];
   missingKeyWords: string[];
   yourMatchScore: number | null;
-}
-
-// Proficiency → percentage. Kept consistent with the dashboard radar scale.
-const PROFICIENCY_PCT: Record<SkillProficiency, number> = {
-  Beginner: 30,
-  Intermediate: 60,
-  Advanced: 80,
-  Expert: 95,
-};
-
-// The single, explicitly-labeled "interview-ready" bar. Not role-specific —
-// it's an honest goal line, not invented benchmark data.
-const READINESS_TARGET = 75;
-
-// Radar geometry (400x400 viewBox).
-const CX = 200;
-const CY = 200;
-const MAXR = 150;
-
-interface Axis {
-  name: string;
-  value: number;
-  count: number;
 }
 
 interface RoleAgg {
@@ -84,30 +64,12 @@ export default function Readiness() {
     load();
   }, []);
 
-  // ── Current profile: average proficiency per skill category ──────────────
-  const axes: Axis[] = useMemo(() => {
-    const map = new Map<string, number[]>();
-    for (const s of skills) {
-      const key = s.category?.trim();
-      if (!key) continue; // uncategorised skills can't sit on an axis
-      const arr = map.get(key) ?? [];
-      arr.push(PROFICIENCY_PCT[s.proficiencyLevel]);
-      map.set(key, arr);
-    }
-    return [...map.entries()]
-      .map(([name, vals]) => ({
-        name,
-        value: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length),
-        count: vals.length,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
-  }, [skills]);
-
+  // Current profile: average proficiency per skill category (shared helper).
+  const axes: SkillAxis[] = useMemo(() => computeSkillAxes(skills), [skills]);
   const hasRadar = axes.length >= 3;
   const uncategorised = skills.filter((s) => !s.category?.trim()).length;
 
-  // ── Roles: real target roles from saved JDs ──────────────────────────────
+  // Roles: real target roles from saved JDs.
   const roles: RoleAgg[] = useMemo(() => {
     const skillNames = new Set<string>(skills.map((s) => s.name.toLowerCase()));
     const catBySkill = new Map<string, string>();
@@ -170,26 +132,6 @@ export default function Readiness() {
   }, [jds]);
 
   const activeRole = roles.find((r) => r.role === selectedRole) ?? null;
-
-  // ── Radar SVG math ───────────────────────────────────────────────────────
-  const N = axes.length;
-  const angleFor = (i: number) => (i / N) * 2 * Math.PI - Math.PI / 2;
-  const pointAt = (i: number, v: number): [number, number] => {
-    const a = angleFor(i);
-    const r = (Math.max(0, Math.min(100, v)) / 100) * MAXR;
-    return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
-  };
-  const toStr = (pts: [number, number][]) => pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-
-  const currentPoly = toStr(axes.map((ax, i) => pointAt(i, ax.value)));
-  const targetPoly = toStr(axes.map((_, i) => pointAt(i, READINESS_TARGET)));
-  const rings = [0.25, 0.5, 0.75, 1].map((f) =>
-    toStr(axes.map((_, i) => {
-      const a = angleFor(i);
-      return [CX + f * MAXR * Math.cos(a), CY + f * MAXR * Math.sin(a)] as [number, number];
-    })),
-  );
-
   const belowTarget = axes.filter((a) => a.value < READINESS_TARGET).sort((a, b) => a.value - b.value);
 
   if (isLoading) {
@@ -220,61 +162,13 @@ export default function Readiness() {
           />
           {hasRadar ? (
             <div className="relative z-10 w-full max-w-[420px] aspect-square">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 400 400">
-                {/* Grid rings */}
-                <g fill="none" stroke="#2d3748" strokeWidth="1">
-                  {rings.map((r, i) => (
-                    <polygon key={i} points={r} />
-                  ))}
-                  {axes.map((_, i) => {
-                    const [x, y] = pointAt(i, 100);
-                    return <line key={i} x1={CX} y1={CY} x2={x} y2={y} />;
-                  })}
-                </g>
-
-                {/* Target threshold (honest goal line, dashed purple) */}
-                <polygon
-                  points={targetPoly}
-                  fill="rgba(139,92,246,0.08)"
-                  stroke="#8b5cf6"
-                  strokeWidth="1.5"
-                  strokeDasharray="4 4"
-                />
-
-                {/* Current profile (real) */}
-                <polygon points={currentPoly} fill="rgba(45,212,191,0.18)" stroke="#2dd4bf" strokeWidth="2" />
-                {axes.map((ax, i) => {
-                  const [x, y] = pointAt(i, ax.value);
-                  const below = ax.value < READINESS_TARGET;
-                  return <circle key={i} cx={x} cy={y} r="4" fill={below ? '#f43f5e' : '#2dd4bf'} />;
-                })}
-
-                {/* Axis labels */}
-                <g className="font-mono" fontSize="11">
-                  {axes.map((ax, i) => {
-                    const a = angleFor(i);
-                    const r = MAXR + 26;
-                    const x = CX + r * Math.cos(a);
-                    const y = CY + r * Math.sin(a);
-                    const cos = Math.cos(a);
-                    const anchor = cos > 0.3 ? 'start' : cos < -0.3 ? 'end' : 'middle';
-                    const emphasized = activeRole?.emphasized.has(ax.name);
-                    return (
-                      <text
-                        key={i}
-                        x={x}
-                        y={y}
-                        textAnchor={anchor}
-                        dominantBaseline="middle"
-                        fill={emphasized ? '#2dd4bf' : '#94a3b8'}
-                        fontWeight={emphasized ? 700 : 400}
-                      >
-                        {ax.name}
-                      </text>
-                    );
-                  })}
-                </g>
-              </svg>
+              <SkillRadar
+                axes={axes}
+                size={400}
+                target={READINESS_TARGET}
+                emphasized={activeRole?.emphasized}
+                className="w-full h-full"
+              />
 
               {/* Legend */}
               <div className="absolute bottom-0 left-0 flex flex-col gap-1.5 font-mono text-[11px]">
@@ -379,7 +273,7 @@ export default function Readiness() {
                   ) : belowTarget.length > 0 ? (
                     <>
                       Below the interview-ready bar in{' '}
-                      <span className="text-accent-rose text-[#f43f5e]">
+                      <span className="text-[#f43f5e]">
                         {belowTarget.slice(0, 3).map((a) => `${a.name} (${a.value}%)`).join(', ')}
                       </span>
                       .{overallGaps.length > 0 && <> Most common gap across roles: <span className="text-accent-teal">{overallGaps[0].kw}</span>.</>}

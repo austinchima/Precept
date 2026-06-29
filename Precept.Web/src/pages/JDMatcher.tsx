@@ -22,16 +22,13 @@ export default function JDMatcher() {
   const toast = useToast();
   
   // Input fields
-  const [company, setCompany] = useState('Stripe');
-  const [role, setRole] = useState('Frontend Engineer');
+  const [company, setCompany] = useState('');
+  const [role, setRole] = useState('');
   const [url, setUrl] = useState('');
-  const [jdText, setJdText] = useState(
-    'We are looking for a Frontend Engineer with strong experience in React, TypeScript, and modern state management. You should be familiar with REST APIs, GraphQL, and CI/CD pipelines...'
-  );
+  const [jdText, setJdText] = useState('');
   
-  // Fallback manual keywords (until server-side AI is shipped)
-  const [useManualKeywords, setUseManualKeywords] = useState(true);
-  const [manualKeywords, setManualKeywords] = useState('React, TypeScript, REST APIs, CI/CD, Frontend, GraphQL, WebRTC');
+  // Manual keyword entry (until server-side AI extraction is shipped)
+  const [manualKeywords, setManualKeywords] = useState('');
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setResults(null);
@@ -161,6 +158,7 @@ export default function JDMatcher() {
                   type="text" 
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
+                  placeholder="e.g. Stripe, Google..."
                   className="input-base w-full text-sm"
                 />
               </div>
@@ -171,6 +169,7 @@ export default function JDMatcher() {
                   type="text" 
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
+                  placeholder="e.g. Frontend Engineer..."
                   className="input-base w-full text-sm"
                 />
               </div>
@@ -215,7 +214,7 @@ export default function JDMatcher() {
                 value={manualKeywords}
                 onChange={(e) => setManualKeywords(e.target.value)}
                 className="input-base w-full text-sm font-mono"
-                placeholder="Enter keywords separated by commas..."
+                placeholder="e.g. React, TypeScript, REST APIs, CI/CD..."
               />
             </div>
             
