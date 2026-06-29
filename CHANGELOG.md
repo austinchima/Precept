@@ -21,6 +21,64 @@ _R1 candidate — Technical Readiness (Skills Matrix Visualizer)._
 - **Mouse-wheel scrolling on app pages**: Lenis smooth-scroll was initialized on `window` at the app root, but authenticated pages scroll an inner container (`#main-scroller`) while `body` is fixed — so the wheel was captured but nothing moved (only dragging the scrollbar worked). Lenis is now scoped to the landing page; app pages use native scrolling.
 - **Dashboard skills radar axes** realigned to the canonical categories (fixing a prior 6-categories-on-a-5-axis-grid mismatch).
 
+### Documentation
+- **README rewrite.** Audited the README against the live codebase and corrected every
+  inconsistency I could find. Notable fixes:
+  - **Fixed:** architecture diagram and tech-stack listing referenced "Axios HTTP Client"; the
+    project actually uses the native `fetch` API in `Precept.Web/src/api.ts`.
+  - **Fixed:** local-setup instructions claimed the frontend would be available at
+    `http://localhost:3000` after `docker compose up`. The compose `web` service serves the
+    production nginx build on host port **80**; port 3000 is only the Vite dev-server port.
+  - **Fixed:** removed the "encryption at rest" claim from Security. That is an infrastructure
+    concern of the chosen Postgres host, not an application-level feature, and the README is now
+    explicit about that limitation.
+  - **Fixed:** clarified JD Analyzer behavior. The README previously implied automatic keyword
+    extraction; in reality, the `CreateJobDescriptionRequest` accepts a **user-supplied**
+    `ExtractedKeyWords` list and `JobDescriptionService.ComputeMatchScore` performs a
+    case-insensitive set-intersection against the user's `Skills`. Renamed the module to
+    "JD Skill Mapper" in feature copy and flagged NLP-based extraction as an R2 candidate.
+  - **Added:** an "Environment variables" section documenting `POSTGRES_USER`,
+    `POSTGRES_PASSWORD`, `POSTGRES_DB`, `JWT_SECRET_KEY` (with the 32-byte minimum and a
+    generation recipe), and the optional `CORS_ORIGINS` / `ALLOWED_HOSTS`. `docker compose up`
+    fails without these because `Program.cs` now fail-fasts on a missing JWT key (per
+    `0.1.3`); the prior README did not warn users.
+  - **Added:** a "Testing" section documenting the xUnit + Testcontainers setup, the
+    `PostgresContainerFixture` CI fallback, and the CI workflow's three security scans.
+  - **Added:** an "API documentation" pointer noting that **Scalar** is mounted at `/scalar`
+    in development (configured in `Program.cs`, omitted from the prior README).
+  - **Added:** a project-layout tree covering `Precept.Api/`, `Precept.Web/`, `Precept.Tests/`,
+    `design-system/`, and the top-level docs.
+  - **Expanded:** Security section now documents the full surface that is actually shipped —
+    PBKDF2 password hashing, the 5-attempt / 15-minute Identity lockout, tiered
+    `System.Threading.RateLimiting` policies (10/min auth, 100/min general), the
+    environment-gated CORS split (`AllowViteDev` vs `Production` reading `CORS_ORIGINS`),
+    the security-headers middleware, the production-only error-message redaction, the
+    fail-fast JWT key length check, the `Database.Migrate()` startup gating, and the
+    per-request `[Authorize]` + global tenant `HasQueryFilter` defense-in-depth.
+  - **Expanded:** tech-stack listing now reflects the libraries actually in
+    `Precept.Web/package.json` (GSAP + `@gsap/react`, Framer Motion + `motion`, Tailwind v4,
+    Recharts, lenis, `@paper-design/shaders-react`, lucide-react, React Router 7) and the
+    backend's Serilog + Scalar additions.
+  - **Updated:** the ER diagram now includes `RefreshToken` and `Testimonial` (both have
+    controllers, migrations, and live endpoints) and the full field sets on `Application`
+    (Location, SalaryRange, FollowUpDate, IsRemote, Source, JobDescriptionId, ResumeVersion,
+    Notes, DateLastContact), `JobDescription` (ExtractedKeyWords, MissingKeyWords,
+    YourMatchScore, Url, SalaryRange, Location, IsRemote, Source, DatePosted), and `Skill`
+    (Category, ProficiencyLevel enum, Notes, timestamps).
+  - **Added:** an honest R2 scope section that commits to per-session cost ceilings
+    (≤ $0.005), prompt caching, browser-native STT/TTS in the free tier, a credit-ledger
+    model with atomic decrement for paid extensions, and an `AI_FEATURES_ENABLED` kill switch.
+  - **Added:** a "Disclaimer & origin" section that is honest about Precept being a personal
+    portfolio project (not a funded SaaS, no hosted commercial offering yet) and explains why
+    the codebase deliberately over-invests in auth/testing/OWASP coverage.
+  - **Reframed:** product positioning replaced the "Secure, Hosted Job-Hunting Command Center"
+    tagline with a more accurate "career command center for software engineers" framing, and
+    moved the wedge-vs-trackers point (Teal / Huntr / Simplify) into the explicit "Why this
+    exists" section.
+  - **Removed:** the unsubstantiated "Secure Cloud Architecture" / "isolated cloud
+    infrastructure" claim, since the repo only ships docker-compose; replaced with a Known
+    Limitations subsection.
+
 ## [0.1.4] - 2026-06-28
 
 _R1 release candidate — dashboard accuracy fixes._
