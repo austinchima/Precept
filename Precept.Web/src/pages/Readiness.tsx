@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { Skill } from '../types';
@@ -6,37 +7,38 @@ import { computeSkillAxes, READINESS_TARGET, SkillAxis } from '../lib/skills';
 import SkillRadar from '../components/SkillRadar';
 import { CountUp } from '../components/animation/CountUp';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
+import { Target, Layers, AlertTriangle, CircleDot, Circle, Loader2 } from 'lucide-react';
 
-/**
- * Technical Readiness — Skills Matrix Visualizer.
- *
- * Phase 1 (real): a radar of the user's CURRENT proficiency per skill category,
- * derived entirely from persisted Skill entities (via the shared computeSkillAxes
- * helper, so the dashboard preview shows identical data), plus an aggregated gap
- * list driven by the JD Analyzer's computed `missingKeyWords`.
- *
- * Phase 2 (real): target-role overlay driven by the user's OWN saved job
- * descriptions — each distinct role title with its real `yourMatchScore` and
- * `missingKeyWords`. The radar "target" is an explicit, labeled interview-ready
- * threshold (READINESS_TARGET) — NOT a fabricated per-role benchmark polygon.
- */
+const C = {
+  bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
+  ink: '#E6EBF2', inkDim: '#9CA8B8', inkMute: '#5A6678',
+  hair: 'rgba(255,255,255,0.07)', hair2: 'rgba(255,255,255,0.12)',
+  teal: '#2dd4bf', tealDim: 'rgba(45,212,191,0.14)',
+  violet: '#8b5cf6', rose: '#f43f5e', amber: '#f59e0b', sky: '#38bdf8', emerald: '#10b981',
+} as const;
 
-// Local shape for the JD list endpoint (mirrors JobDescriptionResponse).
+const cardStyle = (): React.CSSProperties => ({
+  background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
+  border: `1px solid ${C.hair}`,
+  borderRadius: 18,
+  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
+});
+
+const Eyebrow = ({ children, color = C.teal }: { children: React.ReactNode; color?: string }) => (
+  <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]"
+    style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}>
+    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+    {children}
+  </span>
+);
+
 interface JobDescriptionResponse {
-  id: string;
-  companyName: string;
-  roleTitle: string;
-  extractedKeyWords: string[];
-  missingKeyWords: string[];
-  yourMatchScore: number | null;
+  id: string; companyName: string; roleTitle: string;
+  extractedKeyWords: string[]; missingKeyWords: string[]; yourMatchScore: number | null;
 }
-
 interface RoleAgg {
-  role: string;
-  jdCount: number;
-  matchScore: number | null;
-  missing: { kw: string; count: number }[];
-  emphasized: Set<string>;
+  role: string; jdCount: number; matchScore: number | null;
+  missing: { kw: string; count: number }[]; emphasized: Set<string>;
 }
 
 export default function Readiness() {
@@ -64,12 +66,10 @@ export default function Readiness() {
     load();
   }, []);
 
-  // Current profile: average proficiency per skill category (shared helper).
   const axes: SkillAxis[] = useMemo(() => computeSkillAxes(skills), [skills]);
   const hasRadar = axes.length >= 3;
   const uncategorised = skills.filter((s) => !s.category?.trim()).length;
 
-  // Roles: real target roles from saved JDs.
   const roles: RoleAgg[] = useMemo(() => {
     const skillNames = new Set<string>(skills.map((s) => s.name.toLowerCase()));
     const catBySkill = new Map<string, string>();
@@ -77,7 +77,6 @@ export default function Readiness() {
       const c = s.category?.trim();
       if (c) catBySkill.set(s.name.toLowerCase(), c);
     }
-
     const grouped = new Map<string, JobDescriptionResponse[]>();
     for (const jd of jds) {
       const key = jd.roleTitle?.trim() || 'Untitled role';
@@ -85,14 +84,10 @@ export default function Readiness() {
       arr.push(jd);
       grouped.set(key, arr);
     }
-
     return [...grouped.entries()]
       .map(([role, group]) => {
         const scores = group.map((g) => g.yourMatchScore).filter((v): v is number => v != null);
-        const matchScore = scores.length
-          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-          : null;
-
+        const matchScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
         const missingFreq = new Map<string, number>();
         const emphasized = new Set<string>();
         for (const jd of group) {
@@ -101,24 +96,17 @@ export default function Readiness() {
             if (!k) continue;
             missingFreq.set(k, (missingFreq.get(k) ?? 0) + 1);
           }
-          // Categories this role actually touches = categories of the user's
-          // skills that the role's keywords matched (real, not inferred).
           for (const kw of jd.extractedKeyWords ?? []) {
             const lk = kw.trim().toLowerCase();
             if (skillNames.has(lk) && catBySkill.has(lk)) emphasized.add(catBySkill.get(lk)!);
           }
         }
-
-        const missing = [...missingFreq.entries()]
-          .map(([kw, count]) => ({ kw, count }))
-          .sort((a, b) => b.count - a.count);
-
+        const missing = [...missingFreq.entries()].map(([kw, count]) => ({ kw, count })).sort((a, b) => b.count - a.count);
         return { role, jdCount: group.length, matchScore, missing, emphasized };
       })
-      .sort((a, b) => (a.matchScore ?? Number.POSITIVE_INFINITY) - (b.matchScore ?? Number.POSITIVE_INFINITY)); // weakest match first; unknown last
+      .sort((a, b) => (a.matchScore ?? Number.POSITIVE_INFINITY) - (b.matchScore ?? Number.POSITIVE_INFINITY));
   }, [jds, skills]);
 
-  // Aggregated gaps across all saved JDs (Phase 1 gap list).
   const overallGaps = useMemo(() => {
     const freq = new Map<string, number>();
     for (const jd of jds) {
@@ -136,67 +124,59 @@ export default function Readiness() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-40 text-text-secondary font-mono gap-3">
-        <div className="w-12 h-12 rounded-full border-4 border-accent-teal/10 border-t-accent-teal animate-spin" />
-        <span>Mapping technical readiness...</span>
+      <div className="flex flex-col items-center justify-center py-40 gap-3 font-mono text-sm" style={{ color: C.inkDim }}>
+        <Loader2 className="w-12 h-12 animate-spin" style={{ color: C.teal }} />
+        <span>Mapping technical readiness…</span>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 pt-4 md:pt-6 max-w-[1200px] mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex flex-col items-center text-center gap-3 opacity-0 animate-fade-in-up delay-200">
-        <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Technical Readiness</h1>
-        <p className="font-mono text-text-secondary text-sm max-w-2xl">
-          Map your current proficiencies against the interview-ready bar. Identify critical gaps before the technical screen.
+    <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1200px] mx-auto space-y-8" data-testid="readiness-page" style={{ color: C.ink }}>
+      <div className="text-center flex flex-col items-center gap-3 opacity-0 animate-fade-in-up delay-200">
+        <Eyebrow color={C.teal}>Readiness matrix</Eyebrow>
+        <h1 className="font-display font-bold leading-[1.05] mt-2" style={{ color: C.ink, fontSize: 'clamp(28px,4vw,40px)' }}>
+          Technical <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>readiness.</span>
+        </h1>
+        <p className="font-body text-[14.5px] max-w-2xl" style={{ color: C.inkDim }}>
+          Plot proficiencies against the interview-ready bar. Surface gaps before the technical screen.
         </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-        {/* Left: Radar */}
-        <section className="flex-1 glass-panel rounded-2xl p-6 md:p-8 relative flex items-center justify-center overflow-hidden min-h-[420px] opacity-0 animate-fade-in-up delay-300">
-          <div
-            className="pointer-events-none absolute w-[320px] h-[320px] rounded-full"
-            style={{ background: 'radial-gradient(circle, rgba(45,212,191,0.12) 0%, rgba(2,5,10,0) 70%)' }}
-          />
+        {/* Radar */}
+        <section className="flex-1 p-6 md:p-8 relative flex items-center justify-center overflow-hidden min-h-[420px] opacity-0 animate-fade-in-up delay-300" style={cardStyle()}>
+          <div className="pointer-events-none absolute w-[400px] h-[400px] rounded-full"
+            style={{ background: `radial-gradient(circle, rgba(45,212,191,0.10), transparent 70%)`, filter: 'blur(4px)' }} />
           {hasRadar ? (
             <div className="relative z-10 w-full max-w-[420px] aspect-square">
-              <SkillRadar
-                axes={axes}
-                size={400}
-                target={READINESS_TARGET}
-                emphasized={activeRole?.emphasized}
-                className="w-full h-full"
-              />
-
-              {/* Legend */}
-              <div className="absolute bottom-0 left-0 flex flex-col gap-1.5 font-mono text-[11px]">
-                <span className="flex items-center gap-2 text-text-secondary">
-                  <span className="inline-block w-3 h-0.5 bg-accent-teal" /> Current profile
+              <SkillRadar axes={axes} size={400} target={READINESS_TARGET} emphasized={activeRole?.emphasized} className="w-full h-full" />
+              <div className="absolute bottom-0 left-0 flex flex-col gap-1.5 font-mono text-[10.5px]">
+                <span className="flex items-center gap-2" style={{ color: C.inkDim }}>
+                  <span className="inline-block w-3 h-0.5" style={{ background: C.teal }} /> Current profile
                 </span>
-                <span className="flex items-center gap-2 text-text-secondary">
-                  <span className="inline-block w-3 border-t border-dashed border-accent-purple" /> Interview-ready ({READINESS_TARGET}%)
+                <span className="flex items-center gap-2" style={{ color: C.inkDim }}>
+                  <span className="inline-block w-3 border-t border-dashed" style={{ borderColor: C.violet }} /> Interview-ready ({READINESS_TARGET}%)
                 </span>
               </div>
             </div>
           ) : (
             <div className="relative z-10 text-center max-w-sm flex flex-col items-center gap-4">
-              <i className="fa-solid fa-diagram-project text-4xl text-text-secondary/40" />
-              <p className="text-text-secondary text-sm">
-                Add skills with categories to at least <span className="text-white font-medium">3 categories</span> to chart your
-                readiness map.
+              <div className="w-12 h-12 rounded-xl grid place-items-center" style={{ background: `${C.inkMute}14`, border: `1px solid ${C.hair2}` }}>
+                <Target size={20} style={{ color: C.inkMute }} />
+              </div>
+              <p className="font-body text-[13.5px]" style={{ color: C.inkDim }}>
+                Add skills with categories to at least <span style={{ color: C.ink, fontWeight: 500 }}>3 categories</span> to chart your readiness map.
                 {uncategorised > 0 && (
-                  <span className="block mt-1 text-xs text-text-secondary/70">
+                  <span className="block mt-1 font-mono text-[11px]" style={{ color: C.inkMute }}>
                     {uncategorised} skill{uncategorised === 1 ? '' : 's'} have no category yet.
                   </span>
                 )}
               </p>
-              <button
-                onClick={() => navigate('/settings')}
-                className="px-4 py-2 rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg hover:scale-105 transition-all"
-              >
-                Manage Skills
+              <button onClick={() => navigate('/settings')}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
+                style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
+                Manage skills
               </button>
             </div>
           )}
@@ -204,67 +184,50 @@ export default function Readiness() {
 
         {/* Right: Controls */}
         <aside className="w-full lg:w-80 flex flex-col gap-4 opacity-0 animate-fade-in-up delay-400">
-          <div className="glass-panel rounded-2xl p-6 flex-1 flex flex-col">
-            <h3 className="font-semibold text-white mb-5 uppercase tracking-wider text-xs flex items-center gap-2">
-              <i className="fa-solid fa-bullseye text-accent-teal" /> Target Roles
+          <div className="p-6 flex-1 flex flex-col" style={cardStyle()}>
+            <h3 className="font-mono text-[10.5px] uppercase tracking-[0.18em] mb-5 flex items-center gap-2" style={{ color: C.teal }}>
+              <Target size={11} /> Target roles
             </h3>
 
             {roles.length === 0 ? (
-              <div className="text-sm text-text-secondary flex flex-col gap-3">
-                <p>No saved job descriptions yet. Save JDs in the JD Matcher to see real role readiness and gaps.</p>
-                <button
-                  onClick={() => navigate('/jd-matcher')}
-                  className="self-start px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all"
-                >
+              <div className="font-body text-[13px] leading-relaxed flex flex-col gap-3" style={{ color: C.inkDim }}>
+                <p>No saved job descriptions yet. Save JDs in the JD Matcher to surface real role readiness.</p>
+                <button onClick={() => navigate('/jd-matcher')}
+                  className="self-start inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
+                  style={{ background: 'rgba(255,255,255,0.025)', color: C.ink, border: `1px solid ${C.hair2}` }}>
                   Open JD Matcher
                 </button>
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
-                <button
-                  onClick={() => setSelectedRole(null)}
-                  className={`w-full text-left px-4 py-3 rounded-xl border font-mono text-sm transition-all flex items-center justify-between ${
-                    !selectedRole
-                      ? 'bg-accent-teal/10 border-accent-teal text-accent-teal'
-                      : 'border-white/10 text-text-secondary hover:text-white hover:bg-white/5'
-                  }`}
-                >
+                <RoleBtn active={!selectedRole} onClick={() => setSelectedRole(null)}>
                   <span>All roles (overview)</span>
-                  <i className={`fa-solid ${!selectedRole ? 'fa-circle-dot' : 'fa-circle'} text-xs opacity-70`} />
-                </button>
+                  {!selectedRole ? <CircleDot size={12} className="opacity-70" /> : <Circle size={12} className="opacity-50" />}
+                </RoleBtn>
                 {roles.map((r) => (
-                  <button
-                    key={r.role}
-                    onClick={() => setSelectedRole(r.role)}
-                    className={`w-full text-left px-4 py-3 rounded-xl border font-mono text-sm transition-all flex items-center justify-between gap-2 ${
-                      selectedRole === r.role
-                        ? 'bg-accent-teal/10 border-accent-teal text-accent-teal'
-                        : 'border-white/10 text-text-secondary hover:text-white hover:bg-white/5'
-                    }`}
-                  >
+                  <RoleBtn key={r.role} active={selectedRole === r.role} onClick={() => setSelectedRole(r.role)}>
                     <span className="truncate" title={r.role}>{r.role}</span>
-                    <span className={`shrink-0 text-xs ${r.matchScore == null ? 'text-text-secondary/60' : 'text-white'}`}>
+                    <span className="shrink-0 text-[11px]" style={{ color: r.matchScore == null ? C.inkMute : C.ink }}>
                       {r.matchScore == null ? '—' : `${r.matchScore}%`}
                     </span>
-                  </button>
+                  </RoleBtn>
                 ))}
               </div>
             )}
 
-            {/* Gap analysis — generated from real data */}
+            {/* Gap analysis */}
             <div className="mt-auto pt-6">
-              <div className="p-4 bg-black/30 rounded-xl border border-white/10 border-l-4 border-l-accent-teal">
-                <p className="font-mono text-xs text-text-secondary leading-relaxed">
-                  <span className="text-white block mb-1.5 font-semibold">Gap Analysis</span>
+              <div className="p-4 rounded-xl" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderLeft: `2px solid ${C.teal}` }}>
+                <p className="font-mono text-[11.5px] leading-relaxed" style={{ color: C.inkDim }}>
+                  <span className="block mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em]" style={{ color: C.ink }}>Gap analysis</span>
                   {activeRole ? (
                     activeRole.matchScore == null ? (
-                      <>No match score yet for <span className="text-white">{activeRole.role}</span> — add keywords in the JD Matcher.</>
+                      <>No match score yet for <span style={{ color: C.ink }}>{activeRole.role}</span> — add keywords in the JD Matcher.</>
                     ) : (
                       <>
-                        <span className="text-white">{activeRole.role}</span>: {activeRole.matchScore}% match across {activeRole.jdCount} JD
-                        {activeRole.jdCount === 1 ? '' : 's'}.{' '}
+                        <span style={{ color: C.ink }}>{activeRole.role}</span>: {activeRole.matchScore}% match across {activeRole.jdCount} JD{activeRole.jdCount === 1 ? '' : 's'}.{' '}
                         {activeRole.missing.length > 0 ? (
-                          <>Close these first: <span className="text-accent-teal">{activeRole.missing.slice(0, 4).map((m) => m.kw).join(', ')}</span>.</>
+                          <>Close these first: <span style={{ color: C.teal }}>{activeRole.missing.slice(0, 4).map((m) => m.kw).join(', ')}</span>.</>
                         ) : (
                           <>No missing keywords recorded for this role.</>
                         )}
@@ -272,11 +235,8 @@ export default function Readiness() {
                     )
                   ) : belowTarget.length > 0 ? (
                     <>
-                      Below the interview-ready bar in{' '}
-                      <span className="text-[#f43f5e]">
-                        {belowTarget.slice(0, 3).map((a) => `${a.name} (${a.value}%)`).join(', ')}
-                      </span>
-                      .{overallGaps.length > 0 && <> Most common gap across roles: <span className="text-accent-teal">{overallGaps[0].kw}</span>.</>}
+                      Below the interview-ready bar in <span style={{ color: C.rose }}>{belowTarget.slice(0, 3).map((a) => `${a.name} (${a.value}%)`).join(', ')}</span>.
+                      {overallGaps.length > 0 && <> Most common gap across roles: <span style={{ color: C.teal }}>{overallGaps[0].kw}</span>.</>}
                     </>
                   ) : axes.length > 0 ? (
                     <>You're at or above the interview-ready bar across all charted categories. Keep stories fresh.</>
@@ -290,38 +250,28 @@ export default function Readiness() {
         </aside>
       </div>
 
-      {/* Lower: coverage bars + aggregated gaps */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Per-category coverage vs target */}
-        <section className="glass-panel rounded-2xl p-6 opacity-0 animate-fade-in-up delay-500">
-          <h3 className="text-sm font-semibold text-white mb-5 flex items-center gap-2">
-            <i className="fa-solid fa-layer-group text-accent-purple" /> Category Coverage
+        <section className="p-6 opacity-0 animate-fade-in-up delay-500" style={cardStyle()}>
+          <h3 className="font-mono text-[10.5px] uppercase tracking-[0.18em] mb-5 flex items-center gap-2" style={{ color: C.violet }}>
+            <Layers size={11} /> Category coverage
           </h3>
           {axes.length === 0 ? (
-            <p className="text-sm text-text-secondary italic">No categorised skills yet.</p>
+            <p className="font-body text-[13px] italic" style={{ color: C.inkDim }}>No categorised skills yet.</p>
           ) : (
             <div className="space-y-4">
               {axes.map((ax) => {
                 const below = ax.value < READINESS_TARGET;
                 return (
                   <div key={ax.name}>
-                    <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-text-secondary">
-                        {ax.name} <span className="text-text-secondary/50">· {ax.count}</span>
+                    <div className="flex justify-between font-mono text-[11px] mb-1.5">
+                      <span style={{ color: C.inkDim }}>
+                        {ax.name} <span style={{ color: C.inkMute }}>· {ax.count}</span>
                       </span>
-                      <span className={below ? 'text-[#f43f5e] font-medium' : 'text-white font-medium'}>{ax.value}%</span>
+                      <span style={{ color: below ? C.rose : C.ink, fontWeight: 500 }}>{ax.value}%</span>
                     </div>
-                    <div className="relative h-2 w-full bg-black/40 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-1000"
-                        style={{ width: `${ax.value}%`, backgroundColor: below ? '#f43f5e' : '#2dd4bf' }}
-                      />
-                      {/* interview-ready marker */}
-                      <div
-                        className="absolute top-0 h-full w-0.5 bg-accent-purple"
-                        style={{ left: `${READINESS_TARGET}%` }}
-                        title={`Interview-ready: ${READINESS_TARGET}%`}
-                      />
+                    <div className="relative h-2 w-full overflow-hidden rounded-full" style={{ background: C.hair }}>
+                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${ax.value}%`, background: below ? C.rose : C.teal, boxShadow: `0 0 6px ${below ? C.rose : C.teal}55` }} />
+                      <div className="absolute top-0 h-full w-0.5" style={{ background: C.violet, left: `${READINESS_TARGET}%` }} title={`Interview-ready: ${READINESS_TARGET}%`} />
                     </div>
                   </div>
                 );
@@ -330,40 +280,24 @@ export default function Readiness() {
           )}
         </section>
 
-        {/* Aggregated gaps from JD analyzer */}
-        <section className="glass-panel rounded-2xl p-6 opacity-0 animate-fade-in-up delay-500">
-          <h3 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-            <i className="fa-solid fa-triangle-exclamation text-accent-teal" /> Gaps To Close
+        <section className="p-6 opacity-0 animate-fade-in-up delay-500" style={cardStyle()}>
+          <h3 className="font-mono text-[10.5px] uppercase tracking-[0.18em] mb-1 flex items-center gap-2" style={{ color: C.teal }}>
+            <AlertTriangle size={11} /> Gaps to close
           </h3>
-          <p className="text-xs text-text-secondary mb-5">
+          <p className="font-mono text-[11px] mb-5" style={{ color: C.inkMute }}>
             {activeRole ? `Missing keywords for ${activeRole.role}` : 'Most-requested skills missing across your saved JDs'}
           </p>
           {(() => {
             const list = activeRole ? activeRole.missing : overallGaps;
-            if (jds.length === 0) {
-              return (
-                <p className="text-sm text-text-secondary italic">
-                  Save job descriptions in the JD Matcher to surface real skill gaps.
-                </p>
-              );
-            }
-            if (list.length === 0) {
-              return <p className="text-sm text-text-secondary italic">No missing keywords — nice coverage.</p>;
-            }
+            if (jds.length === 0) return <p className="font-body text-[13px] italic" style={{ color: C.inkDim }}>Save job descriptions in the JD Matcher to surface real skill gaps.</p>;
+            if (list.length === 0) return <p className="font-body text-[13px] italic" style={{ color: C.inkDim }}>No missing keywords — nice coverage.</p>;
             return (
-              <AnimatedSection
-                animation="staggerFadeUp"
-                stagger={0.04}
-                childSelector="> span"
-                className="flex flex-wrap gap-2"
-              >
+              <AnimatedSection animation="staggerFadeUp" stagger={0.04} childSelector="> span" className="flex flex-wrap gap-2">
                 {list.slice(0, 18).map((g) => (
-                  <span
-                    key={g.kw}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-black/30 border border-white/10 text-text-primary flex items-center gap-2"
-                  >
+                  <span key={g.kw} className="px-3 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-widest flex items-center gap-2"
+                    style={{ background: C.bg2, color: C.ink, border: `1px solid ${C.hair2}` }}>
                     {g.kw}
-                    {g.count > 1 && <span className="text-[10px] text-accent-teal font-mono">×{g.count}</span>}
+                    {g.count > 1 && <span className="text-[10px]" style={{ color: C.teal }}>×{g.count}</span>}
                   </span>
                 ))}
               </AnimatedSection>
@@ -372,27 +306,35 @@ export default function Readiness() {
         </section>
       </div>
 
-      {/* Summary footer */}
-      <div className="glass-panel rounded-2xl p-6 grid grid-cols-2 md:grid-cols-4 gap-4 opacity-0 animate-fade-in-up delay-500">
-        <div>
-          <div className="text-xs text-text-secondary mb-1">Categories charted</div>
-          <div className="text-2xl font-bold text-white"><CountUp end={axes.length} duration={1.2} /></div>
-        </div>
-        <div>
-          <div className="text-xs text-text-secondary mb-1">At / above target</div>
-          <div className="text-2xl font-bold text-white">
-            <CountUp end={axes.filter((a) => a.value >= READINESS_TARGET).length} duration={1.2} />
+      <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 opacity-0 animate-fade-in-up delay-500" style={cardStyle()}>
+        {[
+          { label: 'Categories charted', value: axes.length },
+          { label: 'At / above target', value: axes.filter((a) => a.value >= READINESS_TARGET).length },
+          { label: 'Target roles', value: roles.length },
+          { label: 'Distinct gaps', value: overallGaps.length },
+        ].map((s) => (
+          <div key={s.label}>
+            <div className="font-mono text-[10px] uppercase tracking-[0.16em] mb-1" style={{ color: C.inkMute }}>{s.label}</div>
+            <div className="font-display text-[26px] font-bold" style={{ color: C.ink }}>
+              <CountUp end={s.value} duration={1.2} />
+            </div>
           </div>
-        </div>
-        <div>
-          <div className="text-xs text-text-secondary mb-1">Target roles</div>
-          <div className="text-2xl font-bold text-white"><CountUp end={roles.length} duration={1.2} /></div>
-        </div>
-        <div>
-          <div className="text-xs text-text-secondary mb-1">Distinct gaps</div>
-          <div className="text-2xl font-bold text-white"><CountUp end={overallGaps.length} duration={1.2} /></div>
-        </div>
+        ))}
       </div>
     </div>
+  );
+}
+
+function RoleBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode; key?: React.Key }) {
+  return (
+    <button onClick={onClick}
+      className="w-full text-left px-4 py-3 rounded-xl font-mono text-[12.5px] transition-all flex items-center justify-between gap-2 cursor-pointer"
+      style={{
+        background: active ? C.tealDim : 'transparent',
+        color: active ? C.teal : C.inkDim,
+        border: `1px solid ${active ? `${C.teal}55` : C.hair}`,
+      }}>
+      {children}
+    </button>
   );
 }

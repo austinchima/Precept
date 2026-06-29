@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Skill, SkillProficiency, SKILL_CATEGORIES } from '../types';
 import { getSkillIcon } from '../lib/utils';
 import { api } from '../api';
@@ -7,49 +6,77 @@ import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
+import { Check, Plus, Pencil, X, Loader2, Database, Stethoscope, Download, Radiation, Megaphone, Terminal as TerminalIcon, User2 } from 'lucide-react';
 
-const PROFICIENCY_COLORS: Record<SkillProficiency, string> = {
-  Beginner: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  Intermediate: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  Advanced: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  Expert: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+const C = {
+  bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
+  ink: '#E6EBF2', inkDim: '#9CA8B8', inkMute: '#5A6678',
+  hair: 'rgba(255,255,255,0.07)', hair2: 'rgba(255,255,255,0.12)',
+  teal: '#2dd4bf', tealDim: 'rgba(45,212,191,0.14)',
+  violet: '#8b5cf6', rose: '#f43f5e', amber: '#f59e0b', sky: '#38bdf8', emerald: '#10b981',
+} as const;
+
+const cardStyle = (): React.CSSProperties => ({
+  background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
+  border: `1px solid ${C.hair}`,
+  borderRadius: 18,
+  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
+});
+
+const Eyebrow = ({ children, color = C.teal }: { children: React.ReactNode; color?: string }) => (
+  <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]"
+    style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}>
+    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+    {children}
+  </span>
+);
+
+const inputStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.025)',
+  border: `1px solid ${C.hair}`,
+  borderRadius: 10,
+  color: C.ink,
+  padding: '10px 12px',
+  fontFamily: 'JetBrains Mono, monospace',
+  fontSize: 13,
+  width: '100%',
+  outline: 'none',
 };
 
-const PROFICIENCY_ICONS: Record<SkillProficiency, string> = {
-  Beginner: 'fa-solid fa-seedling',
-  Intermediate: 'fa-solid fa-code',
-  Advanced: 'fa-solid fa-fire',
-  Expert: 'fa-solid fa-trophy'
+const PROF_COLOR: Record<SkillProficiency, string> = {
+  Beginner: C.sky, Intermediate: C.amber, Advanced: C.violet, Expert: C.emerald,
 };
+
+const SectionHeader = ({ icon, title, sub, color = C.teal }: { icon: React.ReactNode; title: string; sub: string; color?: string }) => (
+  <div className="flex items-start gap-3 mb-4">
+    <div className="w-9 h-9 rounded-lg grid place-items-center shrink-0" style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}>
+      {icon}
+    </div>
+    <div>
+      <h2 className="font-display text-[17px] font-semibold leading-tight" style={{ color: C.ink }}>{title}</h2>
+      <p className="font-body text-[12.5px] mt-0.5" style={{ color: C.inkDim }}>{sub}</p>
+    </div>
+  </div>
+);
 
 export default function Settings() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user, updateProfile } = useAuth();
   const toast = useToast();
-  
+
   const [confirmConfig, setConfirmConfig] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    confirmText: '',
-    danger: false,
-    onConfirm: () => {}
+    isOpen: false, title: '', message: '', confirmText: '', danger: false, onConfirm: () => {},
   });
 
-  // Form state
   const [profileFirstName, setProfileFirstName] = useState(user?.firstName || '');
   const [profileLastName, setProfileLastName] = useState(user?.lastName || '');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
-  
-  // Diagnostic State
+
   const [isSystemOnline, setIsSystemOnline] = useState<boolean | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
-
-  // Data Export State
   const [isExporting, setIsExporting] = useState(false);
 
-  // Skill Form state
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [proficiency, setProficiency] = useState<SkillProficiency>('Intermediate');
@@ -58,17 +85,13 @@ export default function Settings() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const skillFormRef = useRef<HTMLDivElement>(null);
 
-  // Testimonial Form State
   const [testimonyHandle, setTestimonyHandle] = useState('');
   const [testimonyText, setTestimonyText] = useState('');
   const [isPublicConfirmed, setIsPublicConfirmed] = useState(false);
   const [isSubmittingTestimony, setIsSubmittingTestimony] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      setProfileFirstName(user.firstName);
-      setProfileLastName(user.lastName);
-    }
+    if (user) { setProfileFirstName(user.firstName); setProfileLastName(user.lastName); }
   }, [user]);
 
   useEffect(() => {
@@ -77,54 +100,37 @@ export default function Settings() {
       try {
         await api.get('/api/system/ping', { skipAuth: true });
         setIsSystemOnline(true);
-      } catch (err) {
+      } catch {
         setIsSystemOnline(false);
       } finally {
         setIsCheckingStatus(false);
       }
     }
-    
     checkSystemHealth();
-    // Poll every 30 seconds
     const interval = setInterval(checkSystemHealth, 30000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     async function loadSkills() {
-      try {
-        const data = await api.get<Skill[]>('/api/skill');
-        setSkills(data);
-      } catch (err) {
-        console.error('Failed to load skills:', err);
-      } finally {
-        setIsLoading(false);
-      }
+      try { const data = await api.get<Skill[]>('/api/skill'); setSkills(data); }
+      catch (err) { console.error('Failed to load skills:', err); }
+      finally { setIsLoading(false); }
     }
     loadSkills();
   }, []);
 
   const resetSkillForm = () => {
-    setEditingId(null);
-    setName('');
-    setCategory('');
-    setProficiency('Intermediate');
-    setNotes('');
+    setEditingId(null); setName(''); setCategory(''); setProficiency('Intermediate'); setNotes('');
   };
-
   const startEditSkill = (skill: Skill) => {
-    setEditingId(skill.id);
-    setName(skill.name);
-    setCategory(skill.category || '');
-    setProficiency(skill.proficiencyLevel);
-    setNotes(skill.notes || '');
+    setEditingId(skill.id); setName(skill.name); setCategory(skill.category || '');
+    setProficiency(skill.proficiencyLevel); setNotes(skill.notes || '');
     skillFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
-
   const handleSubmitSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-
     setIsSubmitting(true);
     try {
       const payload = {
@@ -133,21 +139,17 @@ export default function Settings() {
         proficiencyLevel: proficiency,
         notes: notes.trim() || undefined,
       };
-
       if (editingId) {
         const updated = await api.put<Skill>(`/api/skill/${editingId}`, payload);
-        setSkills(prev =>
-          prev.map(s => (s.id === editingId ? updated : s)).sort((a, b) => a.name.localeCompare(b.name)),
-        );
+        setSkills((prev) => prev.map((s) => (s.id === editingId ? updated : s)).sort((a, b) => a.name.localeCompare(b.name)));
       } else {
         const added = await api.post<Skill>('/api/skill', payload);
-        setSkills(prev => [...prev, added].sort((a, b) => a.name.localeCompare(b.name)));
+        setSkills((prev) => [...prev, added].sort((a, b) => a.name.localeCompare(b.name)));
       }
-
       resetSkillForm();
     } catch (err) {
       console.error('Failed to save skill:', err);
-      toast.error((err as Error).message || 'Failed to save skill to database.');
+      toast.error((err as Error).message || 'Failed to save skill.');
     } finally {
       setIsSubmitting(false);
     }
@@ -156,21 +158,18 @@ export default function Settings() {
   const handleSubmitTestimonial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!testimonyHandle.trim() || !testimonyText.trim() || !isPublicConfirmed) return;
-
     setIsSubmittingTestimony(true);
     try {
       await api.post('/api/testimonial', {
         name: `${user?.firstName} ${user?.lastName}`,
         handle: testimonyHandle.trim(),
-        text: testimonyText.trim()
+        text: testimonyText.trim(),
       });
-      toast.success('Success story published! Thank you for sharing your experience.');
-      setTestimonyHandle('');
-      setTestimonyText('');
-      setIsPublicConfirmed(false);
+      toast.success('Story published! Thanks for sharing.');
+      setTestimonyHandle(''); setTestimonyText(''); setIsPublicConfirmed(false);
     } catch (err) {
       console.error('Failed to submit testimonial:', err);
-      toast.error('Failed to publish story. Please try again.');
+      toast.error('Failed to publish story.');
     } finally {
       setIsSubmittingTestimony(false);
     }
@@ -179,51 +178,42 @@ export default function Settings() {
   const removeSkill = (id: string) => {
     setConfirmConfig({
       isOpen: true,
-      title: 'Delete Skill',
-      message: 'Are you sure you want to delete this skill? This will affect your JD Matcher scores.',
-      confirmText: 'Delete Skill',
+      title: 'Delete skill',
+      message: 'Are you sure? This affects your JD Matcher scores.',
+      confirmText: 'Delete',
       danger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/api/skill/${id}`);
-          setSkills(prev => prev.filter(s => s.id !== id));
-          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+          setSkills((prev) => prev.filter((s) => s.id !== id));
+          setConfirmConfig((p) => ({ ...p, isOpen: false }));
         } catch (err) {
           console.error('Failed to delete skill:', err);
           toast.error((err as Error).message || 'Failed to remove skill.');
-          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+          setConfirmConfig((p) => ({ ...p, isOpen: false }));
         }
-      }
+      },
     });
   };
 
   const handlePurge = () => {
     setConfirmConfig({
       isOpen: true,
-      title: 'Wipe Local Data',
-      message: 'CRITICAL ACTION: Are you sure you want to wipe all local storage data? This logs you out.',
-      confirmText: 'Wipe Data',
+      title: 'Wipe local data',
+      message: 'This logs you out and clears local storage. Continue?',
+      confirmText: 'Wipe data',
       danger: true,
-      onConfirm: () => {
-        localStorage.clear();
-        window.dispatchEvent(new Event('auth-expired'));
-      }
+      onConfirm: () => { localStorage.clear(); window.dispatchEvent(new Event('auth-expired')); },
     });
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileFirstName.trim() || !profileLastName.trim()) return;
-
     setIsUpdatingProfile(true);
-    try {
-      await updateProfile(profileFirstName, profileLastName);
-      toast.success('Profile updated successfully.');
-    } catch (err) {
-      toast.error('Failed to update profile. Please try again.');
-    } finally {
-      setIsUpdatingProfile(false);
-    }
+    try { await updateProfile(profileFirstName, profileLastName); toast.success('Profile updated.'); }
+    catch { toast.error('Failed to update profile.'); }
+    finally { setIsUpdatingProfile(false); }
   };
 
   const handleExportData = async () => {
@@ -235,238 +225,147 @@ export default function Settings() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `precept-data-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Failed to export data:', err);
-      toast.error('Export failed. Please check your connection and try again.');
+      console.error('Failed to export:', err);
+      toast.error('Export failed.');
     } finally {
       setIsExporting(false);
     }
   };
 
-  return (
-    <div className="p-8 pt-6 max-w-[1200px] mx-auto space-y-8">
+  const proficiencyPct: Record<SkillProficiency, number> = { Beginner: 30, Intermediate: 60, Advanced: 80, Expert: 95 };
 
-      {/* Hero Header */}
+  return (
+    <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1200px] mx-auto space-y-8" data-testid="settings-page" style={{ color: C.ink }}>
       <div className="opacity-0 animate-fade-in-up">
-        <h1 className="text-[28px] font-medium text-white flex items-center tracking-tight">
-          System <span className="font-bold ml-2 hover:text-accent-teal transition-colors duration-300 cursor-default">Configuration</span>
+        <Eyebrow color={C.violet}>Configuration</Eyebrow>
+        <h1 className="mt-4 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(28px,4vw,40px)' }}>
+          System <span className="font-editorial" style={{ color: C.violet, fontWeight: 400 }}>configuration.</span>
         </h1>
-        <p className="text-text-secondary text-sm mt-1">Manage operator profile, capabilities, and system diagnostics.</p>
+        <p className="mt-2 font-body text-[14px]" style={{ color: C.inkDim }}>Profile, capabilities, diagnostics, exports.</p>
       </div>
 
-      <AnimatedSection animation="staggerFadeUp" stagger={0.12} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column (Main Content) */}
-        <div className="lg:col-span-2 space-y-8">
-          
-          {/* Personal Details Section */}
-          <section className="space-y-4 opacity-0 animate-fade-in-up delay-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-accent-teal/10 border border-accent-teal/20 flex items-center justify-center">
-                <i className="fa-regular fa-user text-accent-teal text-sm"></i>
+      <AnimatedSection animation="staggerFadeUp" stagger={0.12} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Profile */}
+          <section className="opacity-0 animate-fade-in-up delay-100 p-6" style={cardStyle()}>
+            <SectionHeader icon={<User2 size={16} />} title="Operator details" sub="Update your name." color={C.teal} />
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="First name">
+                  <input type="text" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} style={inputStyle} required data-testid="settings-firstname" />
+                </Field>
+                <Field label="Last name">
+                  <input type="text" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} style={inputStyle} required data-testid="settings-lastname" />
+                </Field>
               </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Operator Details</h2>
-                <p className="text-xs text-text-secondary">Update your personal identification information.</p>
-              </div>
-            </div>
-
-            <div className="glass-panel rounded-2xl p-6">
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">First Name</label>
-                    <input 
-                      type="text" 
-                      value={profileFirstName}
-                      onChange={(e) => setProfileFirstName(e.target.value)}
-                      className="input-base w-full text-sm" 
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Last Name</label>
-                    <input 
-                      type="text" 
-                      value={profileLastName}
-                      onChange={(e) => setProfileLastName(e.target.value)}
-                      className="input-base w-full text-sm" 
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="pt-2">
-                  <button 
-                    type="submit" 
-                    disabled={isUpdatingProfile}
-                    className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
-                  >
-                    {isUpdatingProfile ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : <i className="fa-solid fa-check text-xs"></i>}
-                    {isUpdatingProfile ? 'Updating...' : 'Update Details'}
-                  </button>
-                </div>
-              </form>
-            </div>
+              <button type="submit" disabled={isUpdatingProfile} data-testid="settings-save-profile"
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
+                style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
+                {isUpdatingProfile ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                {isUpdatingProfile ? 'Updating…' : 'Save changes'}
+              </button>
+            </form>
           </section>
 
-          {/* Skills Section */}
+          {/* Skills */}
           <section className="space-y-4 opacity-0 animate-fade-in-up delay-200">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                <i className="fa-solid fa-terminal text-purple-400 text-sm"></i>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Capabilities (Skills)</h2>
-                <p className="text-xs text-text-secondary">These keywords are injected into the JD Matcher algorithm to compute compatibility scores.</p>
-              </div>
-            </div>
-
-            {/* Add / Edit Skill Form */}
-            <div ref={skillFormRef} className="glass-panel rounded-2xl p-6">
-              <h3 className="text-xs font-mono text-accent-teal uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i className={`fa-solid ${editingId ? 'fa-pen' : 'fa-plus'} text-[10px]`}></i> {editingId ? 'Edit Capability' : 'Inject New Capability'}
-              </h3>
+            <div className="p-6" style={cardStyle()} ref={skillFormRef}>
+              <SectionHeader icon={<TerminalIcon size={16} />} title="Capabilities" sub="These keywords feed your JD match scores." color={C.violet} />
               <form onSubmit={handleSubmitSkill} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Skill Name</label>
-                    <input 
-                      type="text" 
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="input-base w-full text-sm" 
-                      placeholder="e.g. React, Docker, EF Core" 
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Category</label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="input-base w-full text-sm"
-                    >
-                      <option value="">— Select category —</option>
-                      {SKILL_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                  <Field label="Name">
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. React, Docker" style={inputStyle} required data-testid="skill-name" />
+                  </Field>
+                  <Field label="Category">
+                    <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle} data-testid="skill-category">
+                      <option value="" style={{ background: C.bg1 }}>— Select category —</option>
+                      {SKILL_CATEGORIES.map((c) => <option key={c} value={c} style={{ background: C.bg1 }}>{c}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Proficiency">
+                    <select value={proficiency} onChange={(e) => setProficiency(e.target.value as SkillProficiency)} style={inputStyle} data-testid="skill-proficiency">
+                      {(['Beginner', 'Intermediate', 'Advanced', 'Expert'] as SkillProficiency[]).map((p) => (
+                        <option key={p} value={p} style={{ background: C.bg1 }}>{p}</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Proficiency</label>
-                    <select 
-                      value={proficiency}
-                      onChange={(e) => setProficiency(e.target.value as SkillProficiency)}
-                      className="input-base w-full text-sm"
-                    >
-                      <option value="Beginner">Beginner</option>
-                      <option value="Intermediate">Intermediate</option>
-                      <option value="Advanced">Advanced</option>
-                      <option value="Expert">Expert</option>
-                    </select>
-                  </div>
+                  </Field>
                 </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Notes / Sub-technologies (Optional)</label>
-                  <input 
-                    type="text" 
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="input-base w-full text-sm" 
-                    placeholder="e.g. Hooks, Context API, Redux, Next.js" 
-                  />
-                </div>
-
-                <div className="flex justify-end pt-1 gap-3">
+                <Field label="Notes · optional">
+                  <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Hooks, Context API, Redux, Next.js" style={inputStyle} data-testid="skill-notes" />
+                </Field>
+                <div className="flex justify-end gap-3 pt-1">
                   {editingId && (
-                    <button
-                      type="button"
-                      onClick={resetSkillForm}
-                      disabled={isSubmitting}
-                      className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold border border-panel-border/40 text-text-secondary hover:text-white hover:border-white/20 transition-all duration-300 cursor-pointer"
-                    >
+                    <button type="button" onClick={resetSkillForm} disabled={isSubmitting}
+                      className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
+                      style={{ background: 'transparent', color: C.inkDim, border: `1px solid ${C.hair2}` }}>
                       Cancel
                     </button>
                   )}
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || !name.trim()}
-                    className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
-                  >
-                    {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : <i className={`fa-solid ${editingId ? 'fa-check' : 'fa-plus'} text-xs`}></i>}
-                    {editingId ? 'Update Skill' : 'Add Skill'}
+                  <button type="submit" disabled={isSubmitting || !name.trim()} data-testid="skill-submit"
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
+                    style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
+                    {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : (editingId ? <Check size={12} /> : <Plus size={12} />)}
+                    {editingId ? 'Update skill' : 'Add skill'}
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* Skills List */}
-            <div className="glass-panel rounded-2xl p-6">
-              <h3 className="text-xs font-mono text-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-server text-[10px]"></i> Current Skills Inventory
-              </h3>
-              
+            <div className="p-6" style={cardStyle()}>
+              <h3 className="font-mono text-[10.5px] uppercase tracking-[0.18em] mb-4" style={{ color: C.inkMute }}>Current inventory</h3>
               {isLoading ? (
-                <div className="flex items-center gap-2 text-text-secondary font-mono text-sm py-6 justify-center">
-                  <div className="w-5 h-5 rounded-full border-2 border-accent-teal/10 border-t-accent-teal animate-spin"></div>
-                  <span>Scanning databases...</span>
+                <div className="flex items-center gap-2 py-6 justify-center font-mono text-sm" style={{ color: C.inkDim }}>
+                  <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.teal }} /> Scanning…
                 </div>
               ) : (
                 <AnimatedSection animation="staggerFadeUp" stagger={0.04} childSelector="> div" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {skills.map(skill => (
-                    <div 
-                      key={skill.id} 
-                      className="flex flex-col p-4 bg-dashboard-bg/50 border border-panel-border/30 rounded-xl group hover:border-white/15 hover:-translate-y-0.5 transition-all duration-300 relative"
-                    >
-                      <div className="absolute top-1 right-1 flex opacity-0 group-hover:opacity-100 transition-all">
-                        <button
-                          onClick={() => startEditSkill(skill)}
-                          title="Edit skill"
-                          className="min-w-[40px] min-h-[40px] text-text-secondary hover:text-accent-teal transition-colors cursor-pointer flex items-center justify-center"
-                        >
-                          <i className="fa-solid fa-pen text-xs"></i>
-                        </button>
-                        <button
-                          onClick={() => removeSkill(skill.id)}
-                          title="Delete skill"
-                          className="min-w-[40px] min-h-[40px] text-text-secondary hover:text-[#f87171] transition-colors cursor-pointer flex items-center justify-center"
-                        >
-                          <i className="fa-solid fa-xmark text-xs"></i>
-                        </button>
-                      </div>
-                      <h4 className="font-semibold text-white text-sm pr-20 group-hover:text-accent-teal transition-colors duration-300 flex items-center gap-2">
-                        <i className={`${getSkillIcon(skill.name).icon} text-sm`} style={{ color: getSkillIcon(skill.name).color }}></i>
-                        {skill.name}
-                      </h4>
-                      <div className="flex gap-2 mt-2 items-center flex-wrap">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 border rounded-full text-[10px] font-mono font-medium ${PROFICIENCY_COLORS[skill.proficiencyLevel]}`}>
-                          <i className={`${PROFICIENCY_ICONS[skill.proficiencyLevel]} text-[8px]`}></i>
-                          {skill.proficiencyLevel}
-                        </span>
-                        {skill.category && (
-                          <span className="px-2 py-0.5 bg-white/5 text-text-secondary rounded-full text-[10px] font-mono border border-white/5">
-                            {skill.category}
+                  {skills.map((skill) => {
+                    const ic = getSkillIcon(skill.name);
+                    const profColor = PROF_COLOR[skill.proficiencyLevel];
+                    return (
+                      <div key={skill.id} className="p-4 group transition-all duration-300 relative" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 12 }}>
+                        <div className="absolute top-1 right-1 flex opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEditSkill(skill)} title="Edit" className="w-8 h-8 grid place-items-center cursor-pointer" style={{ color: C.inkDim }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = C.teal)}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}><Pencil size={12} /></button>
+                          <button onClick={() => removeSkill(skill.id)} title="Delete" className="w-8 h-8 grid place-items-center cursor-pointer" style={{ color: C.inkDim }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = C.rose)}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}><X size={12} /></button>
+                        </div>
+                        <h4 className="font-display font-semibold text-[13.5px] pr-16 flex items-center gap-2" style={{ color: C.ink }}>
+                          <i className={ic.icon} style={{ color: ic.color, fontSize: 13 }} />
+                          {skill.name}
+                        </h4>
+                        <div className="flex gap-1.5 mt-2 flex-wrap">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[9.5px] uppercase tracking-widest"
+                            style={{ background: `${profColor}1c`, color: profColor, border: `1px solid ${profColor}44` }}>
+                            {skill.proficiencyLevel}
                           </span>
+                          {skill.category && (
+                            <span className="px-2 py-0.5 rounded-full font-mono text-[9.5px] uppercase tracking-widest"
+                              style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}` }}>
+                              {skill.category}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-3 h-1 overflow-hidden rounded-full" style={{ background: C.hair }}>
+                          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${proficiencyPct[skill.proficiencyLevel]}%`, background: profColor }} />
+                        </div>
+                        {skill.notes && (
+                          <p className="font-body text-[11.5px] mt-2.5 line-clamp-2 leading-relaxed" style={{ color: C.inkDim }} title={skill.notes}>{skill.notes}</p>
                         )}
                       </div>
-
-                      {skill.notes && (
-                        <p className="text-xs text-text-secondary mt-3 line-clamp-2 leading-relaxed" title={skill.notes}>
-                          {skill.notes}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-
+                    );
+                  })}
                   {skills.length === 0 && (
-                    <div className="col-span-full py-10 text-center text-text-secondary font-mono text-sm border border-dashed border-panel-border/30 rounded-xl flex flex-col items-center gap-2">
-                      <i className="fa-regular fa-folder-open text-2xl text-text-secondary/30"></i>
-                      Inventory empty. Ingest technical skills above to compute compatibility.
+                    <div className="col-span-full py-10 text-center font-mono text-[12.5px] rounded-xl flex flex-col items-center gap-2"
+                      style={{ color: C.inkMute, border: `1px dashed ${C.hair2}`, background: C.bg2 }}>
+                      <Database size={20} className="opacity-50" />
+                      Inventory empty. Add skills above to compute match scores.
                     </div>
                   )}
                 </AnimatedSection>
@@ -474,163 +373,85 @@ export default function Settings() {
             </div>
           </section>
 
-          {/* Testimonial Submission Section */}
-          <section className="space-y-4 opacity-0 animate-fade-in-up delay-250">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-                <i className="fa-solid fa-bullhorn text-orange-400 text-sm"></i>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Share Your Success Story</h2>
-                <p className="text-xs text-text-secondary">Landed a role? Share your experience on our public landing page.</p>
-              </div>
-            </div>
-
-            <div className="glass-panel rounded-2xl p-6">
-              <form onSubmit={handleSubmitTestimonial} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Your New Role / Handle</label>
-                  <input 
-                    type="text" 
-                    value={testimonyHandle}
-                    onChange={(e) => setTestimonyHandle(e.target.value)}
-                    className="input-base w-full text-sm" 
-                    placeholder="e.g. Software Engineer @ Google" 
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">The Story</label>
-                  <textarea 
-                    value={testimonyText}
-                    onChange={(e) => setTestimonyText(e.target.value)}
-                    className="input-base w-full text-sm min-h-[80px] py-3" 
-                    placeholder="e.g. Precept helped me organize my interview prep and I landed my dream role in 3 weeks!" 
-                    required
-                  />
-                </div>
-
-                <div className="flex items-start gap-3 mt-2 p-3 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                  <input
-                    type="checkbox"
-                    id="confirmPublic"
-                    checked={isPublicConfirmed}
-                    onChange={(e) => setIsPublicConfirmed(e.target.checked)}
-                    className="mt-1 cursor-pointer w-4 h-4 rounded border-panel-border/50 bg-black/50 text-accent-teal focus:ring-accent-teal/30 focus:ring-offset-dashboard-bg"
-                  />
-                  <label htmlFor="confirmPublic" className="text-xs text-text-secondary cursor-pointer leading-relaxed">
-                    <strong className="text-orange-400 font-medium">Public Display Consent:</strong> I confirm that this review is accurate and I grant permission for it to be publicly displayed on the Precept landing page along with my first and last name.
-                  </label>
-                </div>
-
-                <div className="pt-2">
-                  <button 
-                    type="submit" 
-                    disabled={isSubmittingTestimony || !isPublicConfirmed || !testimonyHandle || !testimonyText}
-                    className="inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.2)] hover:scale-105 hover:bg-orange-600 disabled:opacity-50 disabled:hover:scale-100 transition-all duration-300 cursor-pointer gap-2"
-                  >
-                    {isSubmittingTestimony ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div> : <i className="fa-solid fa-paper-plane text-xs"></i>}
-                    {isSubmittingTestimony ? 'Publishing...' : 'Publish to Landing Page'}
-                  </button>
-                </div>
-              </form>
-            </div>
+          {/* Testimonial */}
+          <section className="opacity-0 animate-fade-in-up delay-200 p-6" style={cardStyle()}>
+            <SectionHeader icon={<Megaphone size={16} />} title="Share your success story" sub="Land a role? Tell other engineers." color={C.amber} />
+            <form onSubmit={handleSubmitTestimonial} className="space-y-4">
+              <Field label="New role · handle">
+                <input type="text" value={testimonyHandle} onChange={(e) => setTestimonyHandle(e.target.value)} placeholder="Software Engineer @ Google" style={inputStyle} required data-testid="testimony-handle" />
+              </Field>
+              <Field label="The story">
+                <textarea value={testimonyText} onChange={(e) => setTestimonyText(e.target.value)} rows={3}
+                  placeholder="Precept helped me organize prep and land in 3 weeks."
+                  style={{ ...inputStyle, fontFamily: 'Geist, Inter, sans-serif', resize: 'vertical' }} required data-testid="testimony-text" />
+              </Field>
+              <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl" style={{ background: `${C.amber}10`, border: `1px solid ${C.amber}33` }}>
+                <input type="checkbox" checked={isPublicConfirmed} onChange={(e) => setIsPublicConfirmed(e.target.checked)} className="mt-0.5" style={{ accentColor: C.amber }} data-testid="testimony-consent" />
+                <span className="font-body text-[12.5px] leading-relaxed" style={{ color: C.inkDim }}>
+                  <strong className="font-semibold" style={{ color: C.amber }}>Public display consent:</strong> I confirm this is accurate and grant permission for it to appear on the Precept landing page with my name.
+                </span>
+              </label>
+              <button type="submit" disabled={isSubmittingTestimony || !isPublicConfirmed || !testimonyHandle || !testimonyText} data-testid="testimony-submit"
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
+                style={{ background: C.amber, color: C.bg0, boxShadow: `0 0 0 1px ${C.amber}` }}>
+                {isSubmittingTestimony ? <Loader2 size={12} className="animate-spin" /> : <Megaphone size={12} />}
+                {isSubmittingTestimony ? 'Publishing…' : 'Publish'}
+              </button>
+            </form>
           </section>
         </div>
 
-        {/* Right Column (Side Panels) */}
-        <div className="space-y-8 opacity-0 animate-fade-in-up delay-300">
-          {/* Diagnostics Panel */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                <i className="fa-solid fa-stethoscope text-cyan-400 text-sm"></i>
-              </div>
-              <h2 className="text-lg font-semibold text-white">Diagnostics</h2>
-            </div>
-            
-            <div className="glass-panel rounded-2xl p-6 font-mono text-sm space-y-4">
-              <div className="flex justify-between items-center border-b border-panel-border/20 pb-3 group relative cursor-help">
-                <span className="text-text-secondary flex items-center gap-2">
-                  <i className="fa-solid fa-server text-[10px]"></i> System Status
-                </span>
-                {/* Tooltip */}
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 p-3 bg-dashboard-bg border border-panel-border/50 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-dashboard-bg border-b border-r border-panel-border/50 rotate-45 rounded-sm"></div>
-                  <p className="relative z-10 text-xs text-text-secondary font-sans font-normal leading-relaxed text-center">
-                    Continuously pings the backend server to verify API connectivity and system health.
-                  </p>
-                </div>
+        {/* RIGHT */}
+        <div className="space-y-6 opacity-0 animate-fade-in-up delay-300">
+          {/* Diagnostics */}
+          <section className="p-6" style={cardStyle()}>
+            <SectionHeader icon={<Stethoscope size={16} />} title="Diagnostics" sub="System health probe." color={C.sky} />
+            <div className="font-mono text-sm space-y-3">
+              <div className="flex justify-between items-center pb-3" style={{ borderBottom: `1px solid ${C.hair}` }}>
+                <span style={{ color: C.inkDim }}>System status</span>
                 {isCheckingStatus ? (
-                  <span className="text-text-secondary flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full border-2 border-accent-teal/10 border-t-accent-teal animate-spin"></div> Checking...
-                  </span>
+                  <span className="flex items-center gap-2" style={{ color: C.inkDim }}><Loader2 size={11} className="animate-spin" /> Checking…</span>
                 ) : isSystemOnline ? (
-                  <span className="text-emerald-400 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span> Online</span>
+                  <span className="flex items-center gap-1.5" style={{ color: C.emerald }}>
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: C.emerald, boxShadow: `0 0 6px ${C.emerald}` }} /> Online
+                  </span>
                 ) : (
-                  <span className="text-[#f87171] flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#f87171]"></span> Offline</span>
+                  <span className="flex items-center gap-1.5" style={{ color: C.rose }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.rose }} /> Offline
+                  </span>
                 )}
               </div>
-              <div className="flex justify-between items-center group relative cursor-help pt-1">
-                <span className="text-text-secondary flex items-center gap-2">
-                  <i className="fa-solid fa-database text-[10px]"></i> Database
-                </span>
-                {/* Tooltip */}
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 p-3 bg-dashboard-bg border border-panel-border/50 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-dashboard-bg border-b border-r border-panel-border/50 rotate-45 rounded-sm"></div>
-                  <p className="relative z-10 text-xs text-text-secondary font-sans font-normal leading-relaxed text-center">
-                    Indicates whether the backend service can successfully communicate with the PostgreSQL database.
-                  </p>
-                </div>
-                <span className={isSystemOnline ? 'text-white' : 'text-[#f87171]'}>{isSystemOnline ? 'Connected' : 'Disconnected'}</span>
+              <div className="flex justify-between items-center">
+                <span style={{ color: C.inkDim }}>Database</span>
+                <span style={{ color: isSystemOnline ? C.ink : C.rose }}>{isSystemOnline ? 'Connected' : 'Disconnected'}</span>
               </div>
             </div>
           </section>
 
-          {/* Data Management */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                <i className="fa-solid fa-download text-blue-400 text-sm"></i>
-              </div>
-              <h2 className="text-lg font-semibold text-white">Data Management</h2>
-            </div>
-            <div className="glass-panel rounded-2xl p-6">
-              <p className="text-sm text-text-secondary mb-4 leading-relaxed">Export your raw data payload (JSON) for local backup and portability.</p>
-              <button 
-                onClick={handleExportData}
-                disabled={isExporting}
-                className="w-full border border-panel-border/30 text-text-secondary hover:border-accent-teal hover:text-accent-teal font-mono text-xs uppercase tracking-wider py-2.5 px-4 min-h-[44px] rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer bg-transparent hover:shadow-[0_0_10px_rgba(45,212,191,0.1)]"
-              >
-                {isExporting ? <div className="w-4 h-4 rounded-full border-2 border-accent-teal/30 border-t-accent-teal animate-spin"></div> : <i className="fa-solid fa-download text-xs"></i>}
-                {isExporting ? 'Exporting...' : 'Download Payload'}
-              </button>
-            </div>
+          {/* Data export */}
+          <section className="p-6" style={cardStyle()}>
+            <SectionHeader icon={<Download size={16} />} title="Data export" sub="Your data as raw JSON. Anytime." color={C.teal} />
+            <button onClick={handleExportData} disabled={isExporting} data-testid="settings-export-btn"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
+              style={{ background: 'rgba(255,255,255,0.025)', color: C.ink, border: `1px solid ${C.hair2}` }}>
+              {isExporting ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+              {isExporting ? 'Exporting…' : 'Download JSON'}
+            </button>
           </section>
 
-          {/* Danger Zone */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-                <i className="fa-solid fa-radiation text-[#f87171] text-sm"></i>
-              </div>
-              <h2 className="text-lg font-semibold text-[#f87171]">Danger Zone</h2>
-            </div>
-            <div className="glass-panel rounded-2xl p-6 border-rose-500/20!">
-              <p className="text-sm text-[#f87171]/70 mb-4 leading-relaxed">Force revoke all active credential caches from this local browser instance.</p>
-              <button 
-                onClick={handlePurge}
-                className="w-full bg-transparent border border-rose-400/40 text-rose-400 font-mono text-xs uppercase tracking-wider min-h-[44px] rounded-xl px-4 py-2.5 hover:bg-rose-500/10 hover:border-rose-400 transition-all cursor-pointer hover:shadow-[0_0_10px_rgba(244,63,94,0.15)] flex items-center justify-center"
-              >
-                Execute Purge
-              </button>
-            </div>
+          {/* Danger */}
+          <section className="p-6" style={{ ...cardStyle(), borderColor: `${C.rose}33` }}>
+            <SectionHeader icon={<Radiation size={16} />} title="Danger zone" sub="Wipe local data on this device." color={C.rose} />
+            <button onClick={handlePurge} data-testid="settings-purge-btn"
+              className="w-full rounded-full py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
+              style={{ background: 'transparent', color: C.rose, border: `1px solid ${C.rose}55` }}>
+              Wipe local data
+            </button>
           </section>
         </div>
       </AnimatedSection>
 
-      <ConfirmationModal 
+      <ConfirmationModal
         isOpen={confirmConfig.isOpen}
         title={confirmConfig.title}
         message={confirmConfig.message}
@@ -638,8 +459,17 @@ export default function Settings() {
         cancelText="Cancel"
         danger={confirmConfig.danger}
         onConfirm={confirmConfig.onConfirm}
-        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onCancel={() => setConfirmConfig((p) => ({ ...p, isOpen: false }))}
       />
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="font-mono text-[10px] uppercase tracking-[0.18em] block" style={{ color: C.inkMute }}>{label}</label>
+      {children}
     </div>
   );
 }

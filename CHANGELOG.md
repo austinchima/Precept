@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Authenticated app UI redesigned** to match the landing page (`Precept.Web/src/pages/Landing.tsx`) visual language end-to-end. Presentation-only refactor across 13 files: dashboard, applications tracker, story bank, quiz mode, JD matcher, readiness, settings, login, sign-in panel, layout shell, 404 page, home page, and subscription. Adopts the landing palette (`#02050A`/`#06090F` base, teal/violet/rose accents), typography stack (Bricolage Grotesque + Instrument Serif italic emphasis + Geist + JetBrains Mono), pill CTAs, IDE-style code mockups, dot-grid + radial-halo backgrounds, eyebrow status pills, and the same glass/gradient card treatments. No changes to data fetching, state, hooks, routing, business logic, or `AuthContext`; component props and return contracts are preserved.
+
 ## [0.2.0] - 2026-06-28
 
 _R1 candidate — Technical Readiness (Skills Matrix Visualizer)._
