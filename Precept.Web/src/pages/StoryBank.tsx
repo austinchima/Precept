@@ -5,32 +5,56 @@ import { BehavioralStoryTab } from '../components/stories/BehavioralStoryTab';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
+import { Plus, X, Code2, Star as StarIcon, Loader2, FilterIcon, Trash2, Pencil } from 'lucide-react';
+
+const C = {
+  bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
+  ink: '#E6EBF2', inkDim: '#9CA8B8', inkMute: '#5A6678',
+  hair: 'rgba(255,255,255,0.07)', hair2: 'rgba(255,255,255,0.12)',
+  teal: '#2dd4bf', tealDim: 'rgba(45,212,191,0.14)',
+  violet: '#8b5cf6', rose: '#f43f5e', amber: '#f59e0b', sky: '#38bdf8', emerald: '#10b981',
+} as const;
+
+const cardStyle = (): React.CSSProperties => ({
+  background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
+  border: `1px solid ${C.hair}`,
+  borderRadius: 18,
+  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
+});
+
+const Eyebrow = ({ children, color = C.teal }: { children: React.ReactNode; color?: string }) => (
+  <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]"
+    style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}>
+    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+    {children}
+  </span>
+);
+
+const inputStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.025)',
+  border: `1px solid ${C.hair}`,
+  borderRadius: 10,
+  color: C.ink,
+  padding: '10px 12px',
+  fontFamily: 'JetBrains Mono, monospace',
+  fontSize: 13,
+  width: '100%',
+  outline: 'none',
+};
 
 const CATEGORIES: ('All' | StoryCategory)[] = ['All', 'Auth', 'Database', 'Ai', 'ML', 'DevOps', 'Frontend', 'Backend', 'SystemDesign', 'Security', 'Testing', 'Cloud', 'Architecture'];
 const CONFIDENCE_LEVELS: ConfidenceLevel[] = ['Panic', 'Shaky', 'Okay', 'Solid', 'CanTeach'];
-const formatWord = (str: string) => str === 'CanTeach' ? 'Can Teach' : str === 'SystemDesign' ? 'System Design' : str;
+const formatWord = (str: string) => (str === 'CanTeach' ? 'Can Teach' : str === 'SystemDesign' ? 'System Design' : str);
 
 const CONFIDENCE_VALUES: Record<ConfidenceLevel, number> = {
-  Panic: 1,
-  Shaky: 2,
-  Okay: 3,
-  Solid: 4,
-  CanTeach: 5
+  Panic: 1, Shaky: 2, Okay: 3, Solid: 4, CanTeach: 5,
 };
 
-const CATEGORY_COLORS: Record<StoryCategory, string> = {
-  Auth: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  Database: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  Ai: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  ML: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
-  DevOps: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-  Frontend: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  Backend: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-  SystemDesign: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  Security: 'bg-red-500/10 text-red-400 border-red-500/20',
-  Testing: 'bg-lime-500/10 text-lime-400 border-lime-500/20',
-  Cloud: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-  Architecture: 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20'
+const CATEGORY_COLOR: Record<StoryCategory, string> = {
+  Auth: C.amber, Database: C.sky, Ai: C.emerald, ML: C.teal,
+  DevOps: C.rose, Frontend: C.violet, Backend: '#6366f1',
+  SystemDesign: '#06b6d4', Security: '#ef4444', Testing: '#84cc16',
+  Cloud: '#0ea5e9', Architecture: '#d946ef',
 };
 
 export default function StoryBank() {
@@ -43,7 +67,6 @@ export default function StoryBank() {
   const [storyToDelete, setStoryToDelete] = useState<string | null>(null);
   const toast = useToast();
 
-  // Form states
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<StoryCategory>('Auth');
   const [sourceProject, setSourceProject] = useState('');
@@ -66,83 +89,52 @@ export default function StoryBank() {
     }
   };
 
-  useEffect(() => {
-    loadStories(filter);
-  }, [filter]);
+  useEffect(() => { loadStories(filter); }, [filter]);
 
   const handleOpenCreateModal = () => {
     setEditingStory(null);
-    setTitle('');
-    setCategory('Auth');
-    setSourceProject('');
-    setCodeSnippet('');
-    setExplanation('');
-    setConfidenceLevel('Okay');
+    setTitle(''); setCategory('Auth'); setSourceProject(''); setCodeSnippet(''); setExplanation(''); setConfidenceLevel('Okay');
     setFormError(null);
     setIsModalOpen(true);
   };
-
   const handleOpenEditModal = (story: Story) => {
     setEditingStory(story);
-    setTitle(story.title);
-    setCategory(story.category);
-    setSourceProject(story.sourceProject);
-    setCodeSnippet(story.codeSnippet);
-    setExplanation(story.explanation);
-    setConfidenceLevel(story.confidenceLevel);
+    setTitle(story.title); setCategory(story.category); setSourceProject(story.sourceProject);
+    setCodeSnippet(story.codeSnippet); setExplanation(story.explanation); setConfidenceLevel(story.confidenceLevel);
     setFormError(null);
     setIsModalOpen(true);
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-
     if (explanation.length < 50) {
       setFormError('Explanation must be at least 50 characters.');
       return;
     }
-
     setIsSubmitting(true);
     try {
-      const payload = {
-        title,
-        category,
-        sourceProject,
-        codeSnippet,
-        explanation,
-        confidenceLevel
-      };
-
+      const payload = { title, category, sourceProject, codeSnippet, explanation, confidenceLevel };
       if (editingStory) {
-        const updated = await api.put<Story>(`/api/story/${editingStory.id}`, {
-          ...payload,
-          id: editingStory.id
-        });
-        setStories(prev => prev.map(s => s.id === updated.id ? updated : s));
+        const updated = await api.put<Story>(`/api/story/${editingStory.id}`, { ...payload, id: editingStory.id });
+        setStories((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
       } else {
         const created = await api.post<Story>('/api/story', payload);
-        setStories(prev => [created, ...prev]);
+        setStories((prev) => [created, ...prev]);
       }
       setIsModalOpen(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setFormError(err.message || 'Failed to save story. Please verify backend state.');
+      setFormError((err as Error).message || 'Failed to save story.');
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const confirmDelete = (id: string) => {
-    setStoryToDelete(id);
-  };
-
+  const confirmDelete = (id: string) => setStoryToDelete(id);
   const executeDelete = async () => {
     if (!storyToDelete) return;
-
     try {
       await api.delete(`/api/story/${storyToDelete}`);
-      setStories(prev => prev.filter(s => s.id !== storyToDelete));
+      setStories((prev) => prev.filter((s) => s.id !== storyToDelete));
       setStoryToDelete(null);
     } catch (err) {
       console.error(err);
@@ -152,255 +144,226 @@ export default function StoryBank() {
   };
 
   return (
-    <div className="p-8 pt-6 max-w-[1400px] mx-auto space-y-6">
-
-      {/* Hero Header */}
+    <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1400px] mx-auto space-y-6" data-testid="story-bank-page" style={{ color: C.ink }}>
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 opacity-0 animate-fade-in-up">
         <div>
-          <h1 className="text-[28px] font-medium text-white flex items-center tracking-tight">
-            Story <span className="font-bold ml-2 hover:text-accent-teal transition-colors duration-300 cursor-default">Bank</span>
-            <span className="mx-3 text-text-secondary/30 text-3xl font-light">|</span>
-            <span className="text-text-secondary font-normal text-lg">Narrative Repository</span>
+          <Eyebrow color={C.teal}>Story bank</Eyebrow>
+          <h1 className="mt-4 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(28px,4vw,40px)' }}>
+            Bank your <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>narratives.</span>
           </h1>
+          <p className="mt-2 font-body text-[14px]" style={{ color: C.inkDim }}>
+            Technical snippets and STAR stories — drilled to recall.
+          </p>
         </div>
-        
+
         {/* Tab Toggle */}
-        <div className="flex glass-panel rounded-xl p-1 gap-1">
-          <button
-            onClick={() => setActiveTab('technical')}
-            className={`px-4 py-2 min-h-[44px] text-sm rounded-lg transition-all duration-300 cursor-pointer flex items-center gap-2 ${activeTab === 'technical' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
-          >
-            <i className="fa-solid fa-code text-xs"></i> Technical Snippets
-          </button>
-          <button
-            onClick={() => setActiveTab('behavioral')}
-            className={`px-4 py-2 min-h-[44px] text-sm rounded-lg transition-all duration-300 cursor-pointer flex items-center gap-2 ${activeTab === 'behavioral' ? 'bg-accent-teal/10 text-accent-teal shadow-[0_0_10px_rgba(45,212,191,0.15)]' : 'text-text-secondary hover:text-white'}`}
-          >
-            <i className="fa-regular fa-star text-xs"></i> Behavioral STAR
-          </button>
+        <div className="flex p-1 gap-1" style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, borderRadius: 12 }}>
+          {[
+            { v: 'technical' as const, l: 'Technical', i: <Code2 size={12} /> },
+            { v: 'behavioral' as const, l: 'Behavioral · STAR', i: <StarIcon size={12} /> },
+          ].map((opt) => (
+            <button key={opt.v} onClick={() => setActiveTab(opt.v)} data-testid={`storybank-tab-${opt.v}`}
+              className="px-4 py-2 rounded-lg font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer flex items-center gap-2 transition-all"
+              style={{
+                background: activeTab === opt.v ? C.tealDim : 'transparent',
+                color: activeTab === opt.v ? C.teal : C.inkDim,
+                border: `1px solid ${activeTab === opt.v ? `${C.teal}44` : 'transparent'}`,
+              }}>
+              {opt.i} {opt.l}
+            </button>
+          ))}
         </div>
       </div>
 
       {activeTab === 'technical' ? (
         <>
-          {/* Subheader & Actions */}
-          <div className="flex flex-wrap justify-between items-center gap-4 opacity-0 animate-fade-in-up delay-100">
-            <div className="flex items-center gap-3">
-              {/* Category Filter */}
-              <div className="relative">
-                <select 
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value as any)}
-                  className="appearance-none bg-transparent text-text-secondary border border-panel-border/50 rounded-xl pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal cursor-pointer hover:border-white/20 transition-all"
-                >
-                  {CATEGORIES.map(c => <option key={c} value={c} className="bg-slate-900 text-white">{formatWord(c)}</option>)}
-                </select>
-                <i className="fa-solid fa-filter absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none"></i>
-              </div>
+          <div className="flex flex-wrap justify-between items-center gap-3 opacity-0 animate-fade-in-up delay-100">
+            <div className="relative">
+              <FilterIcon size={12} style={{ color: C.inkMute }} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select value={filter} onChange={(e) => setFilter(e.target.value as 'All' | StoryCategory)} data-testid="storybank-filter"
+                className="appearance-none pl-8 pr-8 py-2 rounded-full font-mono text-[11px] uppercase tracking-[0.14em] cursor-pointer transition-colors"
+                style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, color: C.inkDim, outline: 'none' }}
+              >
+                {CATEGORIES.map((c) => <option key={c} value={c} style={{ background: C.bg1, color: C.ink }}>{formatWord(c)}</option>)}
+              </select>
             </div>
-
-            <button onClick={handleOpenCreateModal} className="inline-flex items-center justify-center px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] animate-pulse-glow-teal hover:scale-105 transition-all duration-300 cursor-pointer">
-              <i className="fa-solid fa-plus mr-2"></i> Add Snippet
+            <button onClick={handleOpenCreateModal} data-testid="storybank-new-btn"
+              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
+              style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}, 0 18px 60px -20px rgba(45,212,191,0.45)` }}>
+              <Plus size={13} /> New snippet
             </button>
           </div>
 
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-text-secondary gap-3">
-          <div className="w-12 h-12 rounded-full border-4 border-accent-teal/10 border-t-accent-teal animate-spin"></div>
-          <span className="font-mono text-sm">Accessing Memory Enclaves...</span>
-        </div>
-      ) : (
-        <AnimatedSection animation="staggerFadeUp" stagger={0.06} childSelector="> div" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {stories.map(story => (
-            <div key={story.id} className="glass-panel rounded-2xl flex flex-col group hover:border-white/15 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
-              <div className="p-5 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-start justify-between mb-3">
-                    <span className={`px-2.5 py-0.5 rounded-full border text-xs font-mono font-medium ${CATEGORY_COLORS[story.category] || 'bg-white/5 text-text-secondary'}`}>
-                      {formatWord(story.category)}
-                    </span>
-                    <div className="flex gap-0.5" title={`Confidence: ${formatWord(story.confidenceLevel)}`}>
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <i 
-                          key={star} 
-                          className={`${star <= CONFIDENCE_VALUES[story.confidenceLevel] ? "fa-solid fa-star text-accent-teal" : "fa-regular fa-star text-panel-border"} text-[10px]`}
-                        ></i>
-                      ))}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3" style={{ color: C.inkDim }}>
+              <Loader2 className="w-10 h-10 animate-spin" style={{ color: C.teal }} />
+              <span className="font-mono text-sm">Loading stories…</span>
+            </div>
+          ) : (
+            <AnimatedSection animation="staggerFadeUp" stagger={0.06} childSelector="> div" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {stories.map((story) => {
+                const catColor = CATEGORY_COLOR[story.category];
+                return (
+                  <div key={story.id} className="flex flex-col group transition-all duration-300 overflow-hidden" style={cardStyle()}>
+                    <div className="p-5 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest"
+                          style={{ background: `${catColor}1c`, color: catColor, border: `1px solid ${catColor}44` }}>
+                          {formatWord(story.category)}
+                        </span>
+                        <div className="flex gap-0.5" title={`Confidence: ${formatWord(story.confidenceLevel)}`}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <StarIcon
+                              key={star}
+                              size={10}
+                              strokeWidth={1.5}
+                              style={{ color: star <= CONFIDENCE_VALUES[story.confidenceLevel] ? C.teal : C.hair2 }}
+                              fill={star <= CONFIDENCE_VALUES[story.confidenceLevel] ? C.teal : 'transparent'}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <h3 className="font-display text-[15px] font-semibold mb-1.5 line-clamp-2" style={{ color: C.ink }} title={story.title}>
+                        {story.title}
+                      </h3>
+                      <p className="font-mono text-[10.5px] uppercase tracking-widest mb-3" style={{ color: C.inkMute }}>
+                        {story.sourceProject || 'independent'}
+                      </p>
+                      <p className="font-body text-[13px] leading-relaxed line-clamp-3 mb-3" style={{ color: C.inkDim }}>
+                        {story.explanation}
+                      </p>
+                      {story.codeSnippet && (
+                        <pre className="overflow-hidden rounded-lg p-3 font-mono text-[10.5px] leading-[1.55] max-h-24"
+                          style={{ background: C.bg0, color: C.inkDim, border: `1px solid ${C.hair}` }}>
+                          <code>{story.codeSnippet.length > 150 ? `${story.codeSnippet.substring(0, 150)}…` : story.codeSnippet}</code>
+                        </pre>
+                      )}
+                    </div>
+                    <div className="px-5 py-3 flex justify-between items-center font-mono text-[10.5px]" style={{ borderTop: `1px solid ${C.hair}`, color: C.inkMute }}>
+                      <span>Last: {story.lastReviewedAt ? new Date(story.lastReviewedAt).toLocaleDateString() : 'never'}</span>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleOpenEditModal(story)} className="min-w-[32px] min-h-[32px] flex items-center justify-center transition-colors cursor-pointer"
+                          style={{ color: C.inkDim }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = C.teal)}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => confirmDelete(story.id)} className="min-w-[32px] min-h-[32px] flex items-center justify-center transition-colors cursor-pointer"
+                          style={{ color: C.inkDim }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = C.rose)}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  
-                  <h3 className="text-base font-semibold text-white mb-2 line-clamp-2 group-hover:text-accent-teal transition-colors duration-300" title={story.title}>
-                    {story.title}
-                  </h3>
-                  
-                  <p className="text-xs font-mono text-text-secondary flex items-center gap-2 mb-3">
-                    <i className="fa-solid fa-code text-[10px]"></i> {story.sourceProject || 'Independent'}
-                  </p>
-                  
-                  <p className="text-sm text-text-secondary line-clamp-3 mb-4 leading-relaxed">
-                    {story.explanation}
-                  </p>
-                </div>
+                );
+              })}
 
-                {story.codeSnippet && (
-                  <div className="bg-dashboard-bg/70 border border-panel-border/30 rounded-lg p-2.5 mb-2 overflow-hidden max-h-24">
-                    <pre className="font-mono text-[10px] text-accent-teal/80 overflow-x-auto whitespace-pre-wrap leading-tight select-none">
-                      <code>{story.codeSnippet.length > 150 ? `${story.codeSnippet.substring(0, 150)}...` : story.codeSnippet}</code>
-                    </pre>
+              {stories.length === 0 && (
+                <div className="col-span-full py-14 px-6 text-center flex flex-col items-center gap-4" style={{ ...cardStyle(), border: `1px dashed ${C.hair2}` }}>
+                  <Code2 size={28} style={{ color: C.inkMute }} />
+                  <span className="font-mono text-[12.5px]" style={{ color: C.inkMute }}>No narratives match this filter.</span>
+                  <button onClick={handleOpenCreateModal} className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
+                    style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair2}`, color: C.ink }}>
+                    <Plus size={11} className="inline mr-1.5 -translate-y-px" /> Bank your first story
+                  </button>
+                </div>
+              )}
+            </AnimatedSection>
+          )}
+
+          {/* MODAL */}
+          {isModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(2,5,10,0.7)', backdropFilter: 'blur(10px)' }}>
+              <div className="w-full max-w-[680px] max-h-[92vh] flex flex-col relative opacity-0 animate-fade-in-up" style={{ ...cardStyle(), borderRadius: 22 }}>
+                <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${C.hair}` }}>
+                  <Eyebrow color={editingStory ? C.amber : C.teal}>{editingStory ? 'Edit snippet' : 'New snippet'}</Eyebrow>
+                  <button onClick={() => setIsModalOpen(false)} className="min-h-[40px] min-w-[40px] rounded-lg grid place-items-center" style={{ color: C.inkDim }}>
+                    <X size={16} />
+                  </button>
+                </div>
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                  <div className="p-6 overflow-y-auto space-y-4 flex-1 custom-scrollbar">
+                    {formError && (
+                      <div className="px-3 py-2.5 rounded-lg font-mono text-[11.5px]" style={{ background: `${C.rose}10`, border: `1px solid ${C.rose}33`, color: C.rose }}>
+                        {formError}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2 space-y-1.5">
+                        <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Title</label>
+                        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Distributed cache invalidation" style={inputStyle} required />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Category</label>
+                        <select value={category} onChange={(e) => setCategory(e.target.value as StoryCategory)} style={inputStyle}>
+                          {CATEGORIES.slice(1).map((c) => <option key={c} value={c} style={{ background: C.bg1, color: C.ink }}>{formatWord(c)}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Source project</label>
+                        <input type="text" value={sourceProject} onChange={(e) => setSourceProject(e.target.value)} placeholder="e.g. Apollo" style={inputStyle} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Confidence rung</label>
+                      <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
+                        {CONFIDENCE_LEVELS.map((level) => {
+                          const active = confidenceLevel === level;
+                          return (
+                            <button type="button" key={level} onClick={() => setConfidenceLevel(level)}
+                              className="rounded-full px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em] transition-all cursor-pointer"
+                              style={{
+                                background: active ? C.tealDim : 'transparent',
+                                color: active ? C.teal : C.inkDim,
+                                border: `1px solid ${active ? `${C.teal}55` : C.hair}`,
+                              }}>
+                              {formatWord(level)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Code snippet</label>
+                      <textarea value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} rows={6} placeholder="// paste primary code block here"
+                        style={{ ...inputStyle, background: C.bg0, resize: 'vertical' }} required />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Explanation</label>
+                        <span className="font-mono text-[10px]" style={{ color: explanation.length < 50 ? C.rose : C.teal }}>{explanation.length}/50 min</span>
+                      </div>
+                      <textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={5}
+                        placeholder="Why does this exist? Trade-offs?"
+                        style={{ ...inputStyle, fontFamily: 'Geist, Inter, sans-serif', resize: 'vertical' }} required />
+                    </div>
                   </div>
-                )}
-              </div>
-              
-              <div className="px-5 py-3 border-t border-panel-border/20 flex justify-between items-center text-xs text-text-secondary">
-                <span className="font-mono">Last: {story.lastReviewedAt ? new Date(story.lastReviewedAt).toLocaleDateString() : 'Never'}</span>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => handleOpenEditModal(story)} className="hover:text-accent-teal flex items-center justify-center min-h-[44px] min-w-[44px] gap-1 transition-colors cursor-pointer">
-                    <i className="fa-solid fa-pen text-[10px]"></i> Edit
-                  </button>
-                  <button onClick={() => confirmDelete(story.id)} className="hover:text-[#f87171] flex items-center justify-center min-h-[44px] min-w-[44px] gap-1 transition-colors cursor-pointer">
-                    <i className="fa-regular fa-trash-can text-[10px]"></i> Purge
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
 
-          {stories.length === 0 && (
-            <div className="col-span-full py-16 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center p-6">
-              <i className="fa-regular fa-folder-open text-3xl text-text-secondary/50 mb-4"></i>
-              <span className="font-mono text-sm text-text-secondary mb-4">No narrative data matches selected filter.</span>
-              <button onClick={handleOpenCreateModal} className="px-4 py-2 min-h-[44px] rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer flex items-center gap-2">
-                <i className="fa-solid fa-plus text-xs"></i> Add First Story
-              </button>
+                  <div className="p-4 flex justify-end gap-3 shrink-0" style={{ borderTop: `1px solid ${C.hair}` }}>
+                    <button type="button" onClick={() => setIsModalOpen(false)}
+                      className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
+                      style={{ background: 'transparent', color: C.inkDim, border: `1px solid ${C.hair2}` }}>
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={isSubmitting || explanation.length < 50 || !title.trim() || !codeSnippet.trim()}
+                      className="inline-flex items-center gap-2 rounded-full px-5 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
+                      style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
+                      {isSubmitting && <Loader2 size={12} className="animate-spin" />}
+                      {editingStory ? 'Save changes' : 'Bank story'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
-        </AnimatedSection>
-      )}
-
-        {/* Add/Edit Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="glass-panel rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden opacity-0 animate-fade-in-up">
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-linear-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
-            
-            <div className="flex items-center justify-between p-5 border-b border-panel-border/30">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <i className={`${editingStory ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-plus'} text-accent-teal text-sm`}></i>
-                {editingStory ? 'Modify Narrative' : 'Initialize Narrative'}
-              </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-text-secondary hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer">
-                <i className="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-6 overflow-y-auto space-y-5 flex-1 custom-scrollbar">
-                {formError && (
-                  <div className="p-3.5 rounded-lg bg-[#f87171]/10 border border-[#f87171]/20 text-[#f87171] text-xs font-mono flex items-center gap-2">
-                    <i className="fa-solid fa-triangle-exclamation"></i> {formError}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-1.5 col-span-2">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Title</label>
-                    <input 
-                      type="text" 
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="input-base w-full text-sm" 
-                      placeholder="e.g. Distributed Cache Implementation" 
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Category</label>
-                    <select 
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value as StoryCategory)}
-                      className="input-base w-full text-sm"
-                    >
-                      {CATEGORIES.slice(1).map(c => <option key={c} value={c} className="bg-slate-900 text-white">{formatWord(c)}</option>)}
-                    </select>
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Source Project</label>
-                    <input 
-                      type="text" 
-                      value={sourceProject}
-                      onChange={(e) => setSourceProject(e.target.value)}
-                      className="input-base w-full text-sm" 
-                      placeholder="e.g. Project Apollo" 
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Confidence Level</label>
-                  </div>
-                  <div className="flex items-center gap-4 bg-dashboard-bg/50 p-3 rounded-xl border border-panel-border/30">
-                    {CONFIDENCE_LEVELS.map((level) => (
-                      <label key={level} className="flex items-center gap-1.5 cursor-pointer text-xs text-text-secondary hover:text-accent-teal transition-colors">
-                        <input 
-                          type="radio" 
-                          name="confidenceLevel" 
-                          value={level} 
-                          checked={confidenceLevel === level}
-                          onChange={() => setConfidenceLevel(level)}
-                          className="accent-accent-teal"
-                        />
-                        {formatWord(level)}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Code Snippet</label>
-                  <textarea 
-                    value={codeSnippet}
-                    onChange={(e) => setCodeSnippet(e.target.value)}
-                    className="input-base w-full h-32 font-mono text-sm leading-relaxed bg-dashboard-bg/50 resize-none" 
-                    placeholder="// Paste primary code block here"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <label className="text-xs font-mono text-text-secondary uppercase tracking-wider">Explanation</label>
-                    <span className={`text-[10px] font-mono ${explanation.length < 50 ? 'text-[#f87171]' : 'text-accent-teal'}`}>
-                      {explanation.length}/50 min
-                    </span>
-                  </div>
-                  <textarea 
-                    value={explanation}
-                    onChange={(e) => setExplanation(e.target.value)}
-                    className="input-base w-full h-24 text-sm" 
-                    placeholder="Explain the technical decisions and business/system impact..."
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-panel-border/30 flex justify-end gap-3 shrink-0">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 min-h-[44px] rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting || explanation.length < 50 || !title.trim() || !codeSnippet.trim()}
-                  className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2"
-                >
-                  {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-dashboard-bg/30 border-t-dashboard-bg animate-spin"></div> : null}
-                  {editingStory ? 'Commit Changes' : 'Commit to Memory'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
         </>
       ) : (
         <div className="opacity-0 animate-fade-in-up delay-100">
@@ -408,11 +371,11 @@ export default function StoryBank() {
         </div>
       )}
 
-      <ConfirmationModal 
+      <ConfirmationModal
         isOpen={!!storyToDelete}
-        title="Delete Story"
-        message="Are you sure you want to permanently erase this story narrative? This cannot be undone."
-        confirmText="Erase Story"
+        title="Delete story"
+        message="Are you sure you want to permanently erase this narrative? This cannot be undone."
+        confirmText="Delete"
         cancelText="Cancel"
         onConfirm={executeDelete}
         onCancel={() => setStoryToDelete(null)}

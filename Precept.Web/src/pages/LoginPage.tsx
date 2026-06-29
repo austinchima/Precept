@@ -88,7 +88,6 @@ export default function LoginPage() {
       onSubmit={handleSubmit}
       onGoogleSignIn={handleGoogleSignIn}
       onBack={() => navigate('/')}
-      heroImageSrc="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1400&auto=format&fit=crop"
       testimonials={testimonials}
     />
   );
