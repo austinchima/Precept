@@ -140,7 +140,7 @@ function Navbar() {
             <a
               href="https://github.com/austinchima/Precept"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               data-testid="nav-github-link"
               className="flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.14em] transition-colors"
               style={{ color: c.inkDim }}
@@ -150,14 +150,18 @@ function Navbar() {
               <i className="fa-brands fa-github" /> GitHub
             </a>
             <button
+              type="button"
               data-testid="nav-signin-btn"
               onClick={() => goLogin()}
-              className="font-mono text-[12px] uppercase tracking-[0.14em] transition-colors"
+              className="cursor-pointer rounded-full border border-transparent px-3.5 py-1.5 font-mono text-[12px] uppercase tracking-[0.14em] transition-all hover:border-teal-400/30 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(45,212,191,0.2)]"
               style={{ color: c.inkDim }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = c.ink)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = c.inkDim)}
             >
               Sign in
             </button>
             <button
+              type="button"
               data-testid="nav-cta-btn"
               onClick={() => goLogin("signup")}
               className="flex items-center gap-1.5 rounded-full px-4 py-2 font-mono text-[12px] uppercase tracking-[0.14em] transition-colors cursor-pointer"
@@ -173,6 +177,7 @@ function Navbar() {
 
           {/* Mobile toggle */}
           <button
+            type="button"
             data-testid="mobile-menu-toggle"
             className="flex h-9 w-9 items-center justify-center rounded-md md:hidden"
             style={{ color: c.ink, background: c.hair }}
@@ -203,6 +208,7 @@ function Navbar() {
             </a>
           ))}
           <button
+            type="button"
             onClick={() => goLogin("signup")}
             className="mt-auto mb-12 w-full rounded-full px-6 py-3 font-mono text-sm uppercase tracking-widest"
             style={{ background: c.ink, color: c.bg0 }}
@@ -245,7 +251,7 @@ function Hero() {
         tl.from(".hero-eyebrow",   { opacity: 0, y: 16, duration: 0.6 })
           .from(".hero-headline",  { opacity: 0, y: 28, duration: 0.85 }, "-=0.3")
           .from(".hero-sub",       { opacity: 0, y: 22, duration: 0.7 },  "-=0.55")
-          .from(".hero-ctas > *",  { opacity: 0, y: 16, duration: 0.55, stagger: 0.08 }, "-=0.45")
+          .from(".hero-ctas > *",  { opacity: 0, y: 16, duration: 0.55, stagger: 0.08, clearProps: "transform" }, "-=0.45")
           .from(".hero-mock",      { opacity: 0, y: 40, scale: 0.97, duration: 1.0 }, "-=0.4")
           .from(".hero-techbar > *", { opacity: 0, y: 10, duration: 0.5, stagger: 0.05 }, "-=0.5");
 
@@ -317,9 +323,10 @@ function Hero() {
         {/* CTAs */}
         <div className="hero-ctas mt-9 flex flex-wrap items-center justify-center gap-3">
           <button
+            type="button"
             data-testid="hero-primary-cta"
             onClick={() => navigate("/login", { state: { mode: "signup" } })}
-            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full border border-transparent px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-transform"
+            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full border border-transparent px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-colors"
             style={{
               background: c.ink,
               color: c.bg0,
@@ -333,7 +340,7 @@ function Hero() {
             data-testid="hero-github-cta"
             href="https://github.com/austinchima/Precept"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="gsap-magnetic inline-flex items-center gap-2 rounded-full border px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-colors"
             style={{
               background: "rgba(255,255,255,0.025)",
@@ -1322,6 +1329,7 @@ function FinalCTA() {
 
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <button
+                type="button"
                 data-testid="final-cta-primary"
                 onClick={() => navigate("/login", { state: { mode: "signup" } })}
                 className="gsap-magnetic group inline-flex items-center gap-2 rounded-full px-7 py-4 font-mono text-[12.5px] font-semibold uppercase tracking-[0.16em]"
@@ -1337,7 +1345,7 @@ function FinalCTA() {
               <a
                 href="https://github.com/austinchima/Precept"
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 data-testid="final-cta-github"
                 className="inline-flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.16em] transition-colors"
                 style={{ color: c.inkDim }}
@@ -1411,7 +1419,7 @@ function Footer() {
                 ["https://github.com/austinchima/Precept/blob/master/CHANGELOG.md", "Changelog"],
               ].map(([h, l]) => (
                 <li key={l}>
-                  <a href={h} target="_blank" rel="noreferrer" className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>{l}</a>
+                  <a href={h} target="_blank" rel="noopener noreferrer" className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>{l}</a>
                 </li>
               ))}
             </ul>

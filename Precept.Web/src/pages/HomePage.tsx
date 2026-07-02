@@ -138,8 +138,10 @@ export default function HomePage() {
 
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/login')} data-testid="home-signin-btn"
-              className="hidden sm:inline-flex font-mono text-[11.5px] uppercase tracking-[0.16em] px-3 min-h-[44px] items-center cursor-pointer transition-colors"
-              style={{ color: C.inkDim }}>
+              className="hidden sm:inline-flex cursor-pointer items-center rounded-full border border-transparent px-3.5 min-h-[36px] font-mono text-[11.5px] uppercase tracking-[0.16em] transition-all hover:border-teal-400/30 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(45,212,191,0.2)]"
+              style={{ color: C.inkDim }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = C.ink)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}>
               Sign in
             </button>
             <button onClick={handleGetStarted} data-testid="home-cta-initialize"

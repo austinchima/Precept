@@ -139,7 +139,7 @@ export default function NotFound1({
           <a
             href="https://github.com/austinchima/Precept"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             data-testid="not-found-secondary-cta"
             className="inline-flex items-center gap-2 rounded-full border px-6 py-3.5 font-mono text-[12px] font-semibold uppercase tracking-[0.16em]"
             style={{

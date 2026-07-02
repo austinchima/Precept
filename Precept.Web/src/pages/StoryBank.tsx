@@ -210,7 +210,7 @@ export default function StoryBank() {
           <div className="flex flex-wrap justify-between items-center gap-3 opacity-0 animate-fade-in-up delay-100">
             <div className="relative">
               <FilterIcon size={12} style={{ color: C.inkMute }} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select value={filter} onChange={(e) => setFilter(e.target.value as 'All' | StoryCategory)} data-testid="storybank-filter"
+              <select title="Story Category Filter" value={filter} onChange={(e) => setFilter(e.target.value as 'All' | StoryCategory)} data-testid="storybank-filter"
                 className="appearance-none pl-8 pr-8 py-2 rounded-full font-mono text-[11px] uppercase tracking-[0.14em] cursor-pointer transition-colors"
                 style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, color: C.inkDim, outline: 'none' }}
               >
@@ -311,7 +311,7 @@ export default function StoryBank() {
               <div className="w-full max-w-[680px] max-h-[92vh] flex flex-col relative opacity-0 animate-fade-in-up" style={{ ...cardStyle(), borderRadius: 22 }}>
                 <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${C.hair}` }}>
                   <Eyebrow color={editingStory ? C.amber : C.teal}>{editingStory ? 'Edit snippet' : 'New snippet'}</Eyebrow>
-                  <button onClick={() => setIsModalOpen(false)} className="min-h-[40px] min-w-[40px] rounded-lg grid place-items-center" style={{ color: C.inkDim }}>
+                  <button title="Close Modal" onClick={() => setIsModalOpen(false)} className="min-h-[40px] min-w-[40px] rounded-lg grid place-items-center" style={{ color: C.inkDim }}>
                     <X size={16} />
                   </button>
                 </div>
@@ -329,13 +329,13 @@ export default function StoryBank() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Category</label>
-                        <select value={category} onChange={(e) => setCategory(e.target.value as StoryCategory)} style={inputStyle}>
+                        <select title="Story Category" value={category} onChange={(e) => setCategory(e.target.value as StoryCategory)} style={inputStyle}>
                           {CATEGORIES.slice(1).map((c) => <option key={c} value={c} style={{ background: C.bg1, color: C.ink }}>{formatWord(c)}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1.5">
                         <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Source project</label>
-                        <input type="text" value={sourceProject} onChange={(e) => setSourceProject(e.target.value)} placeholder="e.g. Apollo" style={inputStyle} />
+                        <input title="Source Project" type="text" value={sourceProject} onChange={(e) => setSourceProject(e.target.value)} placeholder="e.g. Apollo" style={inputStyle} />
                       </div>
                     </div>
 
@@ -361,7 +361,7 @@ export default function StoryBank() {
 
                     <div className="space-y-1.5">
                       <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Code snippet</label>
-                      <textarea value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} rows={6} placeholder="// paste primary code block here"
+                      <textarea title="Code Snippet" value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} rows={6} placeholder="// paste primary code block here"
                         style={{ ...inputStyle, background: C.bg0, resize: 'vertical' }} required />
                     </div>
 
@@ -370,19 +370,19 @@ export default function StoryBank() {
                         <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Explanation</label>
                         <span className="font-mono text-[10px]" style={{ color: explanation.length < 50 ? C.rose : C.teal }}>{explanation.length}/50 min</span>
                       </div>
-                      <textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={5}
+                      <textarea title="Explanation" value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={5}
                         placeholder="Why does this exist? Trade-offs?"
                         style={{ ...inputStyle, fontFamily: 'Geist, Inter, sans-serif', resize: 'vertical' }} required />
                     </div>
                   </div>
 
                   <div className="p-4 flex justify-end gap-3 shrink-0" style={{ borderTop: `1px solid ${C.hair}` }}>
-                    <button type="button" onClick={() => setIsModalOpen(false)}
+                    <button type="button" title="Close Modal" onClick={() => setIsModalOpen(false)}
                       className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
                       style={{ background: 'transparent', color: C.inkDim, border: `1px solid ${C.hair2}` }}>
                       Cancel
                     </button>
-                    <button type="submit" disabled={isSubmitting || explanation.length < 50 || !title.trim() || !codeSnippet.trim()}
+                    <button type="submit" title="Submit Form" disabled={isSubmitting || explanation.length < 50 || !title.trim() || !codeSnippet.trim()}
                       className="inline-flex items-center gap-2 rounded-full px-5 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
                       style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
                       {isSubmitting && <Loader2 size={12} className="animate-spin" />}

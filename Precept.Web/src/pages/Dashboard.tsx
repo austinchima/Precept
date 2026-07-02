@@ -450,6 +450,7 @@ export default function Dashboard() {
                       {/* Interactive Quick Status Changer */}
                       <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
                         <select
+                          title="Select Application Status"
                           value={a.status}
                           onChange={(e) => handleUpdateAppStatus(a.id, e.target.value)}
                           className="appearance-none rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-wider font-semibold cursor-pointer pr-6 focus:outline-none transition-all"

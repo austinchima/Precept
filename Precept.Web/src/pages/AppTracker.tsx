@@ -279,6 +279,8 @@ export default function AppTracker() {
             ].map((opt) => (
               <button
                 key={opt.v}
+                type="button"
+                aria-label={`Switch to ${opt.v} view`}
                 onClick={() => setView(opt.v)}
                 data-testid={`view-${opt.v}`}
                 className="min-h-[36px] min-w-[40px] rounded-lg flex items-center justify-center transition-all cursor-pointer"
@@ -292,6 +294,7 @@ export default function AppTracker() {
             ))}
           </div>
           <button
+            type="button"
             onClick={handleOpenCreateModal}
             data-testid="apptracker-new-btn"
             className="group inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
@@ -489,7 +492,7 @@ export default function AppTracker() {
               <div className="flex items-center gap-3">
                 <Eyebrow color={selectedApp ? C.amber : C.teal}>{selectedApp ? 'Edit pipeline' : 'New pipeline'}</Eyebrow>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="min-h-[40px] min-w-[40px] rounded-lg grid place-items-center transition-colors cursor-pointer"
+              <button type="button" aria-label="Close modal" onClick={() => setIsModalOpen(false)} className="min-h-[40px] min-w-[40px] rounded-lg grid place-items-center transition-colors cursor-pointer"
                 style={{ color: C.inkDim }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = C.ink; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = C.inkDim; e.currentTarget.style.background = 'transparent'; }}
@@ -505,17 +508,17 @@ export default function AppTracker() {
                     <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. Stripe" required style={inputStyle} />
                   </Field>
                   <Field label="Role">
-                    <input type="text" value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="e.g. Senior Backend Engineer" required style={inputStyle} />
+                    <input title="Role Title" type="text" value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="e.g. Senior Backend Engineer" required style={inputStyle} />
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Status">
-                    <select value={status} onChange={(e) => setStatus(e.target.value as ApplicationStatus)} style={inputStyle}>
+                    <select title="Application Status" value={status} onChange={(e) => setStatus(e.target.value as ApplicationStatus)} style={inputStyle}>
                       {COLUMNS.map((c) => <option key={c} value={c} style={{ background: C.bg1, color: C.ink }}>{COLUMN_LABELS[c]}</option>)}
                     </select>
                   </Field>
                   <Field label="Salary (optional)">
-                    <input type="text" value={salaryRange} onChange={(e) => setSalaryRange(e.target.value)} placeholder="$120k – $140k" style={inputStyle} />
+                    <input title="Salary Range" type="text" value={salaryRange} onChange={(e) => setSalaryRange(e.target.value)} placeholder="$120k – $140k" style={inputStyle} />
                   </Field>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -530,11 +533,11 @@ export default function AppTracker() {
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Date applied"><input type="date" value={dateApplied} onChange={(e) => setDateApplied(e.target.value)} style={inputStyle} /></Field>
-                  <Field label="Last contact"><input type="date" value={dateLastContact} onChange={(e) => setDateLastContact(e.target.value)} style={inputStyle} /></Field>
+                  <Field label="Date applied"><input title="Date Applied" type="date" value={dateApplied} onChange={(e) => setDateApplied(e.target.value)} style={inputStyle} /></Field>
+                  <Field label="Last contact"><input title="Last Contact Date" type="date" value={dateLastContact} onChange={(e) => setDateLastContact(e.target.value)} style={inputStyle} /></Field>
                 </div>
                 <Field label="Linked JD">
-                  <select value={jobDescriptionId} onChange={(e) => setJobDescriptionId(e.target.value)} style={inputStyle}>
+                  <select title="Linked Job Description" value={jobDescriptionId} onChange={(e) => setJobDescriptionId(e.target.value)} style={inputStyle}>
                     <option value="" style={{ background: C.bg1 }}>— No linked spec —</option>
                     {jds.map((jd) => (
                       <option key={jd.id} value={jd.id} style={{ background: C.bg1 }}>{jd.companyName} — {jd.roleTitle}</option>
