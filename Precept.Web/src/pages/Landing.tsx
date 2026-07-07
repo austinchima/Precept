@@ -94,15 +94,7 @@ function Navbar() {
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
           {/* Wordmark */}
           <a href="/" className="flex items-center gap-2 no-underline" data-testid="landing-logo">
-            <span
-              className="grid h-7 w-7 place-items-center rounded-md"
-              style={{
-                background: `linear-gradient(135deg, ${c.teal} 0%, ${c.violet} 100%)`,
-                boxShadow: `0 0 18px ${c.tealDim}`,
-              }}
-            >
-              <span className="font-display text-[15px] font-bold leading-none" style={{ color: c.bg0 }}>P</span>
-            </span>
+            <Terminal size={22} strokeWidth={2.2} className="shrink-0" style={{ color: c.teal }} />
             <span className="font-display text-[18px] font-bold tracking-tight" style={{ color: c.ink }}>
               Precept
             </span>
@@ -140,7 +132,7 @@ function Navbar() {
             <a
               href="https://github.com/austinchima/Precept"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               data-testid="nav-github-link"
               className="flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.14em] transition-colors"
               style={{ color: c.inkDim }}
@@ -150,14 +142,7 @@ function Navbar() {
               <i className="fa-brands fa-github" /> GitHub
             </a>
             <button
-              data-testid="nav-signin-btn"
-              onClick={() => goLogin()}
-              className="font-mono text-[12px] uppercase tracking-[0.14em] transition-colors"
-              style={{ color: c.inkDim }}
-            >
-              Sign in
-            </button>
-            <button
+              type="button"
               data-testid="nav-cta-btn"
               onClick={() => goLogin("signup")}
               className="flex items-center gap-1.5 rounded-full px-4 py-2 font-mono text-[12px] uppercase tracking-[0.14em] transition-colors cursor-pointer"
@@ -173,6 +158,7 @@ function Navbar() {
 
           {/* Mobile toggle */}
           <button
+            type="button"
             data-testid="mobile-menu-toggle"
             className="flex h-9 w-9 items-center justify-center rounded-md md:hidden"
             style={{ color: c.ink, background: c.hair }}
@@ -203,6 +189,7 @@ function Navbar() {
             </a>
           ))}
           <button
+            type="button"
             onClick={() => goLogin("signup")}
             className="mt-auto mb-12 w-full rounded-full px-6 py-3 font-mono text-sm uppercase tracking-widest"
             style={{ background: c.ink, color: c.bg0 }}
@@ -245,7 +232,7 @@ function Hero() {
         tl.from(".hero-eyebrow",   { opacity: 0, y: 16, duration: 0.6 })
           .from(".hero-headline",  { opacity: 0, y: 28, duration: 0.85 }, "-=0.3")
           .from(".hero-sub",       { opacity: 0, y: 22, duration: 0.7 },  "-=0.55")
-          .from(".hero-ctas > *",  { opacity: 0, y: 16, duration: 0.55, stagger: 0.08 }, "-=0.45")
+          .from(".hero-ctas > *",  { opacity: 0, y: 16, duration: 0.55, stagger: 0.08, clearProps: "transform" }, "-=0.45")
           .from(".hero-mock",      { opacity: 0, y: 40, scale: 0.97, duration: 1.0 }, "-=0.4")
           .from(".hero-techbar > *", { opacity: 0, y: 10, duration: 0.5, stagger: 0.05 }, "-=0.5");
 
@@ -317,9 +304,10 @@ function Hero() {
         {/* CTAs */}
         <div className="hero-ctas mt-9 flex flex-wrap items-center justify-center gap-3">
           <button
+            type="button"
             data-testid="hero-primary-cta"
             onClick={() => navigate("/login", { state: { mode: "signup" } })}
-            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full border border-transparent px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-transform"
+            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full border border-transparent px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-colors"
             style={{
               background: c.ink,
               color: c.bg0,
@@ -333,7 +321,7 @@ function Hero() {
             data-testid="hero-github-cta"
             href="https://github.com/austinchima/Precept"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="gsap-magnetic inline-flex items-center gap-2 rounded-full border px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-colors"
             style={{
               background: "rgba(255,255,255,0.025)",
@@ -636,11 +624,11 @@ function Wedge() {
               Teal · Huntr · Simplify
             </div>
             <ul className="mt-6 space-y-3 font-body text-[13.5px]" style={{ color: c.inkDim }}>
-              <li className="flex items-start gap-2"><Check size={14} className="mt-0.5 flex-shrink-0" style={{ color: c.emerald }} /> Pipeline tracking</li>
-              <li className="flex items-start gap-2"><Check size={14} className="mt-0.5 flex-shrink-0" style={{ color: c.emerald }} /> Application reminders</li>
-              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 flex-shrink-0" style={{ color: c.rose }} /> No technical story bank</li>
-              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 flex-shrink-0" style={{ color: c.rose }} /> No drilling / recall practice</li>
-              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 flex-shrink-0" style={{ color: c.rose }} /> Not built for engineers</li>
+              <li className="flex items-start gap-2"><Check size={14} className="mt-0.5 shrink-0" style={{ color: c.emerald }} /> Pipeline tracking</li>
+              <li className="flex items-start gap-2"><Check size={14} className="mt-0.5 shrink-0" style={{ color: c.emerald }} /> Application reminders</li>
+              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 shrink-0" style={{ color: c.rose }} /> No technical story bank</li>
+              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 shrink-0" style={{ color: c.rose }} /> No drilling / recall practice</li>
+              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 shrink-0" style={{ color: c.rose }} /> Not built for engineers</li>
             </ul>
           </div>
 
@@ -678,7 +666,7 @@ function Wedge() {
                   "Voice practice + analytics + skills matrix",
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-2">
-                    <Check size={14} className="mt-0.5 flex-shrink-0" style={{ color: c.teal }} /> {t}
+                    <Check size={14} className="mt-0.5 shrink-0" style={{ color: c.teal }} /> {t}
                   </li>
                 ))}
               </ul>
@@ -1320,11 +1308,12 @@ function FinalCTA() {
               Free to start. No card. Your data exports as raw JSON, anytime. Built by developers, for developers.
             </p>
 
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-9 flex items-center justify-center">
               <button
+                type="button"
                 data-testid="final-cta-primary"
                 onClick={() => navigate("/login", { state: { mode: "signup" } })}
-                className="gsap-magnetic group inline-flex items-center gap-2 rounded-full px-7 py-4 font-mono text-[12.5px] font-semibold uppercase tracking-[0.16em]"
+                className="inline-flex items-center gap-2 rounded-full px-7 py-4 font-mono text-[12.5px] font-semibold uppercase tracking-[0.16em] transition-shadow duration-300 hover:shadow-[0_0_24px_rgba(45,212,191,0.45)]"
                 style={{
                   background: c.ink,
                   color: c.bg0,
@@ -1332,20 +1321,8 @@ function FinalCTA() {
                 }}
               >
                 Start banking your stories
-                <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                <ArrowRight size={14} />
               </button>
-              <a
-                href="https://github.com/austinchima/Precept"
-                target="_blank"
-                rel="noreferrer"
-                data-testid="final-cta-github"
-                className="inline-flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.16em] transition-colors"
-                style={{ color: c.inkDim }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = c.ink)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = c.inkDim)}
-              >
-                Star on GitHub <ArrowUpRight size={12} />
-              </a>
             </div>
 
             {/* tiny trust strip */}
@@ -1376,12 +1353,7 @@ function Footer() {
         <div className="grid grid-cols-12 gap-8">
           <div className="col-span-12 md:col-span-5">
             <div className="flex items-center gap-2">
-              <span
-                className="grid h-7 w-7 place-items-center rounded-md"
-                style={{ background: `linear-gradient(135deg, ${c.teal}, ${c.violet})` }}
-              >
-                <span className="font-display text-[15px] font-bold" style={{ color: c.bg0 }}>P</span>
-              </span>
+              <Terminal size={22} strokeWidth={2.2} className="shrink-0" style={{ color: c.teal }} />
               <span className="font-display text-[18px] font-bold" style={{ color: c.ink }}>Precept</span>
             </div>
             <p className="mt-4 max-w-[360px] font-body text-[13.5px] leading-relaxed" style={{ color: c.inkDim }}>
@@ -1406,12 +1378,10 @@ function Footer() {
             <ul className="mt-4 space-y-2 font-body text-[13px]">
               {[
                 ["https://github.com/austinchima/Precept", "GitHub"],
-                ["https://github.com/austinchima/Precept/tree/master/design-system/pages", "Design system"],
-                ["https://github.com/austinchima/Precept/blob/master/OWASP-SECURITY-AUDIT.md", "Security audit"],
                 ["https://github.com/austinchima/Precept/blob/master/CHANGELOG.md", "Changelog"],
               ].map(([h, l]) => (
                 <li key={l}>
-                  <a href={h} target="_blank" rel="noreferrer" className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>{l}</a>
+                  <a href={h} target="_blank" rel="noopener noreferrer" className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>{l}</a>
                 </li>
               ))}
             </ul>

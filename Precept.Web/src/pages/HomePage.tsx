@@ -120,10 +120,7 @@ export default function HomePage() {
         style={{ background: 'rgba(2,5,10,0.7)', borderBottom: `1px solid ${C.hair}` }}>
         <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
           <a href="/" className="flex items-center gap-3 no-underline" data-testid="home-logo">
-            <span className="grid h-9 w-9 place-items-center rounded-md"
-              style={{ background: `linear-gradient(135deg, ${C.teal} 0%, ${C.violet} 100%)`, boxShadow: `0 0 18px ${C.tealDim}` }}>
-              <span className="font-display text-[16px] font-bold leading-none" style={{ color: C.bg0 }}>P</span>
-            </span>
+            <Terminal size={26} strokeWidth={2.2} className="shrink-0" style={{ color: C.teal }} />
             <div>
               <span className="font-display font-bold text-[19px] tracking-tight" style={{ color: C.ink }}>Precept</span>
               <span className="ml-2 font-mono text-[9.5px] uppercase tracking-[0.22em]" style={{ color: C.inkMute }}>Career&nbsp;OS</span>
@@ -138,8 +135,10 @@ export default function HomePage() {
 
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/login')} data-testid="home-signin-btn"
-              className="hidden sm:inline-flex font-mono text-[11.5px] uppercase tracking-[0.16em] px-3 min-h-[44px] items-center cursor-pointer transition-colors"
-              style={{ color: C.inkDim }}>
+              className="hidden sm:inline-flex cursor-pointer items-center rounded-full border border-transparent px-3.5 min-h-[36px] font-mono text-[11.5px] uppercase tracking-[0.16em] transition-all hover:border-teal-400/30 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(45,212,191,0.2)]"
+              style={{ color: C.inkDim }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = C.ink)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}>
               Sign in
             </button>
             <button onClick={handleGetStarted} data-testid="home-cta-initialize"
@@ -456,10 +455,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-10 px-6 py-16 max-w-7xl mx-auto">
               <div className="flex flex-col gap-5 col-span-1 md:col-span-2">
                 <a href="/" className="flex items-center gap-3 no-underline">
-                  <span className="grid h-9 w-9 place-items-center rounded-md"
-                    style={{ background: `linear-gradient(135deg, ${C.teal} 0%, ${C.violet} 100%)`, boxShadow: `0 0 18px ${C.tealDim}` }}>
-                    <span className="font-display text-[16px] font-bold leading-none" style={{ color: C.bg0 }}>P</span>
-                  </span>
+                  <Terminal size={26} strokeWidth={2.2} className="shrink-0" style={{ color: C.teal }} />
                   <span className="font-display font-bold text-[19px]" style={{ color: C.ink }}>Precept</span>
                 </a>
                 <p className="font-body text-[13.5px] max-w-md leading-relaxed" style={{ color: C.inkDim }}>

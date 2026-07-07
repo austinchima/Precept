@@ -264,10 +264,10 @@ export default function Settings() {
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="First name">
-                  <input type="text" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} style={inputStyle} required data-testid="settings-firstname" />
+                  <input title="First Name" type="text" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} style={inputStyle} required data-testid="settings-firstname" />
                 </Field>
                 <Field label="Last name">
-                  <input type="text" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} style={inputStyle} required data-testid="settings-lastname" />
+                  <input title="Last Name" type="text" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} style={inputStyle} required data-testid="settings-lastname" />
                 </Field>
               </div>
               <button type="submit" disabled={isUpdatingProfile} data-testid="settings-save-profile"
@@ -286,16 +286,16 @@ export default function Settings() {
               <form onSubmit={handleSubmitSkill} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Field label="Name">
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. React, Docker" style={inputStyle} required data-testid="skill-name" />
+                    <input title="Skill Name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. React, Docker" style={inputStyle} required data-testid="skill-name" />
                   </Field>
                   <Field label="Category">
-                    <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle} data-testid="skill-category">
+                    <select title="Skill Category" value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle} data-testid="skill-category">
                       <option value="" style={{ background: C.bg1 }}>— Select category —</option>
                       {SKILL_CATEGORIES.map((c) => <option key={c} value={c} style={{ background: C.bg1 }}>{c}</option>)}
                     </select>
                   </Field>
                   <Field label="Proficiency">
-                    <select value={proficiency} onChange={(e) => setProficiency(e.target.value as SkillProficiency)} style={inputStyle} data-testid="skill-proficiency">
+                    <select title="Skill Proficiency" value={proficiency} onChange={(e) => setProficiency(e.target.value as SkillProficiency)} style={inputStyle} data-testid="skill-proficiency">
                       {(['Beginner', 'Intermediate', 'Advanced', 'Expert'] as SkillProficiency[]).map((p) => (
                         <option key={p} value={p} style={{ background: C.bg1 }}>{p}</option>
                       ))}

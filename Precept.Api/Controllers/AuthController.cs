@@ -27,6 +27,9 @@ public class AuthController(
 {
     private readonly JwtSettings _jwtSettings = jwtSettings.Value;
 
+    private static string NormalizeEmail(string email) =>
+        new(email.Where(c => !char.IsWhiteSpace(c)).ToArray());
+
     // ─────────────────────────────────────────────────────────────
     //  POST /api/auth/register
     // ─────────────────────────────────────────────────────────────
@@ -41,6 +44,8 @@ public class AuthController(
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
+
+        request.Email = NormalizeEmail(request.Email);
 
         // Check if a user with this email already exists
         var existingUser = await userManager.FindByEmailAsync(request.Email);
@@ -100,6 +105,8 @@ public class AuthController(
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
+
+        request.Email = NormalizeEmail(request.Email);
 
         // 1. Find user by email (ASP.NET Identity)
         var user = await userManager.FindByEmailAsync(request.Email);
@@ -348,6 +355,8 @@ public class AuthController(
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        request.Email = NormalizeEmail(request.Email);
+
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
@@ -383,6 +392,8 @@ public class AuthController(
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        request.Email = NormalizeEmail(request.Email);
+
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)
             return BadRequest(new { message = "Invalid request." });
@@ -413,6 +424,8 @@ public class AuthController(
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
+
+        request.Email = NormalizeEmail(request.Email);
 
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)

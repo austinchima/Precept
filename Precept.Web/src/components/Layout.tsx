@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { gsap, useGSAP, prefersReducedMotion } from '../lib/animations';
 import CommandPalette from './ui/CommandPalette';
+import { Terminal } from 'lucide-react';
 
 /* ─────── DESIGN TOKENS (from Landing.tsx) ─────── */
 const C = {
@@ -122,15 +123,12 @@ export default function Layout() {
             onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
-            <span
-              className={`grid h-8 w-8 place-items-center rounded-lg shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`}
-              style={{
-                background: `linear-gradient(135deg, ${C.teal} 0%, ${C.violet} 100%)`,
-                boxShadow: `0 0 18px ${C.tealDim}`,
-              }}
-            >
-              <span className="font-display text-[15px] font-bold leading-none" style={{ color: C.bg0 }}>P</span>
-            </span>
+            <Terminal
+              size={24}
+              strokeWidth={2.2}
+              className={`shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`}
+              style={{ color: C.teal }}
+            />
             {!isSidebarCollapsed && (
               <div className="flex flex-col items-start min-w-0">
                 <span className="font-display text-[18px] font-bold tracking-tight whitespace-nowrap" style={{ color: C.ink }}>
@@ -257,6 +255,7 @@ export default function Layout() {
             <div className="flex items-center gap-3">
               {/* mobile burger */}
               <button
+                title="Open Mobile Menu"
                 className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition-colors cursor-pointer"
                 style={{ color: C.inkDim, background: C.hair }}
                 onClick={() => setIsMobileMenuOpen(true)}
@@ -298,14 +297,13 @@ export default function Layout() {
 
             <div className="flex items-center gap-3 md:gap-5">
               <button
+                aria-label="Notifications"
+                onClick={() => alert('Notifications not implemented yet')}
                 data-testid="topbar-notifications"
                 className="w-9 h-9 rounded-full grid place-items-center transition-all duration-300 cursor-pointer relative"
                 style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, color: C.inkDim }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = C.ink; e.currentTarget.style.borderColor = C.hair2; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = C.inkDim; e.currentTarget.style.borderColor = C.hair; }}
               >
                 <i className="fa-regular fa-bell text-sm" />
-                <span className="absolute top-1.5 right-1.5 block h-1.5 w-1.5 rounded-full" style={{ background: C.rose, boxShadow: `0 0 6px ${C.rose}` }} />
               </button>
 
               <div className="text-right hidden md:flex flex-col items-end justify-center min-w-[88px] px-2">

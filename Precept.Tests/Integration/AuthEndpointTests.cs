@@ -103,6 +103,18 @@ public class AuthEndpointTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest, reason);
     }
 
+    [Theory]
+    [InlineData("userexample@email", "missing TLD dot")]
+    [InlineData("user@example", "missing TLD dot")]
+    [InlineData("user@example.c", "TLD too short")]
+    [InlineData("user example@example.com", "contains whitespace")]
+    [InlineData("user@ example.com", "contains whitespace")]
+    public async Task Register_Returns400_WithInvalidEmail(string invalidEmail, string reason)
+    {
+        var (response, _) = await RegisterAsync(email: invalidEmail);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, reason);
+    }
+
     [Fact]
     public async Task Register_PersistsHashedToken_NotRawCookieValue()
     {
@@ -152,6 +164,19 @@ public class AuthEndpointTests : IAsyncLifetime
             new { Email = email, Password = "WrongPassword99!" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Theory]
+    [InlineData("userexample@email")]
+    [InlineData("user@example")]
+    [InlineData("user @example.com")]
+    public async Task Login_Returns400_WithInvalidEmail(string invalidEmail)
+    {
+        var client = _factory.CreateAnonymousClient();
+        var response = await client.PostAsJsonAsync("/api/auth/login",
+            new { Email = invalidEmail, Password = "ValidPass123!" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     // ─────────────────────────────────────────────────────────────

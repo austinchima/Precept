@@ -464,8 +464,8 @@
     font-family: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
   }
   .font-editorial {
-    font-family: "Instrument Serif", "Times New Roman", serif;
-    font-style: italic;
+    font-family: "Fira Code", "JetBrains Mono", ui-monospace, monospace;
+    font-style: normal;
     letter-spacing: -0.01em;
   }
   /* IDE-style dot grid for landing backgrounds */
