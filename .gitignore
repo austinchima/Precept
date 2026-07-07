@@ -101,3 +101,4 @@ credentials.json
 *.pem
 *.key
 .credentials
+*.hintrc

@@ -86,6 +86,8 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
   return (
     <div
+      aria-live="polite"
+      aria-label="Notification"
       className={`
         flex items-start gap-3 w-full max-w-[384px] p-4 rounded-lg border shadow-2xl
         ${bg} ${border}
@@ -95,7 +97,6 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
         pointer-events-auto
       `}
       role="alert"
-      aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
     >
       <i
         className={`${iconClass} ${iconColor} text-sm mt-0.5 shrink-0`}

@@ -55,14 +55,14 @@ export const BehavioralStoryForm: React.FC<BehavioralStoryFormProps> = ({ story,
   return (
     <div className="glass-panel rounded-2xl p-6 relative overflow-hidden">
       {/* Top accent */}
-      <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
+      <div className="absolute top-0 left-0 w-full h-0.5 bg-linear-to-r from-accent-teal/20 via-accent-teal to-accent-teal/20"></div>
 
       <div className="flex justify-between items-center mb-6 pb-3 border-b border-panel-border/20">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2.5">
           <i className="fa-solid fa-brain text-accent-teal text-sm"></i>
           {story ? 'Edit Behavioral Story' : 'New Behavioral Story'}
         </h2>
-        <button onClick={onCancel} className="text-text-secondary hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center">
+        <button onClick={onCancel} className="text-text-secondary hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center" title="Close Form">
           <i className="fa-solid fa-xmark"></i>
         </button>
       </div>

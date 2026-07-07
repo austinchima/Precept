@@ -44,13 +44,25 @@ function onRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
+function isNetworkError(err: unknown): boolean {
+  return err instanceof TypeError || (err instanceof Error && /fetch|network|failed/i.test(err.message));
+}
+
 async function refreshAccessToken(): Promise<string> {
-  const response = await fetch('/api/auth/refresh', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (err) {
+    if (isNetworkError(err)) {
+      throw new Error('Unable to reach the server. Please check your connection and try again.');
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     try {
@@ -102,7 +114,15 @@ export async function apiFetch(url: string, options: RequestOptions = {}): Promi
     headers,
   };
 
-  const response = await fetch(url, config);
+  let response: Response;
+  try {
+    response = await fetch(url, config);
+  } catch (err) {
+    if (isNetworkError(err)) {
+      throw new Error('Unable to reach the server. Please check your connection and try again.');
+    }
+    throw err;
+  }
 
   if (response.status === 401 && !options.skipAuth) {
     // If already refreshing, wait for it to finish

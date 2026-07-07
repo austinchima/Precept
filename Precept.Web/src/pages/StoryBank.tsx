@@ -272,14 +272,14 @@ export default function StoryBank() {
                     <div className="px-5 py-3 flex justify-between items-center font-mono text-[10.5px]" style={{ borderTop: `1px solid ${C.hair}`, color: C.inkMute }}>
                       <span>Last: {story.lastReviewedAt ? new Date(story.lastReviewedAt).toLocaleDateString() : 'never'}</span>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleOpenEditModal(story)} className="min-w-[32px] min-h-[32px] flex items-center justify-center transition-colors cursor-pointer"
+                        <button title="Edit story" aria-label="Edit story" onClick={() => handleOpenEditModal(story)} className="min-w-[32px] min-h-[32px] flex items-center justify-center transition-colors cursor-pointer"
                           style={{ color: C.inkDim }}
                           onMouseEnter={(e) => (e.currentTarget.style.color = C.teal)}
                           onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}
                         >
                           <Pencil size={12} />
                         </button>
-                        <button onClick={() => confirmDelete(story.id)} className="min-w-[32px] min-h-[32px] flex items-center justify-center transition-colors cursor-pointer"
+                        <button title="Delete story" aria-label="Delete story" onClick={() => confirmDelete(story.id)} className="min-w-[32px] min-h-[32px] flex items-center justify-center transition-colors cursor-pointer"
                           style={{ color: C.inkDim }}
                           onMouseEnter={(e) => (e.currentTarget.style.color = C.rose)}
                           onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}
@@ -311,7 +311,7 @@ export default function StoryBank() {
               <div className="w-full max-w-[680px] max-h-[92vh] flex flex-col relative opacity-0 animate-fade-in-up" style={{ ...cardStyle(), borderRadius: 22 }}>
                 <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${C.hair}` }}>
                   <Eyebrow color={editingStory ? C.amber : C.teal}>{editingStory ? 'Edit snippet' : 'New snippet'}</Eyebrow>
-                  <button title="Close Modal" onClick={() => setIsModalOpen(false)} className="min-h-[40px] min-w-[40px] rounded-lg grid place-items-center" style={{ color: C.inkDim }}>
+                  <button title="Close Modal" aria-label="Close Modal" onClick={() => setIsModalOpen(false)} className="min-h-[40px] min-w-[40px] rounded-lg grid place-items-center" style={{ color: C.inkDim }}>
                     <X size={16} />
                   </button>
                 </div>

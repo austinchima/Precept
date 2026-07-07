@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowUpRight, Mail, Lock, Eye, EyeOff, ArrowLeft, ArrowRight, AlertTriangle, Loader2 } from 'lucide-react';
+import { ArrowUpRight, Mail, Lock, Eye, EyeOff, ArrowLeft, ArrowRight, AlertTriangle, Loader2, Terminal } from 'lucide-react';
 
 /* ─────── DESIGN TOKENS (from Landing.tsx) ─────── */
 const C = {
@@ -141,15 +141,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           {/* brand row */}
           <div className="animate-element animate-delay-100 flex items-center justify-between mb-8">
             <a href="/" className="flex items-center gap-2 no-underline" data-testid="signin-logo">
-              <span
-                className="grid h-8 w-8 place-items-center rounded-md"
-                style={{
-                  background: `linear-gradient(135deg, ${C.teal} 0%, ${C.violet} 100%)`,
-                  boxShadow: `0 0 18px ${C.tealDim}`,
-                }}
-              >
-                <span className="font-display text-[15px] font-bold leading-none" style={{ color: C.bg0 }}>P</span>
-              </span>
+              <Terminal size={24} strokeWidth={2.2} className="shrink-0" style={{ color: C.teal }} />
               <span className="font-display text-[18px] font-bold tracking-tight" style={{ color: C.ink }}>Precept</span>
               <span className="font-mono text-[10px] uppercase tracking-widest hidden sm:inline" style={{ color: C.inkMute }}>
                 ─ Career&nbsp;OS
@@ -238,9 +230,30 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] mb-2 block" style={{ color: C.inkMute }}>Email</label>
               <InputShell isError={!!error}>
                 <Mail size={16} className="ml-4 shrink-0" style={{ color: C.inkMute }} />
-                <input name="email" type="email" placeholder="engineer@domain.com" data-testid="signin-email"
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="engineer@domain.com"
+                  data-testid="signin-email"
                   className="w-full bg-transparent text-sm p-3.5 font-mono focus:outline-none"
-                  style={{ color: C.ink }} required />
+                  style={{ color: C.ink }}
+                  required
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text').replace(/\s/g, '');
+                    const input = e.currentTarget;
+                    input.value = pasted;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.value = e.currentTarget.value.replace(/\s/g, '');
+                  }}
+                />
               </InputShell>
             </div>
 

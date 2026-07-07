@@ -33,19 +33,29 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, navigate]);
 
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
-    
+
+    const rawEmail = (data.email as string) ?? '';
+    const email = rawEmail.replace(/\s/g, '');
+
+    if (!emailRegex.test(email)) {
+      setError('Enter a valid email address with a domain and TLD (e.g. user@example.com).');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
       if (isLogin) {
-        await login(data.email as string, data.password as string, data.rememberMe === 'on');
+        await login(email, data.password as string, data.rememberMe === 'on');
       } else {
-        await register(data.firstName as string, data.lastName as string, data.email as string, data.password as string);
+        await register(data.firstName as string, data.lastName as string, email, data.password as string);
       }
       navigate('/dashboard');
     } catch (err: any) {

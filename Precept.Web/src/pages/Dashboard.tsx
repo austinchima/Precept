@@ -352,13 +352,14 @@ export default function Dashboard() {
                         <span className="rounded-full px-2.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider" style={{ background: `${C.violet}22`, color: C.violet, border: `1px solid ${C.violet}33` }}>
                           STAR Method
                         </span>
-                        <span className="font-mono text-[10px]" style={{ color: C.inkMute }}>{activeSTARStory.company || 'General'}</span>
+                        <span className="font-mono text-[10px]" style={{ color: C.inkMute }}>{activeSTARStory.tags || 'General'}</span>
                       </div>
                       <h3 className="font-display text-[18px] font-semibold leading-snug" style={{ color: C.ink }}>
                         {activeSTARStory.title}
                       </h3>
                       <div className="mt-3 space-y-2 font-body text-[12.5px] leading-relaxed" style={{ color: C.inkDim }}>
                         <p><strong className="text-purple-400 font-mono text-[11px] uppercase">Situation:</strong> {activeSTARStory.situation}</p>
+                        <p className="line-clamp-2"><strong className="text-sky-400 font-mono text-[11px] uppercase">Task:</strong> {activeSTARStory.task}</p>
                         <p className="line-clamp-2"><strong className="text-teal-400 font-mono text-[11px] uppercase">Action:</strong> {activeSTARStory.action}</p>
                         <p className="line-clamp-2"><strong className="text-emerald-400 font-mono text-[11px] uppercase">Result:</strong> {activeSTARStory.result}</p>
                       </div>
