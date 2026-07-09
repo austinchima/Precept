@@ -113,9 +113,8 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
         var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize AuthResponse");
 
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", auth.AccessToken);
-
+        // The access token is now transported in an HttpOnly cookie. The CookieContainer
+        // handler will send it automatically on subsequent requests.
         return (client, auth);
     }
 

@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  */
 
 import React, { Suspense, lazy } from 'react';
@@ -21,6 +21,7 @@ const JDMatcher = lazy(() => import('./pages/JDMatcher'));
 const Readiness = lazy(() => import('./pages/Readiness'));
 const AppTracker = lazy(() => import('./pages/AppTracker'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Capture = lazy(() => import('./pages/Capture'));
 const NotFound1 = lazy(() => import('./components/ui/8bit-not-found1'));
 
 import PageTransition from './components/ui/PageTransition';
@@ -81,6 +82,13 @@ export default function App() {
             <Route path="/story-bank/quiz" element={
               <ProtectedRoute>
                 <PageTransition><QuizMode /></PageTransition>
+              </ProtectedRoute>
+            } />
+
+            {/* Capture page — invoked by the bookmarklet */}
+            <Route path="/capture" element={
+              <ProtectedRoute>
+                <PageTransition><Capture /></PageTransition>
               </ProtectedRoute>
             } />
             

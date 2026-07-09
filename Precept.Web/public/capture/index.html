@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Precept Job Capture Bookmarklet</title>
+    <style>
+      :root {
+        --bg: #0b0f19;
+        --panel: #111827;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+        --border: #1e293b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        line-height: 1.6;
+        padding: 2rem;
+      }
+      .card {
+        max-width: 620px;
+        width: 100%;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 2rem;
+      }
+      h1 { margin: 0 0 0.5rem; font-size: 1.25rem; }
+      p { color: var(--muted); margin: 0 0 1.5rem; }
+      .step { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+      .step-number {
+        flex-shrink: 0;
+        width: 1.5rem;
+        height: 1.5rem;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        border-radius: 999px;
+        font-size: 0.75rem;
+      }
+      .bookmark {
+        display: inline-block;
+        margin: 0.5rem 0 1.5rem;
+        padding: 0.75rem 1rem;
+        background: var(--accent);
+        color: #0b0f19;
+        text-decoration: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: grab;
+        border: none;
+        font-family: inherit;
+        font-size: 0.9rem;
+      }
+      .bookmark:active { cursor: grabbing; }
+      .or {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 1.25rem 0;
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .or::before, .or::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+      .code-box {
+        position: relative;
+      }
+      code {
+        display: block;
+        padding: 1rem;
+        padding-right: 5rem;
+        background: #0b0f19;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        font-size: 0.72rem;
+        color: var(--muted);
+        word-break: break-all;
+        line-height: 1.5;
+        min-height: 3.5rem;
+      }
+      .copy-btn {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0.35rem 0.7rem;
+        background: var(--accent);
+        color: #0b0f19;
+        border: none;
+        border-radius: 0.35rem;
+        font-family: inherit;
+        font-size: 0.7rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .copy-btn.copied {
+        background: #10b981;
+      }
+      .hint {
+        margin-top: 0.75rem;
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .hint strong { color: var(--text); }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>📎 Precept Job Capture</h1>
+      <p>
+        Save job postings to Precept in one click. Add the bookmarklet below,
+        then click it while viewing any job posting.
+      </p>
+
+      <div class="step">
+        <span class="step-number">1</span>
+        <div>
+          <strong>Drag this link to your bookmarks bar:</strong><br />
+          <a
+            id="bookmarklet"
+            class="bookmark"
+            href="#"
+            title="Drag me to your bookmarks bar"
+          >
+            Capture to Precept
+          </a>
+          <p class="hint" style="margin-top: -1rem;">
+            If dragging does not work in your browser, use the manual install below.
+          </p>
+        </div>
+      </div>
+
+      <div class="or">or</div>
+
+      <div class="step">
+        <span class="step-number">2</span>
+        <div style="width: 100%;">
+          <strong>Manual install:</strong>
+          <ol class="hint" style="padding-left: 1.1rem; margin: 0.5rem 0 1rem;">
+            <li>Copy the code below.</li>
+            <li>Add a new bookmark (Ctrl/Cmd + D or your browser menu).</li>
+            <li>Name it <strong>Capture to Precept</strong>.</li>
+            <li>Paste the code into the URL / Location field.</li>
+            <li>Save.</li>
+          </ol>
+          <div class="code-box">
+            <code id="bookmarklet-code">&nbsp;</code>
+            <button id="copy-btn" class="copy-btn" type="button">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-number">3</span>
+        <div>
+          <strong>Open a job posting</strong> on LinkedIn, Greenhouse, Lever,
+          Indeed, or anywhere else.
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-number">4</span>
+        <div>
+          <strong>Click the bookmark.</strong> Precept will open in a new tab,
+          fetch the posting, extract company/role/location/salary, and create a
+          draft application for you to review.
+        </div>
+      </div>
+    </main>
+
+    <script>
+      (function () {
+        var origin = window.location.origin;
+        var href = "javascript:(function(){var u=encodeURIComponent(location.href),t=encodeURIComponent(document.title);open('" + origin + "/capture?url='+u+'&title='+t,'_blank');})();";
+        var link = document.getElementById('bookmarklet');
+        var code = document.getElementById('bookmarklet-code');
+        var copyBtn = document.getElementById('copy-btn');
+
+        link.setAttribute('href', href);
+        code.textContent = href;
+
+        copyBtn.addEventListener('click', function () {
+          navigator.clipboard.writeText(href).then(function () {
+            copyBtn.textContent = 'Copied!';
+            copyBtn.classList.add('copied');
+            setTimeout(function () {
+              copyBtn.textContent = 'Copy';
+              copyBtn.classList.remove('copied');
+            }, 1500);
+          }).catch(function () {
+            // Fallback for browsers that block clipboard API
+            var range = document.createRange();
+            range.selectNode(code);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            try {
+              document.execCommand('copy');
+              copyBtn.textContent = 'Copied!';
+              copyBtn.classList.add('copied');
+              setTimeout(function () {
+                copyBtn.textContent = 'Copy';
+                copyBtn.classList.remove('copied');
+              }, 1500);
+            } catch (e) {
+              copyBtn.textContent = 'Ctrl+C';
+            }
+            window.getSelection().removeAllRanges();
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

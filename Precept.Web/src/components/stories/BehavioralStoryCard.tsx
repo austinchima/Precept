@@ -1,5 +1,7 @@
 import React from 'react';
 import { BehavioralStory } from '../../types';
+import { C, cardStyle, IconButton } from './storyTheme';
+import { Pencil, Trash2, Star } from 'lucide-react';
 
 interface BehavioralStoryCardProps {
   story: BehavioralStory;
@@ -7,48 +9,69 @@ interface BehavioralStoryCardProps {
   onDelete: (storyId: string) => void;
 }
 
+const STAR_SECTIONS: { key: keyof Pick<BehavioralStory, 'situation' | 'task' | 'action' | 'result'>; label: string }[] = [
+  { key: 'situation', label: 'Situation' },
+  { key: 'task', label: 'Task' },
+  { key: 'action', label: 'Action' },
+  { key: 'result', label: 'Result' },
+];
+
 export const BehavioralStoryCard: React.FC<BehavioralStoryCardProps> = ({ story, onEdit, onDelete }) => {
   const tags = story.tags ? story.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
   return (
-    <div className="glass-panel rounded-2xl p-5 flex flex-col group hover:border-white/15 hover:-translate-y-0.5 transition-all duration-300">
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-base font-semibold text-white wrap-break-word pr-4 group-hover:text-accent-teal transition-colors duration-300">{story.title}</h3>
-        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button onClick={() => onEdit(story)} className="text-text-secondary hover:text-accent-teal cursor-pointer transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Edit">
-            <i className="fa-solid fa-pen text-xs"></i>
-          </button>
-          <button onClick={() => onDelete(story.id)} className="text-text-secondary hover:text-[#f87171] cursor-pointer transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Delete">
-            <i className="fa-regular fa-trash-can text-xs"></i>
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 space-y-3 text-sm text-text-secondary">
-        <div>
-          <strong className="text-accent-teal font-mono uppercase tracking-wider text-[10px] block mb-1">Situation</strong>
-          <p className="line-clamp-3">{story.situation}</p>
-        </div>
-        <div>
-          <strong className="text-accent-teal font-mono uppercase tracking-wider text-[10px] block mb-1">Task</strong>
-          <p className="line-clamp-2">{story.task}</p>
-        </div>
-        <div>
-          <strong className="text-accent-teal font-mono uppercase tracking-wider text-[10px] block mb-1">Action</strong>
-          <p className="line-clamp-3">{story.action}</p>
-        </div>
-        <div>
-          <strong className="text-accent-teal font-mono uppercase tracking-wider text-[10px] block mb-1">Result</strong>
-          <p className="line-clamp-2">{story.result}</p>
-        </div>
-      </div>
-
-      <div className="mt-4 pt-3 border-t border-panel-border/20 flex items-center gap-2 flex-wrap">
-        {tags.map((tag, idx) => (
-          <span key={idx} className="text-[10px] font-mono text-accent-teal bg-accent-teal/10 px-2 py-0.5 rounded-full border border-accent-teal/20">
-            #{tag}
+    <div className="flex flex-col group transition-all duration-300 overflow-hidden" style={cardStyle()}>
+      <div className="p-5 flex-1 flex flex-col">
+        <div className="flex items-start justify-between mb-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest"
+            style={{ background: `${C.teal}1c`, color: C.teal, border: `1px solid ${C.teal}44` }}>
+            <Star size={9} /> STAR
           </span>
-        ))}
+          <div className="flex items-center gap-2">
+            <IconButton title="Edit story" onClick={() => onEdit(story)}>
+              <Pencil size={12} />
+            </IconButton>
+            <IconButton title="Delete story" onClick={() => onDelete(story.id)} hoverColor={C.rose}>
+              <Trash2 size={12} />
+            </IconButton>
+          </div>
+        </div>
+
+        <h3 className="font-display text-[15px] font-semibold mb-1.5 line-clamp-2" style={{ color: C.ink }} title={story.title}>
+          {story.title}
+        </h3>
+
+        <div className="flex-1 space-y-2.5 mb-3">
+          {STAR_SECTIONS.map(({ key, label }) => {
+            const text = story[key];
+            if (!text?.trim()) return null;
+            return (
+              <div key={key}>
+                <strong className="font-mono uppercase tracking-wider text-[10px] block mb-0.5" style={{ color: C.teal }}>
+                  {label}
+                </strong>
+                <p className="font-body text-[12.5px] leading-relaxed line-clamp-2" style={{ color: C.inkDim }}>
+                  {text}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-2" style={{ borderTop: `1px solid ${C.hair}` }}>
+            {tags.map((tag, idx) => (
+              <span key={idx} className="px-2 py-0.5 rounded-full font-mono text-[9px] uppercase tracking-wider"
+                style={{ background: `${C.teal}10`, color: C.inkDim, border: `1px solid ${C.hair}` }}>
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 py-3 flex justify-between items-center font-mono text-[10.5px]" style={{ borderTop: `1px solid ${C.hair}`, color: C.inkMute }}>
+        <span>Updated: {story.updatedAt ? new Date(story.updatedAt).toLocaleDateString() : 'never'}</span>
       </div>
     </div>
   );

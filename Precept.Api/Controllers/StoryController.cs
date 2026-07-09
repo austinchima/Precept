@@ -158,12 +158,13 @@ public class StoryController(IStoryService storyService) : ControllerBase
     /// <summary>
     /// Retrieves the next story to review for quiz mode using spaced repetition logic.
     /// </summary>
+    /// <param name="category">Optional category to filter the quiz selection.</param>
     /// <returns>A StoryResponse DTO representing the next quiz item, or NotFound if no stories exist.</returns>
     [HttpGet("quiz")]
-    public async Task<ActionResult<StoryResponse>> GetQuizStory()
+    public async Task<ActionResult<StoryResponse>> GetQuizStory([FromQuery] Category? category = null)
     {
         var userId = GetUserId();
-        var response = await storyService.GetQuizStoryAsync(userId);
+        var response = await storyService.GetQuizStoryAsync(userId, category);
         if (string.IsNullOrEmpty(response.Id))
         {
             return NotFound();

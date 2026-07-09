@@ -15,13 +15,11 @@
 
 Precept is a self-hostable web application that helps software engineers prepare for interviews
 and run their job hunt as a structured project rather than a graveyard of browser tabs. It is
-**developer-first**: dark-mode, monospace-leaning, keyboard-shoppable, with a real security
+**developer-first**: dark-mode, monospace-leaning, keyboard-navigable (Cmd/Ctrl+K command palette), with a real security
 posture and no telemetry. It is also a deliberate engineering artifact — the auth, testing, and
 operational pieces are built to a higher bar than the feature surface strictly requires, by design.
 
-> **Status:** R1 is shipped (full-stack, secure, containerized, CI-green). R2 (AI-powered
-> interview intelligence) is in design — see [Roadmap](#-roadmap) for honest scope and the
-> cost-engineering constraints we are committing to.
+> **Status:** R1 core loop is implemented and shipping-ready (full-stack, secure, containerized, local tests green). Recent additions include one-click job capture and authenticated-app UI redesign. R2 (AI-powered interview intelligence) is in design — see [Roadmap](#-roadmap) for honest scope and the cost-engineering constraints we are committing to.
 
 ---
 
@@ -52,16 +50,21 @@ applications; Precept also makes you interview-ready.
 | **Technical Story Bank** | Catalog snippets + written explanations, tagged across 12 domains: `Auth`, `Database`, `Ai`, `Ml`, `DevOps`, `Frontend`, `Backend`, `SystemDesign`, `Security`, `Testing`, `Cloud`, `Architecture`. Each story carries a `ConfidenceLevel`. |
 | **Behavioral Story Bank** | STAR-method (Situation / Task / Action / Result) narratives with free-text tags. |
 | **Quiz Mode** | Spaced-repetition resurfacing: never-reviewed first → low-confidence (`Panic`/`Shaky`) → oldest-reviewed. Rating a story updates `ConfidenceLevel` and `LastReviewedAt` atomically. |
-| **JD Skill Mapper** | Persist a job description with a **user-supplied keyword list**; Precept computes a match score by case-insensitive set-intersection against the user's `Skills` inventory and surfaces the missing keywords. (No NLP yet — that's an R2 candidate.) |
+| **JD Skill Mapper** | Paste a job description; Precept auto-extracts a curated tech-skills keyword list server-side and computes a match score by case-insensitive set-intersection against the user's `Skills` inventory, surfacing missing keywords. Users can still supply an override list if they want. (No LLM/NLP yet — that's an R2 candidate.) |
 | **Pipeline Tracker** | Five-stage status machine: `Applied → PhoneScreen → Interviewing → Offer / Rejected / Ghosted`. Every status change writes an `ApplicationEvent` for an auditable trajectory. |
-| **Skills Matrix** | Inventory with `Name`, `Category`, `ProficiencyLevel` (`Beginner / Intermediate / Advanced / Expert`), and notes. Feeds the JD match. |
+| **Job Posting Capture** | One-click capture from any job posting page via a bookmarklet. The server fetches the URL, extracts company/role/location/salary/remote/description, creates a `JobDescription`, and seeds a draft `Application`. |
+| **Skills Matrix** | Inventory with `Name`, `Category`, `ProficiencyLevel` (`Beginner / Intermediate / Advanced / Expert`), and notes. Feeds the JD match and the Technical Readiness radar. |
 | **Analytics Dashboard** | Story confidence + category breakdowns, applications by status, response/rejection rates, average JD match score. Powered by `Recharts`. |
+| **Technical Readiness** | Radar visualization of proficiency per skill category against an interview-ready threshold, plus JD-derived gap analysis. |
 | **Search** | Cross-entity search over the user's stories, applications, JDs, and skills. |
 | **Data Export** | `GET /api/dashboard/export` returns the user's entire data set as a JSON payload. No lock-in. |
 | **Testimonials (landing page)** | Authenticated users can submit a public testimonial; the landing page reads from `GET /api/testimonial/public`. |
 
+**Not yet implemented (planned for R1 completion):** follow-up email reminders and onboarding example stories/templates for new accounts.
+
 All endpoints are user-scoped (`[Authorize]` + `WHERE UserId = current_user` at the query
-layer) and rate-limited.
+layer) and rate-limited. The capture endpoint additionally validates the URL scheme,
+rejects private/loopback hosts, and caps fetched pages at 2 MB.
 
 ---
 
@@ -88,7 +91,7 @@ graph TD
         SEC["Security middleware<br/>(headers · CORS · rate limiter)"]:::backend
         AUTH["JWT bearer + RTR<br/>(httpOnly refresh cookie)"]:::backend
         CTRL["Controllers (10)"]:::backend
-        SVC["Services (9)"]:::backend
+        SVC["Services (12)"]:::backend
         EF["EF Core 10<br/>(global tenant query filters)"]:::backend
     end
 
@@ -109,10 +112,10 @@ graph TD
 
 | Layer | What's in the repo |
 |---|---|
-| **Backend (`Precept.Api/`)** | ASP.NET Core Web API on **.NET 10**, C# 13, EF Core 10, Npgsql, ASP.NET Core Identity, JWT bearer, `System.Threading.RateLimiting`, **Serilog** (console + rolling file sink), **Scalar** for OpenAPI UI, `DotNetEnv` for local env loading. |
+| **Backend (`Precept.Api/`)** | ASP.NET Core Web API on **.NET 10**, C# 13, EF Core 10, Npgsql, ASP.NET Core Identity, JWT bearer, `System.Threading.RateLimiting`, **Serilog** (console + rolling file sink), **Scalar** for OpenAPI UI, `DotNetEnv` for local env loading, `IHttpClientFactory` for job-posting fetch. |
 | **Frontend (`Precept.Web/`)** | **React 19** + TypeScript on **Vite 6**, **Tailwind v4** (`@tailwindcss/vite`), **GSAP 3** + `@gsap/react`, **Framer Motion** / **motion**, **Recharts**, **lucide-react**, **lenis** (smooth scroll), `@paper-design/shaders-react`, native `fetch` (no axios), React Router 7. |
 | **Database** | PostgreSQL 18 (Alpine in compose), schema versioned via EF Core migrations (committed to git). |
-| **Tests (`Precept.Tests/`)** | **xUnit** + **Testcontainers for .NET** (Postgres per-class isolation in local runs; CI uses an action-provisioned Postgres service); 52+ DB-backed integration + unit tests. |
+| **Tests (`Precept.Tests/`)** | **xUnit** + **Testcontainers for .NET** (Postgres per-class isolation in local runs; CI uses an action-provisioned Postgres service); 100+ DB-backed integration + unit tests. |
 | **CI** | GitHub Actions (`.github/workflows/ci.yml`): build + test + `dotnet list package --vulnerable` + `npm audit --audit-level=moderate` on the web project. |
 | **Containerization** | Multi-stage Dockerfiles for both projects; `docker-compose.yml` wires `db` → `api` → `web` with healthchecks. |
 
@@ -124,7 +127,7 @@ graph TD
 .
 ├── Precept.Api/                ASP.NET Core 10 web API
 │   ├── Controllers/            10 controllers (Auth, Story, Application, JD, Skill, ...)
-│   ├── Services/               9 services + interfaces (DI-registered, scoped)
+│   ├── Services/               12 services + helper classes (DI-registered, mostly scoped)
 │   ├── Models/                 Domain entities + EF migrations source
 │   ├── DTOs/                   Request/Response shapes
 │   ├── Data/                   PreceptDbContext (with global tenant query filters)
@@ -134,9 +137,9 @@ graph TD
 │   └── Dockerfile              Multi-stage (build / dev / final)
 │
 ├── Precept.Web/                Vite + React 19 + TS frontend
-│   ├── src/pages/              Route components (Landing, Login, Dashboard, ...)
+│   ├── src/pages/              Route components (Landing, LoginPage, Dashboard, StoryBank, QuizMode, JDMatcher, Readiness, AppTracker, Settings)
 │   ├── src/components/         UI + animation primitives
-│   ├── src/lib/                animations.ts (GSAP wrappers), constants, utils
+│   ├── src/lib/                animations.ts (GSAP wrappers), constants, utils, skills
 │   ├── src/api.ts              fetch wrapper with token refresh interceptor
 │   ├── src/AuthContext.tsx     React context for auth state
 │   ├── nginx.conf              Production reverse-proxy config (/api → api:8080)
@@ -150,7 +153,6 @@ graph TD
 ├── design-system/pages/        Static design references (UI exploration)
 ├── .github/workflows/ci.yml    Build + test + vulnerability scans
 ├── docker-compose.yml          db + api + web stack
-├── OWASP-SECURITY-AUDIT.md     Full A01-A10 audit, findings + remediation
 ├── auth_reuse_detection_cascade_revocation.md   Auth architecture handbook
 └── CHANGELOG.md                Keep-a-Changelog format, semver
 ```
@@ -290,8 +292,7 @@ erDiagram
 ## ✦ Security posture
 
 Precept handles personal career data; the security model is overbuilt on purpose. The
-[OWASP-SECURITY-AUDIT.md](./OWASP-SECURITY-AUDIT.md) document tracks every Top-10 category with
-status and remediation notes. Highlights:
+auth architecture is detailed in [auth_reuse_detection_cascade_revocation.md](./auth_reuse_detection_cascade_revocation.md). Highlights:
 
 ### Authentication & session management
 - **Passwords** — PBKDF2 via ASP.NET Core Identity. Password policy: ≥8 chars, upper/lower/digit/non-alphanumeric.
@@ -313,15 +314,14 @@ status and remediation notes. Highlights:
 - **Errors** — Exception detail (`exception.Message`) is returned only in `Development`; production gets `"An unexpected error occurred."`. Stack traces always go to structured logs.
 
 ### Data plane
-- **Tenant isolation** — `PreceptDbContext` applies a global `HasQueryFilter` for `UserId == currentUser`. Services additionally filter by user-id at the query layer (defense in depth).
+- **Tenant isolation** — `PreceptDbContext` applies a global `HasQueryFilter` on `Application`, `ApplicationEvent`, and `Story` so they are automatically scoped to the current user. `BehavioralStory`, `JobDescription`, `Skill`, and `Testimonial` are scoped by `UserId` at the service/query layer. Every entity path is user-scoped: the filter is a backstop where present, and the service layer is the primary gate everywhere else.
 - **No raw SQL** — all queries are EF Core LINQ; React auto-escapes the rendering layer.
 - **Data portability** — `GET /api/dashboard/export` returns the user's entire data set as JSON.
 - **Migrations on startup are gated** — `Database.Migrate()` only runs when `IsDevelopment()` or `RunMigrationsOnStartup=true`, so production deploys apply migrations explicitly.
 
 ### Known limitations (honest list)
-- Access tokens currently live in `localStorage` on the frontend for development convenience.
-  This is XSS-exposed and `Precept.Web/src/api.ts` documents the migration path to fully
-  cookie-based auth.
+- Access tokens are transported in an `HttpOnly` cookie in production, but the refresh flow
+  still relies on cookie + API coordination. Token revocation via cascade is fully implemented.
 - No centralized audit log / SIEM forwarding (defense-in-depth gap).
 - No artifact signing / SLSA provenance on container images yet.
 - "Encryption at rest" is *not* an application-level feature — that's a property of the
@@ -395,6 +395,18 @@ npm install
 npm run dev         # http://localhost:3000, Vite HMR
 ```
 
+### Bookmarklet setup
+
+Precept includes a zero-install bookmarklet for one-click job capture.
+
+1. Open `http://localhost:3000/capture/index.html` (or `/capture/index.html` on your production domain).
+2. Drag the **Capture to Precept** link to your browser's bookmarks bar.
+3. While viewing any job posting, click the bookmark. Precept opens in a new tab,
+   fetches the posting, extracts structured fields, and creates a draft application.
+
+The bookmarklet source lives in `Precept.Web/public/capture/bookmarklet.js` and the
+instruction page is `Precept.Web/public/capture/index.html`.
+
 ---
 
 ## ✦ Testing
@@ -402,7 +414,7 @@ npm run dev         # http://localhost:3000, Vite HMR
 The test suite uses **xUnit** + **Testcontainers for .NET** with per-test-class Postgres
 isolation. Locally, `PostgresContainerFixture` spins up an ephemeral container; in CI it
 attaches to the `ikalnytskyi/action-setup-postgres` service via the
-`ConnectionStrings__PreceptDb` env var.
+`ConnectionStrings__PreceptDb` env var. The current suite runs 100+ tests.
 
 ```bash
 # Run the whole suite (unit + integration)
@@ -483,8 +495,7 @@ yours to fork.
 
 The codebase intentionally over-invests in things hiring teams care about (auth correctness,
 test isolation, OWASP coverage, observability) at the expense of feature breadth. That trade
-is on purpose. See `OWASP-SECURITY-AUDIT.md` and
-`auth_reuse_detection_cascade_revocation.md` for the receipts.
+is on purpose. See `auth_reuse_detection_cascade_revocation.md` for the receipts.
 
 <div align="center">
 <i>Built by a developer who needed it. MIT-licensed for anyone else who does.</i>

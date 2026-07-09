@@ -10,6 +10,12 @@ public interface IApplicationService
 {
     Task<ApplicationResponse> CreateApplicationAsync(string userId, CreateApplicationRequest request);
 
+    /// <summary>
+    /// Fetches a job posting URL, extracts structured fields, creates a
+    /// JobDescription, and seeds a draft Application for the user.
+    /// </summary>
+    Task<ApplicationResponse> CaptureApplicationAsync(string userId, CaptureApplicationRequest request);
+
     Task<List<ApplicationResponse>> GetAllApplicationsAsync(string userId, ApplicationStatus? status = null);
 
     Task<ApplicationResponse> GetApplicationAsync(string userId, string id);

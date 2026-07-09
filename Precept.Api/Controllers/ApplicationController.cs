@@ -40,6 +40,30 @@ public class ApplicationController(IApplicationService applicationService) : Con
     }
 
     /// <summary>
+    /// Captures a job posting from a URL, extracts structured fields, creates a
+    /// JobDescription, and seeds a draft Application for the authenticated user.
+    /// </summary>
+    /// <param name="request">The capture request containing the job posting URL.</param>
+    /// <returns>A CreatedAtAction result containing the created ApplicationResponse.</returns>
+    [HttpPost("capture")]
+    public async Task<ActionResult<ApplicationResponse>> CaptureApplication([FromBody] CaptureApplicationRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var userId = GetUserId();
+            var response = await applicationService.CaptureApplicationAsync(userId, request);
+            return CreatedAtAction(nameof(GetApplication), new { id = response.Id }, response);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Retrieves all applications belonging to the authenticated user, optionally filtered by status.
     /// </summary>
     /// <param name="status">Optional status to filter applications by.</param>

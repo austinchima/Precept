@@ -3,7 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace Precept.Api.DTOs;
 
 /// <summary>
-/// What the client sends when creating a job description with manual keyword extraction.
+/// What the client sends when creating a job description.
+/// Keywords are extracted automatically from the description text;
+/// sending <see cref="ExtractedKeyWords"/> overrides extraction.
 /// </summary>
 public class CreateJobDescriptionRequest
 {
@@ -17,9 +19,10 @@ public class CreateJobDescriptionRequest
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// Comma-separated or JSON array of keywords the user manually spotted in the JD.
+    /// Optional override for extracted keywords. When omitted, keywords are
+    /// extracted server-side from <see cref="Description"/>.
     /// </summary>
-    public List<string> ExtractedKeyWords { get; set; } = [];
+    public List<string>? ExtractedKeyWords { get; set; }
 
     public string Url { get; set; } = string.Empty;
 
@@ -36,6 +39,8 @@ public class CreateJobDescriptionRequest
 
 /// <summary>
 /// What the client sends when updating a job description.
+/// Keywords are re-extracted automatically from the description text;
+/// sending <see cref="ExtractedKeyWords"/> overrides extraction.
 /// </summary>
 public class UpdateJobDescriptionRequest
 {
@@ -48,7 +53,11 @@ public class UpdateJobDescriptionRequest
     [Required]
     public string Description { get; set; } = string.Empty;
 
-    public List<string> ExtractedKeyWords { get; set; } = [];
+    /// <summary>
+    /// Optional override for extracted keywords. When omitted, keywords are
+    /// extracted server-side from <see cref="Description"/>.
+    /// </summary>
+    public List<string>? ExtractedKeyWords { get; set; }
 
     public string Url { get; set; } = string.Empty;
 

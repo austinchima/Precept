@@ -6,6 +6,7 @@ using Npgsql;
 using Precept.Api.Data;
 using Precept.Api.DTOs;
 using Precept.Api.Models;
+using NSubstitute;
 using Precept.Api.Services;
 using Precept.Api.Services.Interfaces;
 using Precept.Tests.Infrastructure;
@@ -44,6 +45,9 @@ public class ApplicationServiceTests : IAsyncLifetime
     // Default context + service for most tests — operates as "user-a".
     private PreceptDbContext _db = null!;
     private ApplicationService _svc = null!;
+    private IJobDescriptionService _jobDescriptionService = null!;
+    private IJobPostingContentExtractor _contentExtractor = null!;
+    private IHttpClientFactory _httpClientFactory = null!;
 
     public ApplicationServiceTests(PostgresContainerFixture fixture)
     {
@@ -83,8 +87,18 @@ public class ApplicationServiceTests : IAsyncLifetime
         }
         await migrateDb.SaveChangesAsync();
 
+        _jobDescriptionService = Substitute.For<IJobDescriptionService>();
+        _contentExtractor = Substitute.For<IJobPostingContentExtractor>();
+        _httpClientFactory = Substitute.For<IHttpClientFactory>();
+
         _db = MakeDb("user-a");
-        _svc = new ApplicationService(_db, NullLogger<ApplicationService>.Instance, _fakeTime);
+        _svc = new ApplicationService(
+            _db,
+            _jobDescriptionService,
+            _contentExtractor,
+            _httpClientFactory,
+            NullLogger<ApplicationService>.Instance,
+            _fakeTime);
     }
 
     public async Task DisposeAsync()
@@ -165,6 +179,43 @@ public class ApplicationServiceTests : IAsyncLifetime
         events.Should().HaveCount(1, "no duplicate event for an unchanged status");
     }
 
+    [Fact]
+    public async Task UpdateApplication_WhenStatusChanges_AppendsNewEvent()
+    {
+        var created = await _svc.CreateApplicationAsync("user-a", MakeRequest());
+
+        await _svc.UpdateApplicationAsync("user-a", created.Id, new UpdateApplicationRequest
+        {
+            CompanyName = created.CompanyName,
+            RoleTitle = created.RoleTitle,
+            Status = ApplicationStatus.Interviewing,
+            DateApplied = created.DateApplied,
+            FollowUpDate = created.FollowUpDate
+        });
+
+        var events = await _db.ApplicationEvents.ToListAsync();
+        events.Should().HaveCount(2);
+        events.Should().Contain(e => e.Status == ApplicationStatus.Interviewing);
+    }
+
+    [Fact]
+    public async Task UpdateApplication_WhenStatusUnchanged_DoesNotAppendEvent()
+    {
+        var created = await _svc.CreateApplicationAsync("user-a", MakeRequest());
+
+        await _svc.UpdateApplicationAsync("user-a", created.Id, new UpdateApplicationRequest
+        {
+            CompanyName = "Acme Corp Updated",
+            RoleTitle = created.RoleTitle,
+            Status = ApplicationStatus.Applied,
+            DateApplied = created.DateApplied,
+            FollowUpDate = created.FollowUpDate
+        });
+
+        var events = await _db.ApplicationEvents.ToListAsync();
+        events.Should().HaveCount(1, "editing fields without changing status should not create an event");
+    }
+
     // ─────────────────────────────────────────────────────────────
     //  Follow-up date — exact assertions via pinned clock
     // ─────────────────────────────────────────────────────────────
@@ -209,7 +260,13 @@ public class ApplicationServiceTests : IAsyncLifetime
         // Read through a context + service running as user-b.
         // Global filter: UserId == "user-b" — user-a's application is invisible.
         await using var dbAsB = MakeDb("user-b");
-        var svcAsB = new ApplicationService(dbAsB, NullLogger<ApplicationService>.Instance, _fakeTime);
+        var svcAsB = new ApplicationService(
+            dbAsB,
+            Substitute.For<IJobDescriptionService>(),
+            Substitute.For<IJobPostingContentExtractor>(),
+            Substitute.For<IHttpClientFactory>(),
+            NullLogger<ApplicationService>.Instance,
+            _fakeTime);
 
         var result = await svcAsB.GetApplicationAsync("user-b", created.Id);
 
@@ -236,5 +293,77 @@ public class ApplicationServiceTests : IAsyncLifetime
     {
         var result = await _svc.DeleteApplicationAsync("user-a", "not-a-guid");
         result.Should().BeFalse();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Capture
+    // ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CaptureApplicationAsync_FetchesPage_CreatesJobDescriptionAndApplication()
+    {
+        const string url = "https://example.com/jobs/software-engineer";
+        const string html = "<html><head><title>Software Engineer at Acme</title></head><body>Remote. $120k - $150k. We are hiring.</body></html>";
+
+        _httpClientFactory.CreateClient().Returns(_ => MakeFakeHttpClient(html));
+        _contentExtractor.Extract(url, html, null).Returns(new ExtractedJobPosting
+        {
+            CompanyName = "Acme",
+            RoleTitle = "Software Engineer",
+            Description = "Remote. $120k - $150k. We are hiring.",
+            Location = "Remote",
+            SalaryRange = "$120k - $150k",
+            IsRemote = true,
+            Source = url
+        });
+        _jobDescriptionService.CreateJobDescriptionAsync("user-a", Arg.Any<CreateJobDescriptionRequest>())
+            .Returns(new JobDescriptionResponse { Id = Guid.NewGuid().ToString() });
+
+        var response = await _svc.CaptureApplicationAsync("user-a", new CaptureApplicationRequest { Url = url });
+
+        response.CompanyName.Should().Be("Acme");
+        response.RoleTitle.Should().Be("Software Engineer");
+        response.Source.Should().Be(url);
+        response.Status.Should().Be(ApplicationStatus.Applied);
+    }
+
+    [Theory]
+    [InlineData("ftp://example.com/job")]
+    [InlineData("not-a-url")]
+    public async Task CaptureApplicationAsync_RejectsInvalidUrls(string url)
+    {
+        var act = async () => await _svc.CaptureApplicationAsync("user-a", new CaptureApplicationRequest { Url = url });
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("http://localhost/job")]
+    [InlineData("http://127.0.0.1/job")]
+    [InlineData("http://192.168.1.1/job")]
+    [InlineData("http://10.0.0.1/job")]
+    public async Task CaptureApplicationAsync_RejectsPrivateHosts(string url)
+    {
+        var act = async () => await _svc.CaptureApplicationAsync("user-a", new CaptureApplicationRequest { Url = url });
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    private static System.Net.Http.HttpClient MakeFakeHttpClient(string responseBody)
+    {
+        var handler = new FakeHttpMessageHandler(responseBody);
+        return new System.Net.Http.HttpClient(handler);
+    }
+
+    private sealed class FakeHttpMessageHandler(string responseBody) : System.Net.Http.HttpMessageHandler
+    {
+        protected override System.Threading.Tasks.Task<System.Net.Http.HttpResponseMessage> SendAsync(
+            System.Net.Http.HttpRequestMessage request,
+            System.Threading.CancellationToken cancellationToken)
+        {
+            return System.Threading.Tasks.Task.FromResult(new System.Net.Http.HttpResponseMessage
+            {
+                StatusCode = System.Net.HttpStatusCode.OK,
+                Content = new System.Net.Http.StringContent(responseBody)
+            });
+        }
     }
 }

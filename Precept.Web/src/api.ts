@@ -3,44 +3,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// OWASP NOTE: Access token is stored in localStorage for development convenience.
-// localStorage is accessible to JavaScript, making it vulnerable to XSS token theft.
-// For production, migrate to http-only cookies by having the backend set the access
-// token cookie alongside the refresh token cookie. This requires:
-//   1. Backend: Add an endpoint that returns the access token in an http-only cookie
-//   2. Frontend: Remove setAccessToken/localStorage usage; the browser sends cookies automatically
-//   3. Frontend: Update apiFetch to not manually attach Authorization header; the cookie is sent by the browser
-//
-// Until then, ensure all dependencies are kept up-to-date and XSS vectors are minimized.
-
-let _accessToken: string | null = localStorage.getItem('precept_access_token');
-
-export function getAccessToken(): string | null {
-  return _accessToken;
-}
-
-export function setAccessToken(token: string | null) {
-  _accessToken = token;
-  if (token) {
-    localStorage.setItem('precept_access_token', token);
-  } else {
-    localStorage.removeItem('precept_access_token');
-  }
-}
+// OWASP NOTE: The access token is stored in an HttpOnly cookie set by the API.
+// The browser sends it automatically with same-site / cross-origin credentials.
+// The frontend never reads or persists the token, eliminating localStorage XSS risk.
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshSubscribers: (() => void)[] = [];
 
-function subscribeTokenRefresh(cb: (token: string) => void) {
+function subscribeTokenRefresh(cb: () => void) {
   refreshSubscribers.push(cb);
 }
 
-function onRefreshed(token: string) {
-  refreshSubscribers.map((cb) => cb(token));
+function onRefreshed() {
+  refreshSubscribers.map((cb) => cb());
   refreshSubscribers = [];
 }
 
@@ -48,11 +27,12 @@ function isNetworkError(err: unknown): boolean {
   return err instanceof TypeError || (err instanceof Error && /fetch|network|failed/i.test(err.message));
 }
 
-async function refreshAccessToken(): Promise<string> {
+async function refreshAccessToken(): Promise<void> {
   let response: Response;
   try {
     response = await fetch('/api/auth/refresh', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -65,44 +45,27 @@ async function refreshAccessToken(): Promise<string> {
   }
 
   if (!response.ok) {
+    let isConcurrentRetry = false;
     try {
       const errorData = await response.json();
+      // [Benign Retry Interceptor]: Another concurrent browser tab or overlapping request
+      // just successfully rotated the refresh token within the grace window.
+      // The new access token cookie is already set; we just need to retry the original request.
       if (errorData?.message === 'Token just refreshed') {
-        // [Benign Retry Interceptor]: Another concurrent browser tab or overlapping request
-        // just successfully rotated the refresh token within the grace window.
-        // Poll localStorage briefly (up to 500ms) for the winning tab to save the new access token.
-        for (let i = 0; i < 5; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          const latestToken = localStorage.getItem('precept_access_token');
-          if (latestToken && latestToken !== _accessToken) {
-            setAccessToken(latestToken);
-            return latestToken;
-          }
-        }
-        const fallbackToken = localStorage.getItem('precept_access_token');
-        if (fallbackToken) {
-          setAccessToken(fallbackToken);
-          return fallbackToken;
-        }
+        isConcurrentRetry = true;
       }
     } catch {
       // Body parsing failed or unrelated 401 — fall through to error
     }
-    throw new Error('Refresh token expired or invalid');
-  }
 
-  const data = await response.json();
-  const newToken = data.accessToken;
-  setAccessToken(newToken);
-  return newToken;
+    if (!isConcurrentRetry) {
+      throw new Error('Refresh token expired or invalid');
+    }
+  }
 }
 
 export async function apiFetch(url: string, options: RequestOptions = {}): Promise<Response> {
   const headers = new Headers(options.headers || {});
-  
-  if (!options.skipAuth && _accessToken) {
-    headers.set('Authorization', `Bearer ${_accessToken}`);
-  }
 
   // Set default content type to JSON if sending a body and not already set
   if (options.body && !headers.has('Content-Type') && !(options.body instanceof FormData)) {
@@ -112,6 +75,7 @@ export async function apiFetch(url: string, options: RequestOptions = {}): Promi
   const config: RequestInit = {
     ...options,
     headers,
+    credentials: 'include',
   };
 
   let response: Response;
@@ -128,9 +92,8 @@ export async function apiFetch(url: string, options: RequestOptions = {}): Promi
     // If already refreshing, wait for it to finish
     if (isRefreshing) {
       return new Promise((resolve) => {
-        subscribeTokenRefresh((token) => {
-          headers.set('Authorization', `Bearer ${token}`);
-          resolve(fetch(url, { ...options, headers }));
+        subscribeTokenRefresh(() => {
+          resolve(fetch(url, { ...options, headers, credentials: 'include' }));
         });
       });
     }
@@ -138,17 +101,15 @@ export async function apiFetch(url: string, options: RequestOptions = {}): Promi
     isRefreshing = true;
 
     try {
-      const newToken = await refreshAccessToken();
+      await refreshAccessToken();
       isRefreshing = false;
-      onRefreshed(newToken);
-      
-      // Retry original request
-      headers.set('Authorization', `Bearer ${newToken}`);
-      return await fetch(url, { ...options, headers });
+      onRefreshed();
+
+      // Retry original request — the browser will send the new access token cookie
+      return await fetch(url, { ...options, headers, credentials: 'include' });
     } catch (err) {
       isRefreshing = false;
       refreshSubscribers = [];
-      setAccessToken(null);
       // Trigger a window event to let AuthContext know it should log out
       window.dispatchEvent(new Event('auth-expired'));
       throw err;
@@ -166,6 +127,7 @@ async function extractErrorMessage(res: Response): Promise<string> {
   const STATUS_MESSAGES: Record<number, string> = {
     400: 'The request was invalid. Please check your input.',
     401: 'Your session has expired. Please sign in again.',
+    402: 'This feature requires credits. Please purchase credits to continue.',
     403: 'You don\'t have permission to perform this action.',
     404: 'The requested resource was not found.',
     405: 'This action is not supported.',

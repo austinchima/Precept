@@ -23,8 +23,8 @@ public class JobDescriptionController(IJobDescriptionService jobDescriptionServi
         ?? throw new InvalidOperationException("User ID is missing from the claims.");
 
     /// <summary>
-    /// Creates a new job description with manual keyword extraction.
-    /// Match score is computed against the user's skills inventory.
+    /// Creates a new job description. Keywords are extracted automatically from the
+    /// description text and matched against the user's skills inventory.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<JobDescriptionResponse>> CreateJobDescription([FromBody] CreateJobDescriptionRequest request)
@@ -64,7 +64,8 @@ public class JobDescriptionController(IJobDescriptionService jobDescriptionServi
     }
 
     /// <summary>
-    /// Updates a job description. Match score is recomputed against current skills.
+    /// Updates a job description. Keywords are re-extracted from the description text
+    /// and the match score is recomputed against current skills.
     /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<JobDescriptionResponse>> UpdateJobDescription(string id, [FromBody] UpdateJobDescriptionRequest request)

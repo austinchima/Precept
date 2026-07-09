@@ -1,46 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Story, StoryCategory, ConfidenceLevel } from '../types';
 import { api } from '../api';
+import { STORY_TEMPLATES, type StoryTemplate } from '../data/storyTemplates';
 import { BehavioralStoryTab } from '../components/stories/BehavioralStoryTab';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
-import { Plus, X, Code2, Star as StarIcon, Loader2, FilterIcon, Trash2, Pencil, Terminal } from 'lucide-react';
-
-const C = {
-  bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
-  ink: '#E6EBF2', inkDim: '#9CA8B8', inkMute: '#5A6678',
-  hair: 'rgba(255,255,255,0.07)', hair2: 'rgba(255,255,255,0.12)',
-  teal: '#2dd4bf', tealDim: 'rgba(45,212,191,0.14)',
-  violet: '#8b5cf6', rose: '#f43f5e', amber: '#f59e0b', sky: '#38bdf8', emerald: '#10b981',
-} as const;
-
-const cardStyle = (): React.CSSProperties => ({
-  background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
-  border: `1px solid ${C.hair}`,
-  borderRadius: 18,
-  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
-});
-
-const Eyebrow = ({ children, color = C.teal }: { children: React.ReactNode; color?: string }) => (
-  <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]"
-    style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}>
-    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-    {children}
-  </span>
-);
-
-const inputStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.025)',
-  border: `1px solid ${C.hair}`,
-  borderRadius: 10,
-  color: C.ink,
-  padding: '10px 12px',
-  fontFamily: 'JetBrains Mono, monospace',
-  fontSize: 13,
-  width: '100%',
-  outline: 'none',
-};
+import { Plus, X, Code2, Star as StarIcon, Loader2, FilterIcon, Trash2, Pencil, Sparkles } from 'lucide-react';
+import PageShell from '../components/PageShell';
+import { C, cardStyle, inputStyle, Eyebrow } from '../components/stories/storyTheme';
 
 const CATEGORIES: ('All' | StoryCategory)[] = ['All', 'Auth', 'Database', 'Ai', 'ML', 'DevOps', 'Frontend', 'Backend', 'SystemDesign', 'Security', 'Testing', 'Cloud', 'Architecture'];
 const CONFIDENCE_LEVELS: ConfidenceLevel[] = ['Panic', 'Shaky', 'Okay', 'Solid', 'CanTeach'];
@@ -65,6 +33,7 @@ export default function StoryBank() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStory, setEditingStory] = useState<Story | null>(null);
   const [storyToDelete, setStoryToDelete] = useState<string | null>(null);
+  const [behavioralCreateTrigger, setBehavioralCreateTrigger] = useState(0);
   const toast = useToast();
 
   const [title, setTitle] = useState('');
@@ -91,9 +60,18 @@ export default function StoryBank() {
 
   useEffect(() => { loadStories(filter); }, [filter]);
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = (template?: StoryTemplate) => {
     setEditingStory(null);
-    setTitle(''); setCategory('Auth'); setSourceProject(''); setCodeSnippet(''); setExplanation(''); setConfidenceLevel('Okay');
+    if (template) {
+      setTitle(template.title);
+      setCategory(template.category);
+      setSourceProject(template.sourceProject);
+      setCodeSnippet(template.codeSnippet);
+      setExplanation(template.explanation);
+      setConfidenceLevel(template.confidenceLevel);
+    } else {
+      setTitle(''); setCategory('Auth'); setSourceProject(''); setCodeSnippet(''); setExplanation(''); setConfidenceLevel('Okay');
+    }
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -144,71 +122,53 @@ export default function StoryBank() {
   };
 
   return (
-    <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1400px] mx-auto space-y-6" data-testid="story-bank-page" style={{ color: C.ink }}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 opacity-0 animate-fade-in-up">
-        <div>
-          <Eyebrow color={C.teal}>Story bank</Eyebrow>
-          <h1 className="mt-4 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(28px,4vw,40px)' }}>
-            Bank your <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>narratives.</span>
-          </h1>
-          <p className="mt-2 font-body text-[14px]" style={{ color: C.inkDim }}>
-            Technical snippets and STAR stories — drilled to recall.
-          </p>
-        </div>
-
-        {/* Tab Toggle */}
-        <div className="flex p-1 gap-1" style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, borderRadius: 12 }}>
-          {[
-            { v: 'technical' as const, l: 'Technical', i: <Code2 size={12} /> },
-            { v: 'behavioral' as const, l: 'Behavioral · STAR', i: <StarIcon size={12} /> },
-          ].map((opt) => (
-            <button key={opt.v} onClick={() => setActiveTab(opt.v)} data-testid={`storybank-tab-${opt.v}`}
-              className="px-4 py-2 rounded-lg font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer flex items-center gap-2 transition-all"
-              style={{
-                background: activeTab === opt.v ? C.tealDim : 'transparent',
-                color: activeTab === opt.v ? C.teal : C.inkDim,
-                border: `1px solid ${activeTab === opt.v ? `${C.teal}44` : 'transparent'}`,
-              }}>
-              {opt.i} {opt.l}
-            </button>
-          ))}
-        </div>
+    <PageShell
+      dataTestId="story-bank-page"
+      badge="Story bank"
+      title={
+        <>
+          Bank your <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>narratives.</span>
+        </>
+      }
+      subtitle="Technical snippets and STAR stories — drilled to recall."
+      actions={
+        <button onClick={() => {
+          if (activeTab === 'technical') {
+            handleOpenCreateModal();
+          } else {
+            setBehavioralCreateTrigger(prev => prev + 1);
+          }
+        }} data-testid="storybank-new-btn"
+          className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
+          style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}, 0 18px 60px -20px rgba(45,212,191,0.45)` }}>
+          {activeTab === 'technical' ? <Plus size={13} /> : <Sparkles size={13} />}
+          {activeTab === 'technical' ? 'New snippet' : 'New STAR story'}
+        </button>
+      }
+    >
+      {/* Tab Toggle */}
+      <div className="flex p-1 gap-1 opacity-0 animate-fade-in-up" style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, borderRadius: 12, width: 'fit-content' }}>
+        {[
+          { v: 'technical' as const, l: 'Technical', i: <Code2 size={12} /> },
+          { v: 'behavioral' as const, l: 'Behavioral · STAR', i: <StarIcon size={12} /> },
+        ].map((opt) => (
+          <button key={opt.v} onClick={() => setActiveTab(opt.v)} data-testid={`storybank-tab-${opt.v}`}
+            className="px-4 py-2 rounded-lg font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer flex items-center gap-2 transition-all"
+            style={{
+              background: activeTab === opt.v ? C.tealDim : 'transparent',
+              color: activeTab === opt.v ? C.teal : C.inkDim,
+              border: `1px solid ${activeTab === opt.v ? `${C.teal}44` : 'transparent'}`,
+            }}>
+            {opt.i} {opt.l}
+          </button>
+        ))}
       </div>
 
-      <div
-        className="rounded-2xl overflow-hidden flex flex-col opacity-0 animate-fade-in-up delay-200"
-        style={{
-          background: `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
-          border: `1px solid ${C.hair2}`,
-          boxShadow: `0 40px 100px -30px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.06)`,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        {/* Window Chrome Header */}
-        <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.hair}`, background: C.bg1 }}>
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
-          </div>
-          <div
-            className="hidden sm:flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[11px]"
-            style={{ background: C.bg2, color: C.inkDim, border: `1px solid ${C.hair}` }}
-          >
-            <Terminal size={12} style={{ color: C.teal }} /> precept · ~/career/story-bank
-          </div>
-          <div className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: C.inkDim }}>
-            <span className="inline-block h-1.5 w-1.5 rounded-full animate-ping" style={{ background: C.emerald }} />
-            <span style={{ color: C.emerald }}>{stories.length} stories banked</span>
-          </div>
-        </div>
-
-        <div className="p-4 md:p-6 space-y-6" style={{ background: C.bg1 }}>
+      <div className="rounded-2xl p-4 md:p-6 space-y-6 opacity-0 animate-fade-in-up delay-200" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
           {activeTab === 'technical' ? (
         <>
-          <div className="flex flex-wrap justify-between items-center gap-3 opacity-0 animate-fade-in-up delay-100">
-            <div className="relative">
+          <div className="opacity-0 animate-fade-in-up delay-100">
+            <div className="relative w-fit">
               <FilterIcon size={12} style={{ color: C.inkMute }} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <select title="Story Category Filter" value={filter} onChange={(e) => setFilter(e.target.value as 'All' | StoryCategory)} data-testid="storybank-filter"
                 className="appearance-none pl-8 pr-8 py-2 rounded-full font-mono text-[11px] uppercase tracking-[0.14em] cursor-pointer transition-colors"
@@ -217,11 +177,6 @@ export default function StoryBank() {
                 {CATEGORIES.map((c) => <option key={c} value={c} style={{ background: C.bg1, color: C.ink }}>{formatWord(c)}</option>)}
               </select>
             </div>
-            <button onClick={handleOpenCreateModal} data-testid="storybank-new-btn"
-              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
-              style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}, 0 18px 60px -20px rgba(45,212,191,0.45)` }}>
-              <Plus size={13} /> New snippet
-            </button>
           </div>
 
           {isLoading ? (
@@ -293,13 +248,64 @@ export default function StoryBank() {
               })}
 
               {stories.length === 0 && (
-                <div className="col-span-full py-14 px-6 text-center flex flex-col items-center gap-4" style={{ ...cardStyle(), border: `1px dashed ${C.hair2}` }}>
-                  <Code2 size={28} style={{ color: C.inkMute }} />
-                  <span className="font-mono text-[12.5px]" style={{ color: C.inkMute }}>No narratives match this filter.</span>
-                  <button onClick={handleOpenCreateModal} className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
-                    style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair2}`, color: C.ink }}>
-                    <Plus size={11} className="inline mr-1.5 -translate-y-px" /> Bank your first story
-                  </button>
+                <div className="col-span-full space-y-6">
+                  <div className="py-10 px-6 text-center flex flex-col items-center gap-4" style={{ ...cardStyle(), border: `1px dashed ${C.hair2}` }}>
+                    <Code2 size={28} style={{ color: C.inkMute }} />
+                    <div>
+                      <p className="font-mono text-[12.5px] mb-1" style={{ color: C.ink }}>Your story bank is empty.</p>
+                      <p className="font-body text-[13px]" style={{ color: C.inkDim }}>Pick a template to pre-fill your first narrative, then personalize it.</p>
+                    </div>
+                    <button onClick={() => handleOpenCreateModal()} className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
+                      style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair2}`, color: C.ink }}>
+                      <Plus size={11} className="inline mr-1.5 -translate-y-px" /> Bank your first story
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1" style={{ background: C.hair }} />
+                    <span className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Or create from template</span>
+                    <div className="h-px flex-1" style={{ background: C.hair }} />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {STORY_TEMPLATES.map((template) => {
+                      const catColor = CATEGORY_COLOR[template.category];
+                      return (
+                        <div key={template.title} className="flex flex-col overflow-hidden" style={cardStyle()}>
+                          <div className="p-5 flex-1 flex flex-col">
+                            <div className="flex items-start justify-between mb-3">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest"
+                                style={{ background: `${catColor}1c`, color: catColor, border: `1px solid ${catColor}44` }}>
+                                {formatWord(template.category)}
+                              </span>
+                            </div>
+                            <h3 className="font-display text-[15px] font-semibold mb-1" style={{ color: C.ink }}>
+                              {template.title}
+                            </h3>
+                            <p className="font-mono text-[10.5px] uppercase tracking-widest mb-3" style={{ color: C.inkMute }}>
+                              {template.sourceProject}
+                            </p>
+                            <p className="font-body text-[13px] leading-relaxed line-clamp-3 mb-3" style={{ color: C.inkDim }}>
+                              {template.explanation}
+                            </p>
+                            <pre className="overflow-hidden rounded-lg p-3 font-mono text-[10.5px] leading-[1.55] max-h-24"
+                              style={{ background: C.bg0, color: C.inkDim, border: `1px solid ${C.hair}` }}>
+                              <code>{template.codeSnippet.length > 150 ? `${template.codeSnippet.substring(0, 150)}…` : template.codeSnippet}</code>
+                            </pre>
+                          </div>
+                          <div className="px-5 py-3" style={{ borderTop: `1px solid ${C.hair}` }}>
+                            <button onClick={() => handleOpenCreateModal(template)}
+                              className="w-full inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
+                              style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = `${C.teal}22`; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = `${C.teal}14`; }}>
+                              <Plus size={11} /> Use this template
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </AnimatedSection>
@@ -396,11 +402,10 @@ export default function StoryBank() {
         </>
       ) : (
         <div className="opacity-0 animate-fade-in-up delay-100">
-          <BehavioralStoryTab />
+          <BehavioralStoryTab createNewTrigger={behavioralCreateTrigger} />
         </div>
       )}
         </div>
-      </div>
 
       <ConfirmationModal
         isOpen={!!storyToDelete}
@@ -412,6 +417,6 @@ export default function StoryBank() {
         onCancel={() => setStoryToDelete(null)}
         danger={true}
       />
-    </div>
+    </PageShell>
   );
 }

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserContextType } from './types';
-import { api, setAccessToken } from './api';
+import { api } from './api';
 
 const AuthContext = createContext<UserContextType | undefined>(undefined);
 
@@ -13,29 +13,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function restoreSession() {
       try {
-        // Send a request to refresh endpoint. If the user has a valid HttpOnly refresh cookie,
-        // it will succeed and return a new accessToken.
-        const res = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        // The access token is sent automatically in the HttpOnly cookie.
+        // Try the lightweight profile endpoint first.
+        const meRes = await fetch('/api/auth/me', { credentials: 'include' });
 
-        if (res.ok) {
-          const data = await res.json();
-          setAccessToken(data.accessToken);
+        if (meRes.ok) {
+          const profile = await meRes.json();
           setIsAuthenticated(true);
-          
-          // Fetch user details
-          const profile = await api.get<User>('/api/auth/me');
           setUser(profile);
-        } else {
-          setAccessToken(null);
+          setIsLoading(false);
+          return;
+        }
+
+        if (meRes.status === 401) {
+          // Access token missing/expired — try rotating the refresh token.
+          const refreshRes = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+          if (refreshRes.ok) {
+            const retryRes = await fetch('/api/auth/me', { credentials: 'include' });
+            if (retryRes.ok) {
+              const profile = await retryRes.json();
+              setIsAuthenticated(true);
+              setUser(profile);
+            } else {
+              setIsAuthenticated(false);
+              setUser(null);
+            }
+          } else {
+            setIsAuthenticated(false);
+            setUser(null);
+          }
         }
       } catch (err) {
         console.error('Session restoration failed:', err);
-        setAccessToken(null);
+        setIsAuthenticated(false);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -49,7 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleAuthExpired = () => {
       setIsAuthenticated(false);
       setUser(null);
-      setAccessToken(null);
     };
 
     window.addEventListener('auth-expired', handleAuthExpired);
@@ -60,13 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, passcode: string, rememberMe: boolean = true) => {
     try {
-      const data = await api.post<{ accessToken: string; userId: string; email: string }>('/api/auth/login', {
+      await api.post<{ accessToken: string; userId: string; email: string }>('/api/auth/login', {
         email,
         password: passcode,
         rememberMe,
       }, { skipAuth: true });
 
-      setAccessToken(data.accessToken);
       setIsAuthenticated(true);
       
       const profile = await api.get<User>('/api/auth/me');
@@ -74,14 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setIsAuthenticated(false);
       setUser(null);
-      setAccessToken(null);
       throw err;
     }
   };
 
   const register = async (firstName: string, lastName: string, email: string, passcode: string) => {
     try {
-      const data = await api.post<{ accessToken: string; userId: string; email: string }>('/api/auth/register', {
+      await api.post<{ accessToken: string; userId: string; email: string }>('/api/auth/register', {
         firstName,
         lastName,
         email,
@@ -89,7 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         confirmPassword: passcode,
       }, { skipAuth: true });
 
-      setAccessToken(data.accessToken);
       setIsAuthenticated(true);
 
       const profile = await api.get<User>('/api/auth/me');
@@ -97,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setIsAuthenticated(false);
       setUser(null);
-      setAccessToken(null);
       throw err;
     }
   };
@@ -120,7 +131,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsAuthenticated(false);
       setUser(null);
-      setAccessToken(null);
     }
   };
 
@@ -130,7 +140,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.delete('/api/auth/account');
     setIsAuthenticated(false);
     setUser(null);
-    setAccessToken(null);
   };
 
   return (

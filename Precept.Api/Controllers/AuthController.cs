@@ -231,6 +231,7 @@ public class AuthController(
             // Execute Family-Wide Cascade Revocation to lock down all devices immediately.
             await RevokeAllUserTokens(storedToken.UserId);
             ClearRefreshCookie();
+            ClearAccessTokenCookie();
             return Unauthorized(new { message = "Token reuse detection. All sessions have been revoked. Please log in again." });
         }
 
@@ -288,8 +289,9 @@ public class AuthController(
         var accessToken = tokenService.GenerateAccessToken(user, roles);
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpiryMinutes);
 
-        // Set the new refresh token cookie
+        // Set the new refresh token cookie and access token cookie
         SetRefreshCookie(newRawToken, storedToken.RememberMe);
+        SetAccessTokenCookie(accessToken);
 
         logger.TokensRotated(user.Email);
 
@@ -336,6 +338,7 @@ public class AuthController(
         }
 
         ClearRefreshCookie();
+        ClearAccessTokenCookie();
         return Ok(new { message = "Token revoked successfully." });
     }
 
@@ -466,8 +469,9 @@ public class AuthController(
         dbContext.RefreshTokens.Add(refreshTokenEntity);
         await dbContext.SaveChangesAsync();
 
-        // Set HTTP-only secure cookie
+        // Set HTTP-only secure cookies
         SetRefreshCookie(rawRefreshToken, rememberMe);
+        SetAccessTokenCookie(accessToken);
 
         return Ok(new AuthResponse
         {
@@ -488,7 +492,7 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Sets the refresh token as an HTTP-only secure cookie.
+    /// Sets the refresh token as an HTTP-only secure cookie scoped to /api/auth.
     /// </summary>
     private void SetRefreshCookie(string rawToken, bool rememberMe)
     {
@@ -502,10 +506,25 @@ public class AuthController(
         Response.Cookies.Append("refreshToken", rawToken, options);
     }
 
+    /// <summary>
+    /// Sets the access token as an HTTP-only secure cookie scoped to /api.
+    /// </summary>
+    private void SetAccessTokenCookie(string accessToken)
+    {
+        var options = cookieOptionsFactory.CreateAccessTokenCookieOptions();
+        Response.Cookies.Append("accessToken", accessToken, options);
+    }
+
     private void ClearRefreshCookie()
     {
         var options = cookieOptionsFactory.CreateCookieOptions(false);
         Response.Cookies.Delete("refreshToken", options);
+    }
+
+    private void ClearAccessTokenCookie()
+    {
+        var options = cookieOptionsFactory.CreateAccessTokenCookieOptions();
+        Response.Cookies.Delete("accessToken", options);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -578,8 +597,9 @@ public class AuthController(
             return BadRequest(result.Errors);
         }
 
-        // Refresh-token rows are gone via cascade; clear the client cookie too.
+        // Refresh-token rows are gone via cascade; clear the client cookies too.
         ClearRefreshCookie();
+        ClearAccessTokenCookie();
         logger.AccountDeleted(userId);
 
         return Ok(new { message = "Account and all associated data have been permanently deleted." });

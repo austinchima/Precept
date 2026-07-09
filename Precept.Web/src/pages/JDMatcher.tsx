@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import { getSkillIcon } from '../lib/utils';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
-import { Zap, FileText, Link2, AlertTriangle, ChartPie, CheckCircle2, XCircle, Plus, Loader2, Terminal } from 'lucide-react';
+import { JobDescription } from '../types';
+import { Zap, FileText, Link2, ChartPie, CheckCircle2, XCircle, Plus, Loader2, Trash2, ChevronRight } from 'lucide-react';
+import PageShell from '../components/PageShell';
 
 const C = {
   bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
@@ -40,44 +42,81 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
-interface MatchResults {
-  id: string;
-  companyName: string;
-  roleTitle: string;
-  extractedKeyWords: string[];
-  missingKeyWords: string[];
-  yourMatchScore: number | null;
-  url: string;
-}
-
 export default function JDMatcher() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [results, setResults] = useState<MatchResults | null>(null);
+  const [results, setResults] = useState<JobDescription | null>(null);
+  const [savedJDs, setSavedJDs] = useState<JobDescription[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const toast = useToast();
 
   const [company, setCompany] = useState('');
   const [role, setRole] = useState('');
   const [url, setUrl] = useState('');
   const [jdText, setJdText] = useState('');
-  const [manualKeywords, setManualKeywords] = useState('');
+
+  const loadSavedJDs = async () => {
+    try {
+      const data = await api.get<JobDescription[]>('/api/jobdescription');
+      setSavedJDs(data);
+    } catch (err) {
+      console.error('Failed to load saved JDs:', err);
+    } finally {
+      setIsLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSavedJDs();
+  }, []);
+
+  const handleSelectJD = (jd: JobDescription) => {
+    setResults(jd);
+    setCompany(jd.companyName);
+    setRole(jd.roleTitle);
+    setUrl(jd.url);
+    setJdText(jd.description);
+  };
+
+  const handleDeleteJD = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm('Delete this job description?')) return;
+    setIsDeleting(id);
+    try {
+      await api.delete(`/api/jobdescription/${id}`);
+      setSavedJDs((prev) => prev.filter((jd) => jd.id !== id));
+      if (results?.id === id) {
+        setResults(null);
+        setCompany('');
+        setRole('');
+        setUrl('');
+        setJdText('');
+      }
+      toast.success('Job description deleted.');
+    } catch (err) {
+      console.error('Failed to delete JD:', err);
+      toast.error((err as Error).message || 'Failed to delete.');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setResults(null);
     try {
-      const extracted = manualKeywords.split(',').map((k) => k.trim()).filter((k) => k.length > 0);
-      const res = await api.post<MatchResults>('/api/jobdescription', {
+      const res = await api.post<JobDescription>('/api/jobdescription', {
         companyName: company,
         roleTitle: role,
         description: jdText,
-        extractedKeyWords: extracted,
         url,
         location: 'Remote',
         isRemote: true,
         source: 'JD Matcher UI',
       });
       setResults(res);
+      await loadSavedJDs();
     } catch (err) {
       console.error('Extraction failed:', err);
       toast.error((err as Error).message || 'Analysis failed.');
@@ -124,46 +163,18 @@ export default function JDMatcher() {
   };
 
   return (
-    <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1400px] mx-auto space-y-6" data-testid="jd-matcher-page" style={{ color: C.ink }}>
-      <div className="opacity-0 animate-fade-in-up">
-        <Eyebrow color={C.sky}>JD analyzer</Eyebrow>
-        <h1 className="mt-4 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(28px,4vw,40px)' }}>
+    <PageShell
+      dataTestId="jd-matcher-page"
+      badge="JD analyzer"
+      badgeColor={C.sky}
+      title={
+        <>
           Paste a JD. See your <span className="font-editorial" style={{ color: C.sky, fontWeight: 400 }}>gaps.</span>
-        </h1>
-        <p className="mt-2 font-body text-[14.5px] max-w-[680px]" style={{ color: C.inkDim }}>
-          Precept maps requirements against your inventory, surfaces missing keywords, and computes a real match score.
-        </p>
-      </div>
-
-      <div
-        className="rounded-2xl overflow-hidden flex flex-col opacity-0 animate-fade-in-up delay-200"
-        style={{
-          background: `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
-          border: `1px solid ${C.hair2}`,
-          boxShadow: `0 40px 100px -30px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.06)`,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        {/* Window Chrome Header */}
-        <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.hair}`, background: C.bg1 }}>
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
-          </div>
-          <div
-            className="hidden sm:flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[11px]"
-            style={{ background: C.bg2, color: C.inkDim, border: `1px solid ${C.hair}` }}
-          >
-            <Terminal size={12} style={{ color: C.sky }} /> precept · ~/career/jd-matcher
-          </div>
-          <div className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: C.inkDim }}>
-            <span className="inline-block h-1.5 w-1.5 rounded-full animate-ping" style={{ background: C.emerald }} />
-            <span style={{ color: C.emerald }}>AI Engine Ready</span>
-          </div>
-        </div>
-
-        <div className="p-4 md:p-6" style={{ background: C.bg1 }}>
+        </>
+      }
+      subtitle="Precept maps requirements against your inventory, surfaces missing keywords, and computes a real match score."
+    >
+      <div className="rounded-2xl p-4 md:p-6 opacity-0 animate-fade-in-up delay-200" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
           <AnimatedSection animation="staggerFadeUp" stagger={0.1} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* LEFT — input */}
         <div className="lg:col-span-7 flex flex-col gap-5">
@@ -195,22 +206,10 @@ export default function JDMatcher() {
               </div>
               <textarea value={jdText} onChange={(e) => setJdText(e.target.value)} rows={10}
                 placeholder="Paste the full JD here…"
-                style={{ ...inputStyle, fontFamily: 'Geist, Inter, sans-serif', resize: 'vertical', minHeight: 220 }}
+                style={{ ...inputStyle, fontFamily: 'Geist, Inter, sans-serif', resize: 'vertical', minHeight: 260 }}
                 data-testid="jd-text"
               />
             </Field>
-
-            <div className="p-4 flex flex-col gap-2" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 12 }}>
-              <label className="font-mono text-[10.5px] flex items-center gap-2" style={{ color: C.inkDim }}>
-                <AlertTriangle size={11} style={{ color: C.amber }} />
-                Manual keyword fallback (until AI extraction ships)
-              </label>
-              <input type="text" value={manualKeywords} onChange={(e) => setManualKeywords(e.target.value)}
-                placeholder="e.g. React, TypeScript, REST APIs, CI/CD…"
-                style={inputStyle}
-                data-testid="jd-manual-keywords"
-              />
-            </div>
 
             <button onClick={handleAnalyze} disabled={isAnalyzing || !jdText.trim()} data-testid="jd-analyze-btn"
               className="group w-full inline-flex items-center justify-center gap-2 rounded-full py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-50"
@@ -218,6 +217,73 @@ export default function JDMatcher() {
               {isAnalyzing ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
               {isAnalyzing ? 'Analyzing…' : 'Analyze description'}
             </button>
+          </div>
+
+          {/* SAVED JDS LIST */}
+          <div className="p-6 flex flex-col gap-4" style={cardStyle()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-[17px] font-semibold flex items-center gap-2" style={{ color: C.ink }}>
+                <FileText size={16} style={{ color: C.sky }} /> Processed JDs
+              </h3>
+              <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: C.inkMute }}>
+                {savedJDs.length} saved
+              </span>
+            </div>
+
+            {isLoadingList ? (
+              <div className="py-8 flex items-center justify-center">
+                <Loader2 size={20} className="animate-spin" style={{ color: C.teal }} />
+              </div>
+            ) : savedJDs.length === 0 ? (
+              <p className="font-body text-[13px] italic" style={{ color: C.inkDim }}>
+                No job descriptions analyzed yet. Paste one above to get started.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+                {savedJDs.map((jd) => {
+                  const score = jd.yourMatchScore ?? 0;
+                  const color = scoreColor(score);
+                  const isSelected = results?.id === jd.id;
+                  return (
+                    <div
+                      key={jd.id}
+                      onClick={() => handleSelectJD(jd)}
+                      className="group relative flex items-center justify-between gap-3 rounded-xl px-3 py-3 cursor-pointer transition-all"
+                      style={{
+                        background: isSelected ? `${C.sky}14` : C.bg2,
+                        border: `1px solid ${isSelected ? `${C.sky}44` : C.hair}`,
+                      }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-body text-[13px] font-semibold truncate" style={{ color: C.ink }}>
+                          {jd.companyName}
+                        </div>
+                        <div className="font-mono text-[10.5px] truncate" style={{ color: C.inkDim }}>
+                          {jd.roleTitle}
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2 font-mono text-[9.5px] uppercase tracking-wider" style={{ color: C.inkMute }}>
+                          <span style={{ color }}>{score}% match</span>
+                          <span>·</span>
+                          <span>{jd.missingKeyWords.length} gaps</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <ChevronRight size={14} style={{ color: C.inkMute }} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <button
+                          onClick={(e) => handleDeleteJD(e, jd.id)}
+                          disabled={isDeleting === jd.id}
+                          className="p-1.5 rounded-lg cursor-pointer transition-colors hover:bg-rose-500/10"
+                          style={{ color: C.inkMute }}
+                          title="Delete JD"
+                        >
+                          {isDeleting === jd.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -346,8 +412,7 @@ export default function JDMatcher() {
         </div>
           </AnimatedSection>
         </div>
-      </div>
-    </div>
+    </PageShell>
   );
 }
 

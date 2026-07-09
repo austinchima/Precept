@@ -12,6 +12,9 @@ namespace Precept.Api.Services;
 /// </summary>
 public class ApplicationService(
     PreceptDbContext dbContext,
+    IJobDescriptionService jobDescriptionService,
+    IJobPostingContentExtractor contentExtractor,
+    IHttpClientFactory httpClientFactory,
     ILogger<ApplicationService> logger,
     TimeProvider timeProvider) : IApplicationService
 {
@@ -94,6 +97,133 @@ public class ApplicationService(
         return MapToResponse(application);
     }
 
+    public async Task<ApplicationResponse> CaptureApplicationAsync(string userId, CaptureApplicationRequest request)
+    {
+        if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var uri))
+        {
+            throw new ArgumentException("Invalid URL.", nameof(request));
+        }
+
+        if (uri.Scheme is not ("http" or "https"))
+        {
+            throw new ArgumentException("Only HTTP and HTTPS URLs are supported.", nameof(request));
+        }
+
+        if (IsPrivateOrLoopback(uri.Host))
+        {
+            throw new ArgumentException("Private or loopback URLs are not allowed.", nameof(request));
+        }
+
+        var html = await FetchPageAsync(request.Url);
+
+        var extracted = contentExtractor.Extract(request.Url, html, request.Title);
+
+        var jobDescription = await jobDescriptionService.CreateJobDescriptionAsync(userId, new CreateJobDescriptionRequest
+        {
+            CompanyName = extracted.CompanyName,
+            RoleTitle = extracted.RoleTitle,
+            Description = extracted.Description,
+            Url = request.Url,
+            SalaryRange = extracted.SalaryRange,
+            Location = extracted.Location,
+            IsRemote = extracted.IsRemote,
+            Source = request.Url,
+            DatePosted = DateTime.UtcNow
+        });
+
+        var application = await CreateApplicationAsync(userId, new CreateApplicationRequest
+        {
+            CompanyName = string.IsNullOrWhiteSpace(extracted.CompanyName) ? "Unknown Company" : extracted.CompanyName,
+            RoleTitle = string.IsNullOrWhiteSpace(extracted.RoleTitle) ? "Unknown Role" : extracted.RoleTitle,
+            Location = extracted.Location,
+            SalaryRange = extracted.SalaryRange,
+            Status = ApplicationStatus.Applied,
+            FollowUpDate = UtcNow.AddDays(7),
+            Notes = request.Notes ?? string.Empty,
+            IsRemote = extracted.IsRemote,
+            Source = request.Url,
+            JobDescriptionId = Guid.TryParse(jobDescription.Id, out var jdId) ? jdId : null
+        });
+
+        if (Guid.TryParse(application.Id, out var capturedId))
+        {
+            logger.ApplicationCaptured(capturedId, request.Url);
+        }
+
+        return application;
+    }
+
+    /// <summary>
+    /// Fetches the requested URL with a short timeout, capped response size,
+    /// and a realistic user agent. Returns an empty string on failure so the
+    /// caller can fall back to client-provided data.
+    /// </summary>
+    private async Task<string> FetchPageAsync(string url)
+    {
+        const int maxBytes = 2 * 1024 * 1024; // 2 MB
+
+        try
+        {
+            using var client = httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+            client.DefaultRequestHeaders.Add("User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0 (KHTML, like Gecko) Chrome/126.0 Safari/537.0");
+
+            await using var stream = await client.GetStreamAsync(url);
+            using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+            var buffer = new char[8192];
+            var builder = new System.Text.StringBuilder();
+            int read;
+
+            while ((read = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                builder.Append(buffer, 0, read);
+                if (builder.Length * sizeof(char) > maxBytes)
+                    break;
+            }
+
+            return builder.ToString();
+        }
+        catch (Exception ex)
+        {
+            logger.CaptureFetchFailed(url, ex.Message);
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Returns true for loopback, private IPv4 ranges, and link-local IPv6.
+    /// </summary>
+    private static bool IsPrivateOrLoopback(string host)
+    {
+        if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (Uri.IsWellFormedUriString($"http://{host}", UriKind.Absolute))
+        {
+            // Use DnsSafeHost isn't available on Uri in all targets; TryCreate handles most cases.
+        }
+
+        if (System.Net.IPAddress.TryParse(host, out var ip))
+        {
+            if (System.Net.IPAddress.IsLoopback(ip))
+                return true;
+
+            var bytes = ip.GetAddressBytes();
+            if (bytes.Length == 4)
+            {
+                // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+                if (bytes[0] == 10) return true;
+                if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return true;
+                if (bytes[0] == 192 && bytes[1] == 168) return true;
+                // 127.0.0.0/8 (covered by IsLoopback, but kept for clarity)
+                if (bytes[0] == 127) return true;
+            }
+        }
+
+        return false;
+    }
+
     public async Task<List<ApplicationResponse>> GetAllApplicationsAsync(string userId, ApplicationStatus? status = null)
     {
         logger.ApplicationsRetrieved(userId);
@@ -145,11 +275,12 @@ public class ApplicationService(
             return new ApplicationResponse();
         }
 
+        var originalStatus = app.Status;
+
         app.CompanyName = request.CompanyName;
         app.RoleTitle = request.RoleTitle;
         app.Location = request.Location;
         app.SalaryRange = request.SalaryRange;
-        app.Status = request.Status;
         app.DateApplied = request.DateApplied;
         app.DateLastContact = request.DateLastContact;
         app.FollowUpDate = request.FollowUpDate;
@@ -169,7 +300,7 @@ public class ApplicationService(
             app.JobDescriptionId = null;
         }
 
-        if (app.Status != request.Status)
+        if (originalStatus != request.Status)
         {
             var appEvent = new ApplicationEvent
             {
@@ -179,8 +310,9 @@ public class ApplicationService(
                 Notes = "Status updated"
             };
             dbContext.Set<ApplicationEvent>().Add(appEvent);
-            app.Status = request.Status;
         }
+
+        app.Status = request.Status;
 
         await dbContext.SaveChangesAsync();
         logger.ApplicationUpdated(guid);
@@ -280,4 +412,10 @@ public static partial class ApplicationLoggerExtensions
 
     [LoggerMessage(EventId = 105, Level = LogLevel.Information, Message = "Application (ID: {applicationId}) updated successfully")]
     public static partial void ApplicationUpdated(this ILogger logger, Guid applicationId);
+
+    [LoggerMessage(EventId = 106, Level = LogLevel.Information, Message = "Application (ID: {applicationId}) captured from URL: {url}")]
+    public static partial void ApplicationCaptured(this ILogger logger, Guid applicationId, string url);
+
+    [LoggerMessage(EventId = 107, Level = LogLevel.Warning, Message = "Failed to fetch capture URL ({url}): {errorMessage}")]
+    public static partial void CaptureFetchFailed(this ILogger logger, string url, string errorMessage);
 }

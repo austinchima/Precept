@@ -8,7 +8,8 @@ import confetti from 'canvas-confetti';
 import { getCompanyIcon } from '../lib/utils';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
 import { CountUp } from '../components/animation/CountUp';
-import { Plus, LayoutGrid, List, X, Trash2, Loader2, Terminal } from 'lucide-react';
+import { Plus, LayoutGrid, List, X, Trash2, Loader2 } from 'lucide-react';
+import PageShell from '../components/PageShell';
 
 /* ─────── DESIGN TOKENS (Landing.tsx) ─────── */
 const C = {
@@ -259,19 +260,14 @@ export default function AppTracker() {
   };
 
   return (
-    <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1400px] mx-auto space-y-6 h-full flex flex-col" data-testid="app-tracker-page" style={{ color: C.ink }}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 opacity-0 animate-fade-in-up">
-        <div>
-          <Eyebrow color={C.violet}>Pipeline tracker</Eyebrow>
-          <h1 className="mt-4 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(28px,4vw,40px)' }}>
-            Active <span className="font-editorial" style={{ color: C.violet, fontWeight: 400 }}>pipelines.</span>
-          </h1>
-          <p className="mt-2 font-body text-[14px]" style={{ color: C.inkDim }}>
-            <CountUp end={apps.length} duration={1.2} /> tracked · drag cards between stages, no graveyards.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
+    <PageShell
+      dataTestId="app-tracker-page"
+      badge="Pipeline tracker"
+      badgeColor={C.violet}
+      title={<>Active <span className="font-editorial" style={{ color: C.violet, fontWeight: 400 }}>pipelines.</span></>}
+      subtitle={<> <CountUp end={apps.length} duration={1.2} /> tracked · drag cards between stages, no graveyards.</>}
+      actions={
+        <>
           <div className="flex p-1 gap-1" style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, borderRadius: 12 }}>
             {[
               { v: 'board' as const, i: <LayoutGrid size={14} /> },
@@ -302,44 +298,18 @@ export default function AppTracker() {
           >
             <Plus size={13} /> New application
           </button>
-        </div>
-      </div>
-
+        </>
+      }
+      contentClassName="space-y-6"
+    >
       {isLoading ? (
         <div className="flex-1 flex flex-col items-center justify-center py-20 gap-3" style={{ color: C.inkDim }}>
           <Loader2 className="w-10 h-10 animate-spin" style={{ color: C.teal }} />
           <span className="font-mono text-sm">Loading pipeline…</span>
         </div>
       ) : (
-        <div
-          className="flex-1 rounded-2xl overflow-hidden flex flex-col opacity-0 animate-fade-in-up delay-200"
-          style={{
-            background: `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
-            border: `1px solid ${C.hair2}`,
-            boxShadow: `0 40px 100px -30px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.06)`,
-            backdropFilter: "blur(20px)",
-          }}
-        >
-          {/* Window Chrome Header */}
-          <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.hair}`, background: C.bg1 }}>
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
-            </div>
-            <div
-              className="hidden sm:flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[11px]"
-              style={{ background: C.bg2, color: C.inkDim, border: `1px solid ${C.hair}` }}
-            >
-              <Terminal size={12} style={{ color: C.violet }} /> precept · ~/career/pipeline
-            </div>
-            <div className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: C.inkDim }}>
-              <span className="inline-block h-1.5 w-1.5 rounded-full animate-ping" style={{ background: C.emerald }} />
-              <span style={{ color: C.emerald }}>{apps.length} active items</span>
-            </div>
-          </div>
-
-          <div className="p-4 md:p-6 flex-1 overflow-auto" style={{ background: C.bg1 }}>
+        <div className="flex-1 rounded-2xl overflow-hidden flex flex-col opacity-0 animate-fade-in-up delay-200" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
+          <div className="p-4 md:p-6 flex-1 overflow-auto">
             {view === 'board' ? (
             <div className="flex flex-col lg:flex-row gap-4 h-full pb-4">
               {COLUMNS.map((col) => {
@@ -591,7 +561,7 @@ export default function AppTracker() {
         onCancel={() => setAppToDelete(null)}
         danger={true}
       />
-    </div>
+    </PageShell>
   );
 }
 

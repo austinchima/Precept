@@ -6,6 +6,7 @@ namespace Precept.Api.Services.Interfaces
     {
         Task<List<BehavioralStoryResponse>> GetStoriesAsync(string userId);
         Task<BehavioralStoryResponse> GetStoryAsync(string userId, string storyId);
+        Task<BehavioralStoryResponse> GetQuizStoryAsync(string userId);
         Task<BehavioralStoryResponse> CreateStoryAsync(string userId, CreateBehavioralStoryRequest request);
         Task<BehavioralStoryResponse> UpdateStoryAsync(string userId, string storyId, UpdateBehavioralStoryRequest request);
         Task<bool> DeleteStoryAsync(string userId, string storyId);

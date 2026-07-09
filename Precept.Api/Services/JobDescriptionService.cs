@@ -8,10 +8,13 @@ namespace Precept.Api.Services;
 
 /// <summary>
 /// Service implementation for managing job descriptions.
-/// Handles creation with manual keyword extraction, match score computation against user skills,
+/// Handles creation with automatic keyword extraction, match score computation against user skills,
 /// retrieval, updating, and deletion.
 /// </summary>
-public class JobDescriptionService(PreceptDbContext dbContext, ILogger<JobDescriptionService> logger) : IJobDescriptionService
+public class JobDescriptionService(
+    PreceptDbContext dbContext,
+    IJobDescriptionKeywordExtractor keywordExtractor,
+    ILogger<JobDescriptionService> logger) : IJobDescriptionService
 {
     private static JobDescriptionResponse MapToResponse(JobDescription jd) => new()
     {
@@ -30,6 +33,17 @@ public class JobDescriptionService(PreceptDbContext dbContext, ILogger<JobDescri
         Source = jd.Source,
         DatePosted = jd.DatePosted
     };
+
+    /// <summary>
+    /// Returns extracted keywords from the description, or the user-supplied override if provided.
+    /// </summary>
+    private IReadOnlyList<string> ResolveKeywords(string description, List<string>? overrideKeywords)
+    {
+        if (overrideKeywords is { Count: > 0 })
+            return overrideKeywords;
+
+        return keywordExtractor.ExtractKeywords(description);
+    }
 
     /// <summary>
     /// Computes the match score and missing keywords by comparing extracted keywords
@@ -74,7 +88,7 @@ public class JobDescriptionService(PreceptDbContext dbContext, ILogger<JobDescri
             CompanyName = request.CompanyName,
             RoleTitle = request.RoleTitle,
             Description = request.Description,
-            ExtractedKeyWords = request.ExtractedKeyWords,
+            ExtractedKeyWords = ResolveKeywords(request.Description, request.ExtractedKeyWords).ToList(),
             Url = request.Url,
             SalaryRange = request.SalaryRange,
             Location = request.Location,
@@ -138,7 +152,7 @@ public class JobDescriptionService(PreceptDbContext dbContext, ILogger<JobDescri
         jd.CompanyName = request.CompanyName;
         jd.RoleTitle = request.RoleTitle;
         jd.Description = request.Description;
-        jd.ExtractedKeyWords = request.ExtractedKeyWords;
+        jd.ExtractedKeyWords = ResolveKeywords(request.Description, request.ExtractedKeyWords).ToList();
         jd.Url = request.Url;
         jd.SalaryRange = request.SalaryRange;
         jd.Location = request.Location;

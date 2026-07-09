@@ -147,6 +147,19 @@ builder.Services.AddAuthentication(options =>
     // Return structured error info in WWW-Authenticate header (useful for debugging)
     options.Events = new JwtBearerEvents
     {
+        // Production: access token is transported in an HttpOnly cookie.
+        // Fall back to the cookie when no Authorization header is present so
+        // tests that use Bearer headers continue to work during transition.
+        OnMessageReceived = context =>
+        {
+            var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+            if (string.IsNullOrEmpty(authHeader) &&
+                context.Request.Cookies.TryGetValue("accessToken", out var accessToken))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        },
         OnChallenge = context =>
         {
             if (context.AuthenticateFailure is SecurityTokenExpiredException)
@@ -184,6 +197,9 @@ builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISkillService, SkillService>();
 builder.Services.AddScoped<IJobDescriptionService, JobDescriptionService>();
+builder.Services.AddSingleton<IJobDescriptionKeywordExtractor, JobDescriptionKeywordExtractor>();
+builder.Services.AddSingleton<IJobPostingContentExtractor, JobPostingContentExtractor>();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<ICookieOptionsFactory, CookieOptionsFactory>();
 

@@ -37,6 +37,20 @@ public class BehavioralStoryController(IBehavioralStoryService storyService) : C
         return Ok(response);
     }
 
+    [HttpGet("quiz")]
+    public async Task<ActionResult<BehavioralStoryResponse>> GetQuizStory()
+    {
+        var userId = GetUserId();
+        var response = await storyService.GetQuizStoryAsync(userId);
+
+        if (string.IsNullOrEmpty(response.Id))
+        {
+            return NotFound();
+        }
+
+        return Ok(response);
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<BehavioralStoryResponse>> GetStory(string id)
     {

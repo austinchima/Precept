@@ -18,7 +18,7 @@ public interface IStoryService
 
     Task<StoryResponse> GetRandomStoryAsync(string userId, Category? category = null);
 
-    Task<StoryResponse> GetQuizStoryAsync(string userId);
+    Task<StoryResponse> GetQuizStoryAsync(string userId, Category? category = null);
 
     Task<List<StoryResponse>> GetStoriesAsync(string userId, Category? category = null);
 

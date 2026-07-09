@@ -145,23 +145,24 @@ public class StoryService(
     /// Prioritizes unreviewed stories, then low confidence (Panic/Shaky) stories, then oldest reviewed stories.
     /// </summary>
     /// <param name="userId">The unique identifier of the authenticated user.</param>
+    /// <param name="category">Optional category to restrict the quiz selection.</param>
     /// <returns>A StoryResponse DTO representing the next quiz item, or an empty DTO if no stories exist.</returns>
-    public async Task<StoryResponse> GetQuizStoryAsync(string userId)
+    public async Task<StoryResponse> GetQuizStoryAsync(string userId, Category? category = null)
     {
         // 1. Prioritize stories that have NEVER been reviewed yet (LastReviewedAt is null)
         var story = (await dbContext.Stories
-            .Where(s => s.UserId == userId && s.LastReviewedAt == null)
+            .Where(s => s.UserId == userId && s.LastReviewedAt == null && (!category.HasValue || s.Category == category.Value))
             .OrderByDescending(s => s.CreatedAt) // or .OrderBy(s => s.CreatedAt) - user didn't specify
 
 
             // 2. If all have been reviewed, prioritize stories with low confidence (Panic or Shaky)
             .FirstOrDefaultAsync() ?? await dbContext.Stories
-            .Where(s => s.UserId == userId && (s.ConfidenceLevel == ConfidenceLevel.Panic || s.ConfidenceLevel == ConfidenceLevel.Shaky))
+            .Where(s => s.UserId == userId && (s.ConfidenceLevel == ConfidenceLevel.Panic || s.ConfidenceLevel == ConfidenceLevel.Shaky) && (!category.HasValue || s.Category == category.Value))
             .OrderBy(s => s.LastReviewedAt)
 
             // 3. Fallback: select the story reviewed the longest time ago (oldest LastReviewedAt)
             .FirstOrDefaultAsync()) ?? await dbContext.Stories
-            .Where(s => s.UserId == userId)
+            .Where(s => s.UserId == userId && (!category.HasValue || s.Category == category.Value))
             .OrderBy(s => s.LastReviewedAt)
             .FirstOrDefaultAsync();
 
