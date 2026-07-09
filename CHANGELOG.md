@@ -7,8 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-08
+
+_R1 release — full-stack career command center._
+
+### Added
+- **One-click job capture** via a zero-install bookmarklet. `JobPostingContentExtractor` fetches the posting URL, extracts company/role/location/salary/remote/description, and seeds a draft `Application`.
+- **Behavioral story bank** with STAR-method (Situation / Task / Action / Result) narratives, free-text tags, templates, and quiz integration.
+- **JD Skill Mapper** now auto-extracts a curated tech-skills keyword list server-side and computes a match score by case-insensitive set-intersection against the user's skills inventory, with an optional user override.
+- **PageShell** shared authenticated-app layout with adaptive top actions, consistent dark theme, and sidebar navigation.
+- **Capture instruction page** at `/capture/index.html` and `public/capture/bookmarklet.js`.
+
 ### Changed
-- **Authenticated app UI redesigned** to match the landing page (`Precept.Web/src/pages/Landing.tsx`) visual language end-to-end. Presentation-only refactor across 13 files: dashboard, applications tracker, story bank, quiz mode, JD matcher, readiness, settings, login, sign-in panel, layout shell, 404 page, home page, and subscription. Adopts the landing palette (`#02050A`/`#06090F` base, teal/violet/rose accents), typography stack (Bricolage Grotesque + Instrument Serif italic emphasis + Geist + JetBrains Mono), pill CTAs, IDE-style code mockups, dot-grid + radial-halo backgrounds, eyebrow status pills, and the same glass/gradient card treatments. No changes to data fetching, state, hooks, routing, business logic, or `AuthContext`; component props and return contracts are preserved.
+- **Authenticated app UI redesigned** to match the landing page visual language end-to-end across dashboard, applications tracker, story bank, quiz mode, JD matcher, readiness, settings, login, and layout shell. Adopts the landing palette (`#02050A`/`#06090F` base, teal/violet/rose accents), typography stack, pill CTAs, IDE-style code mockups, dot-grid + radial-halo backgrounds, eyebrow status pills, and glass/gradient card treatments. No business-logic changes.
+- **Quiz Mode** now presents behavioral prompts interview-style and reveals the full STAR breakdown on demand.
+
+### Fixed
+- **README accuracy**: corrected controller/service counts, updated JD Skill Mapper description, and aligned R1 status with the codebase.
+
+### Security
+- Hardened auth cookie factory, refresh-token rotation sync, and cascade-revocation support.
+- Job capture endpoint validates URL scheme, rejects private/loopback hosts, and caps fetched pages at 2 MB.
+
+### Documentation
+- Rewrote `README.md` for accuracy and added `R1_Implementation_Plan.md`.
 
 ## [0.2.0] - 2026-06-28
 
