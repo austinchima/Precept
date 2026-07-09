@@ -1,6 +1,6 @@
 import { useAuth } from '../../AuthContext';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Terminal, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const C = {
@@ -93,34 +93,6 @@ export default function NotFound1({
           {description}
         </p>
 
-        {/* IDE-style code block — echoes hero mockup in landing */}
-        <pre
-          className="mx-auto mt-9 max-w-[520px] overflow-hidden rounded-xl px-5 py-4 font-mono text-[12px] leading-[1.7] text-left"
-          style={{
-            background: `linear-gradient(180deg, ${C.bg2} 0%, ${C.bg1} 100%)`,
-            color: C.inkDim,
-            border: `1px solid ${C.hair2}`,
-            boxShadow: '0 30px 60px -30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
-          }}
-        >
-          <span style={{ color: C.violet }}>const</span>{' '}
-          <span style={{ color: C.ink }}>route</span>{' '}
-          <span style={{ color: C.inkMute }}>=</span>{' '}
-          <span style={{ color: C.amber }}>await</span>{' '}
-          <span style={{ color: C.ink }}>router</span>
-          <span style={{ color: C.inkMute }}>.</span>
-          <span style={{ color: C.teal }}>resolve</span>
-          <span style={{ color: C.inkMute }}>(</span>
-          <span style={{ color: C.amber }}>"{typeof window !== 'undefined' ? window.location.pathname : '/'}"</span>
-          <span style={{ color: C.inkMute }}>);</span>
-          {'\n'}
-          <span style={{ color: C.rose }}>throw new</span>{' '}
-          <span style={{ color: C.ink }}>RouteNotFoundException</span>
-          <span style={{ color: C.inkMute }}>(</span>
-          <span style={{ color: C.amber }}>"check coordinates"</span>
-          <span style={{ color: C.inkMute }}>);</span>
-        </pre>
-
         {/* CTAs */}
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
@@ -136,21 +108,7 @@ export default function NotFound1({
             <ArrowLeft size={13} className="transition-transform group-hover:-translate-x-0.5" />
             {cta}
           </Link>
-          <a
-            href="https://github.com/austinchima/Precept"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid="not-found-secondary-cta"
-            className="inline-flex items-center gap-2 rounded-full border px-6 py-3.5 font-mono text-[12px] font-semibold uppercase tracking-[0.16em]"
-            style={{
-              background: 'rgba(255,255,255,0.025)',
-              borderColor: C.hair2,
-              color: C.ink,
-              backdropFilter: 'blur(8px)',
-            }}
-          >
-            <Terminal size={13} /> View on GitHub
-          </a>
+
         </div>
       </div>
     </div>

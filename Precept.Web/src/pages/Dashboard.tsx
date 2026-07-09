@@ -14,7 +14,6 @@ import {
   RefreshCw, 
   GitBranch, 
   Activity, 
-  Terminal, 
   Hash, 
   ArrowUpRight, 
   Plus, 
@@ -24,6 +23,7 @@ import {
   Check,
   ChevronDown
 } from 'lucide-react';
+import PageShell from '../components/PageShell';
 
 /* ─────── DESIGN TOKENS (Matching Landing.tsx) ─────── */
 const C = {
@@ -185,27 +185,14 @@ export default function Dashboard() {
   const dueForReview = stories.filter(s => s.confidenceLevel === 'Panic' || s.confidenceLevel === 'Shaky');
 
   return (
-    <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1400px] mx-auto space-y-6" data-testid="dashboard-page" style={{ color: C.ink }}>
-      
-      {/* HEADER COCKPIT BAR */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 opacity-0 animate-fade-in-up">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]" style={{ background: `${C.teal}14`, border: `1px solid ${C.teal}33`, color: C.teal }}>
-            <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: C.teal, boxShadow: `0 0 8px ${C.teal}` }} />
-            Career OS Cockpit
-          </div>
-          <h1 className="mt-3 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(26px,3.5vw,36px)' }}>
-            Welcome back,{' '}
-            <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>
-              {user?.firstName || 'developer'}.
-            </span>
-          </h1>
-          <p className="mt-1 font-body text-[14px]" style={{ color: C.inkDim }}>
-            All systems nominal. Track your pipeline, drill stories, and defend your readiness.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
+    <PageShell
+      dataTestId="dashboard-page"
+      badge="Career OS Cockpit"
+      badgeColor={C.teal}
+      title={<>Welcome back, <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>{user?.firstName || 'developer'}.</span></>}
+      subtitle="All systems nominal. Track your pipeline, drill stories, and defend your readiness."
+      actions={
+        <>
           <button
             onClick={() => navigate('/story-bank', { state: { openNewForm: true } })}
             className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors cursor-pointer hover:border-white/30"
@@ -221,16 +208,17 @@ export default function Dashboard() {
           >
             New Application <ArrowUpRight size={13} className="transition-transform group-hover:translate-x-0.5" />
           </button>
-        </div>
-      </div>
-
+        </>
+      }
+      contentClassName="space-y-6"
+    >
       {/* TOP METRICS RIBBON */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 opacity-0 animate-fade-in-up delay-100">
         {[
           { label: 'Active Pipeline', val: activeApps.length, sub: `${applications.length} total tracked`, color: C.teal, route: '/applications' },
           { label: 'Story Inventory', val: stories.length + behavioralStories.length, sub: `${stories.length} tech · ${behavioralStories.length} STAR`, color: C.violet, route: '/story-bank' },
           { label: 'Drill Readiness', val: stats?.storyStats.totalReviewed || 0, sub: `${dueForReview.length} items due for review`, color: C.amber, route: '/readiness' },
-          { label: 'JD Match Score', val: stats?.jobDescriptionStats.averageMatchScore ? `${Math.round(stats.jobDescriptionStats.averageMatchScore)}%` : '—', sub: `${stats?.jobDescriptionStats.totalJobDescriptions || 0} analyses run`, color: C.sky, route: '/job-descriptions' },
+          { label: 'JD Match Score', val: stats?.jobDescriptionStats.averageMatchScore ? `${Math.round(stats.jobDescriptionStats.averageMatchScore)}%` : '—', sub: `${stats?.jobDescriptionStats.totalJobDescriptions || 0} analyses run`, color: C.sky, route: '/jd-matcher' },
         ].map((m, idx) => (
           <div 
             key={idx}
@@ -250,37 +238,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* FUNCTIONAL COMMAND CENTER WORKSPACE */}
-      <div
-        className="relative w-full rounded-2xl overflow-hidden opacity-0 animate-fade-in-up delay-200"
-        style={{
-          background: `linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)`,
-          border: `1px solid ${C.hair2}`,
-          boxShadow: `0 40px 100px -30px rgba(45,212,191,0.2), inset 0 1px 0 rgba(255,255,255,0.06)`,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        {/* Window Chrome Header */}
-        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${C.hair}`, background: C.bg1 }}>
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
-          </div>
-          <div
-            className="hidden sm:flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[11px]"
-            style={{ background: C.bg2, color: C.inkDim, border: `1px solid ${C.hair}` }}
-          >
-            <Terminal size={12} style={{ color: C.teal }} /> precept · ~/career/cockpit
-          </div>
-          <div className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: C.inkDim }}>
-            <span className="inline-block h-1.5 w-1.5 rounded-full animate-ping" style={{ background: C.emerald }} />
-            <span style={{ color: C.emerald }}>live session</span>
-          </div>
-        </div>
-
-        {/* Functional 3-Column Control Workspace Grid */}
-        <div className="grid grid-cols-12 gap-4 p-4 md:p-6" style={{ background: C.bg1 }}>
+      {/* Functional 3-Column Control Workspace Grid */}
+      <div className="grid grid-cols-12 gap-4 p-4 md:p-6 rounded-2xl opacity-0 animate-fade-in-up delay-200" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
           
           {/* Column 1: Interactive Story Drill & Spotlight (5 Cols) */}
           <div className="col-span-12 lg:col-span-5 rounded-xl flex flex-col justify-between" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
@@ -410,7 +369,7 @@ export default function Dashboard() {
               )}
 
               <button
-                onClick={() => navigate('/readiness')}
+                onClick={() => navigate('/story-bank/quiz')}
                 className="w-full py-2.5 rounded-xl font-mono text-[11px] font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer hover:border-white/30"
                 style={{ background: C.tealDim, color: C.teal, border: `1px solid ${C.teal}44` }}
               >
@@ -509,7 +468,7 @@ export default function Dashboard() {
                 {dueForReview.slice(0, 3).map((s) => (
                   <div 
                     key={s.id} 
-                    onClick={() => navigate('/readiness')}
+                    onClick={() => navigate('/story-bank/quiz')}
                     className="flex items-center justify-between rounded-lg px-2.5 py-2 font-mono text-[11px] cursor-pointer transition-colors hover:border-white/20" 
                     style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}` }}
                   >
@@ -537,10 +496,8 @@ export default function Dashboard() {
             </button>
           </div>
 
-        </div>
       </div>
-
-    </div>
+    </PageShell>
   );
 }
 

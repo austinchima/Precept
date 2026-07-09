@@ -9,6 +9,7 @@ public class CookieOptionsFactory(
     : ICookieOptionsFactory
 {
     private readonly int _refreshTokenExpiryDays = jwtSettings.Value.RefreshTokenExpiryDays;
+    private readonly int _accessTokenExpiryMinutes = jwtSettings.Value.AccessTokenExpiryMinutes;
 
     public CookieOptions CreateCookieOptions(bool rememberMe)
     {
@@ -25,5 +26,18 @@ public class CookieOptionsFactory(
             options.Expires = DateTime.UtcNow.AddDays(_refreshTokenExpiryDays);
         }
         return options;
+    }
+
+    public CookieOptions CreateAccessTokenCookieOptions()
+    {
+        var isProduction = env.IsProduction();
+        return new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = isProduction,
+            SameSite = isProduction ? SameSiteMode.Strict : SameSiteMode.Lax,
+            Path = "/api",
+            Expires = DateTime.UtcNow.AddMinutes(_accessTokenExpiryMinutes)
+        };
     }
 }

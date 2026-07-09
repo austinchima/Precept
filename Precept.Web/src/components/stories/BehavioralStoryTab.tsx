@@ -6,12 +6,20 @@ import { BehavioralStoryCard } from './BehavioralStoryCard';
 import { BehavioralStoryForm } from './BehavioralStoryForm';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import { AnimatedSection } from '../animation/AnimatedSection';
+import { BEHAVIORAL_STORY_TEMPLATES, type BehavioralStoryTemplate } from '../../data/behavioralStoryTemplates';
+import { C, cardStyle } from './storyTheme';
+import { Plus, Star, Loader2, FolderOpen, Sparkles } from 'lucide-react';
 
-export const BehavioralStoryTab: React.FC = () => {
+interface BehavioralStoryTabProps {
+  createNewTrigger?: number;
+}
+
+export const BehavioralStoryTab: React.FC<BehavioralStoryTabProps> = ({ createNewTrigger = 0 }) => {
   const [stories, setStories] = useState<BehavioralStory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStory, setEditingStory] = useState<BehavioralStory | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<BehavioralStoryTemplate | null>(null);
   const [behavioralToDelete, setBehavioralToDelete] = useState<string | null>(null);
   const toast = useToast();
 
@@ -31,8 +39,15 @@ export const BehavioralStoryTab: React.FC = () => {
     loadStories();
   }, []);
 
-  const handleCreateNew = () => {
+  useEffect(() => {
+    if (createNewTrigger > 0) {
+      handleCreateNew();
+    }
+  }, [createNewTrigger]);
+
+  const handleCreateNew = (template?: BehavioralStoryTemplate) => {
     setEditingStory(null);
+    setSelectedTemplate(template || null);
     setIsFormOpen(true);
   };
 
@@ -61,36 +76,40 @@ export const BehavioralStoryTab: React.FC = () => {
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
+    setSelectedTemplate(null);
     loadStories();
   };
 
+  const handleCancelForm = () => {
+    setIsFormOpen(false);
+    setSelectedTemplate(null);
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-lg font-semibold text-white">Behavioral STAR Stories</h2>
-          <p className="text-text-secondary text-sm mt-0.5">Situation, Task, Action, Result narratives for behavioral interviews.</p>
+    <div className="space-y-6 opacity-0 animate-fade-in-up delay-100">
+      {!isFormOpen && (
+        <div className="flex items-center gap-2 opacity-0 animate-fade-in-up">
+          <Star size={14} style={{ color: C.teal }} />
+          <span className="font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: C.inkDim }}>
+            Behavioral STAR Stories
+          </span>
         </div>
-        {!isFormOpen && (
-          <button onClick={handleCreateNew} className="inline-flex items-center justify-center px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.2)] hover:scale-105 transition-all duration-300 cursor-pointer gap-2">
-            <i className="fa-solid fa-plus text-xs"></i> Add STAR Story
-          </button>
-        )}
-      </div>
+      )}
 
       {isFormOpen ? (
         <BehavioralStoryForm 
-          story={editingStory} 
+          story={editingStory}
+          template={selectedTemplate}
           onSuccess={handleFormSuccess} 
-          onCancel={() => setIsFormOpen(false)} 
+          onCancel={handleCancelForm} 
         />
       ) : isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-text-secondary gap-3">
-          <div className="w-12 h-12 rounded-full border-4 border-accent-teal/10 border-t-accent-teal animate-spin"></div>
-          <span className="font-mono text-sm">Accessing Behavioral Memory...</span>
+        <div className="flex flex-col items-center justify-center py-20 gap-3" style={{ color: C.inkDim }}>
+          <Loader2 className="w-10 h-10 animate-spin" style={{ color: C.teal }} />
+          <span className="font-mono text-sm">Loading stories…</span>
         </div>
       ) : (
-        <AnimatedSection animation="staggerFadeUp" stagger={0.07} childSelector="> div" className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <AnimatedSection animation="staggerFadeUp" stagger={0.06} childSelector="> div" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {stories.map(story => (
             <BehavioralStoryCard 
               key={story.id} 
@@ -101,12 +120,63 @@ export const BehavioralStoryTab: React.FC = () => {
           ))}
 
           {stories.length === 0 && (
-            <div className="col-span-full py-16 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center p-6">
-              <i className="fa-regular fa-folder-open text-3xl text-text-secondary/30 mb-4"></i>
-              <span className="font-mono text-sm text-text-secondary mb-4">No behavioral narratives found.</span>
-              <button onClick={handleCreateNew} className="px-4 py-2 min-h-[44px] rounded-xl text-sm text-text-secondary hover:text-white border border-panel-border/30 hover:border-white/20 transition-all cursor-pointer flex items-center gap-2">
-                <i className="fa-solid fa-plus text-xs"></i> Add First STAR Story
-              </button>
+            <div className="col-span-full space-y-6">
+              <div className="py-10 px-6 text-center flex flex-col items-center gap-4" style={{ ...cardStyle(), border: `1px dashed ${C.hair2}` }}>
+                <FolderOpen size={28} style={{ color: C.inkMute }} />
+                <div>
+                  <p className="font-mono text-[12.5px] mb-1" style={{ color: C.ink }}>Your STAR story bank is empty.</p>
+                  <p className="font-body text-[13px]" style={{ color: C.inkDim }}>Pick a template to pre-fill your first narrative, then personalize it.</p>
+                </div>
+                <button onClick={() => handleCreateNew()} className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
+                  style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair2}`, color: C.ink }}>
+                  <Plus size={11} className="inline mr-1.5 -translate-y-px" /> Bank your first STAR story
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1" style={{ background: C.hair }} />
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Or create from template</span>
+                <div className="h-px flex-1" style={{ background: C.hair }} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {BEHAVIORAL_STORY_TEMPLATES.map((template) => (
+                  <div key={template.title} className="flex flex-col overflow-hidden" style={cardStyle()}>
+                    <div className="p-5 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest"
+                          style={{ background: `${C.teal}1c`, color: C.teal, border: `1px solid ${C.teal}44` }}>
+                          STAR
+                        </span>
+                        <Sparkles size={12} style={{ color: C.inkMute }} />
+                      </div>
+                      <h3 className="font-display text-[15px] font-semibold mb-1" style={{ color: C.ink }}>
+                        {template.title}
+                      </h3>
+                      <p className="font-body text-[13px] leading-relaxed line-clamp-3 mb-3" style={{ color: C.inkDim }}>
+                        {template.situation}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {template.tags.split(',').map((tag) => (
+                          <span key={tag.trim()} className="px-2 py-0.5 rounded-full font-mono text-[9px] uppercase tracking-wider"
+                            style={{ background: `${C.teal}10`, color: C.inkDim, border: `1px solid ${C.hair}` }}>
+                            {tag.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-5 py-3" style={{ borderTop: `1px solid ${C.hair}` }}>
+                      <button onClick={() => handleCreateNew(template)}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
+                        style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = `${C.teal}22`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = `${C.teal}14`; }}>
+                        <Plus size={11} /> Use this template
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </AnimatedSection>

@@ -58,6 +58,12 @@ public class AuthEndpointTests : IAsyncLifetime
             .SelectMany(h => h.Value)
             .FirstOrDefault(c => c.Contains("refreshToken"));
 
+    private static string? ExtractAccessCookieHeader(HttpResponseMessage response) =>
+        response.Headers
+            .Where(h => h.Key.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(h => h.Value)
+            .FirstOrDefault(c => c.Contains("accessToken"));
+
     private static string ExtractRawTokenFromCookieHeader(string cookieHeader) =>
         Uri.UnescapeDataString(cookieHeader.Split(';')[0].Replace("refreshToken=", "").Trim());
 
@@ -79,6 +85,20 @@ public class AuthEndpointTests : IAsyncLifetime
         cookie.Should().NotBeNull("a refreshToken cookie must be set");
         cookie!.Should().ContainEquivalentOf("HttpOnly");
         cookie.Should().ContainEquivalentOf("path=/api/auth");
+        cookie.Should().MatchRegex("(?i)samesite=(Lax|Strict)");
+    }
+
+    [Fact]
+    public async Task Register_Returns200_AndSetsAccessTokenCookie()
+    {
+        var (response, _) = await RegisterAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var cookie = ExtractAccessCookieHeader(response);
+        cookie.Should().NotBeNull("an accessToken cookie must be set");
+        cookie!.Should().ContainEquivalentOf("HttpOnly");
+        cookie.Should().ContainEquivalentOf("path=/api");
         cookie.Should().MatchRegex("(?i)samesite=(Lax|Strict)");
     }
 

@@ -69,6 +69,20 @@ namespace Precept.Api.Services
             return MapToResponse(story);
         }
 
+        public async Task<BehavioralStoryResponse> GetQuizStoryAsync(string userId)
+        {
+            var story = await context.BehavioralStories
+                .AsNoTracking()
+                .Where(s => s.UserId == userId)
+                .OrderBy(r => EF.Functions.Random())
+                .FirstOrDefaultAsync();
+
+            if (story == null)
+                return new BehavioralStoryResponse();
+
+            return MapToResponse(story);
+        }
+
         public async Task<BehavioralStoryResponse> UpdateStoryAsync(string userId, string storyId, UpdateBehavioralStoryRequest request)
         {
             if (!Guid.TryParse(storyId, out var id))

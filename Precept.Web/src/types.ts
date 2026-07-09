@@ -137,3 +137,20 @@ export interface SearchResult {
   route: string;
   icon: string;
 }
+
+export interface JobDescription {
+  id: string;
+  userId: string;
+  companyName: string;
+  roleTitle: string;
+  description: string;
+  extractedKeyWords: string[];
+  missingKeyWords: string[];
+  yourMatchScore: number | null;
+  url: string;
+  salaryRange?: string;
+  location: string;
+  isRemote: boolean;
+  source: string;
+  datePosted: string;
+}

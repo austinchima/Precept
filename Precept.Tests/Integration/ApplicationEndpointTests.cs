@@ -150,4 +150,32 @@ public class ApplicationEndpointTests : IAsyncLifetime
         deleteResp.StatusCode.Should().NotBe(HttpStatusCode.NoContent,
             "user B cannot delete user A's application");
     }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Capture
+    // ─────────────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("not-a-url")]
+    [InlineData("ftp://example.com/job")]
+    public async Task CaptureApplication_WithInvalidUrl_Returns400(string url)
+    {
+        var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
+
+        var response = await client.PostAsJsonAsync("/api/application/capture", new { url });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData("http://localhost/job")]
+    [InlineData("http://127.0.0.1/job")]
+    public async Task CaptureApplication_WithPrivateHost_Returns400(string url)
+    {
+        var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
+
+        var response = await client.PostAsJsonAsync("/api/application/capture", new { url });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

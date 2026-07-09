@@ -173,33 +173,20 @@ export default function Layout() {
               </NavLink>
             ))}
 
-            <NavLink
-              to="/settings"
-              onClick={() => setIsMobileMenuOpen(false)}
-              title={isSidebarCollapsed ? 'Profile' : undefined}
-              data-testid="nav-profile"
-              className={({ isActive }) =>
-                `relative flex items-center py-2.5 rounded-xl font-mono text-[12.5px] tracking-[0.04em] group transition-all duration-300 ${
-                  isSidebarCollapsed ? 'justify-center px-0' : 'px-3'
-                }`
-              }
-              style={({ isActive }) => ({
-                background: isActive ? C.tealDim : 'transparent',
-                color: isActive ? C.teal : C.inkDim,
-                border: isActive ? `1px solid ${C.teal}44` : '1px solid transparent',
-              }) as React.CSSProperties}
-            >
-              <i className={`fa-regular fa-user w-5 text-center transition-transform duration-300 group-hover:scale-110 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
-              {!isSidebarCollapsed && <span className="whitespace-nowrap">Profile</span>}
-            </NavLink>
           </nav>
 
           {/* footer block */}
           <div className="mt-auto flex flex-col" style={{ borderTop: `1px solid ${C.hair}` }}>
             <div className={`pt-3 pb-2 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
               <div
-                className={`flex items-center rounded-xl transition-all duration-300 ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-2'}`}
+                className={`flex items-center rounded-xl transition-all duration-300 cursor-pointer hover:bg-white/[0.04] ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-2'}`}
                 style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.hair}` }}
+                onClick={() => navigate('/settings')}
+                role="button"
+                tabIndex={0}
+                title="Open profile"
+                data-testid="sidebar-user-profile"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/settings'); } }}
               >
                 <div
                   className={`w-9 h-9 rounded-lg grid place-items-center font-display font-bold text-[13px] shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`}

@@ -6,7 +6,8 @@ import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
-import { Check, Plus, Pencil, X, Loader2, Database, Stethoscope, Download, Radiation, Megaphone, Terminal as TerminalIcon, User2 } from 'lucide-react';
+import { Check, Plus, Pencil, X, Loader2, Database, Stethoscope, Download, Radiation, Megaphone, Terminal as TerminalIcon, User2, Bookmark } from 'lucide-react';
+import PageShell from '../components/PageShell';
 
 const C = {
   bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
@@ -22,14 +23,6 @@ const cardStyle = (): React.CSSProperties => ({
   borderRadius: 18,
   boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
 });
-
-const Eyebrow = ({ children, color = C.teal }: { children: React.ReactNode; color?: string }) => (
-  <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]"
-    style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}>
-    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-    {children}
-  </span>
-);
 
 const inputStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.025)',
@@ -246,15 +239,17 @@ export default function Settings() {
   const proficiencyPct: Record<SkillProficiency, number> = { Beginner: 30, Intermediate: 60, Advanced: 80, Expert: 95 };
 
   return (
-    <div className="font-body p-4 md:p-8 pt-4 md:pt-6 max-w-[1200px] mx-auto space-y-8" data-testid="settings-page" style={{ color: C.ink }}>
-      <div className="opacity-0 animate-fade-in-up">
-        <Eyebrow color={C.violet}>Configuration</Eyebrow>
-        <h1 className="mt-4 font-display font-bold leading-[1.05]" style={{ color: C.ink, fontSize: 'clamp(28px,4vw,40px)' }}>
+    <PageShell
+      dataTestId="settings-page"
+      badge="Configuration"
+      badgeColor={C.violet}
+      title={
+        <>
           System <span className="font-editorial" style={{ color: C.violet, fontWeight: 400 }}>configuration.</span>
-        </h1>
-        <p className="mt-2 font-body text-[14px]" style={{ color: C.inkDim }}>Profile, capabilities, diagnostics, exports.</p>
-      </div>
-
+        </>
+      }
+      subtitle="Profile, capabilities, diagnostics, exports."
+    >
       <AnimatedSection animation="staggerFadeUp" stagger={0.12} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-6">
@@ -447,6 +442,24 @@ export default function Settings() {
             </button>
           </section>
 
+          {/* Job capture bookmarklet */}
+          <section className="p-6" style={cardStyle()}>
+            <SectionHeader icon={<Bookmark size={16} />} title="Job capture" sub="One-click bookmarklet for job postings." color={C.amber} />
+            <p className="font-body text-[12px] leading-relaxed mb-4" style={{ color: C.inkDim }}>
+              Drag the bookmarklet to your browser bar. Click it on any job posting to save a draft application.
+            </p>
+            <a
+              href="/capture/index.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="settings-bookmarklet-link"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
+              style={{ background: 'rgba(255,255,255,0.025)', color: C.ink, border: `1px solid ${C.hair2}` }}
+            >
+              <Bookmark size={11} /> Get bookmarklet
+            </a>
+          </section>
+
           {/* Danger */}
           <section className="p-6" style={{ ...cardStyle(), borderColor: `${C.rose}33` }}>
             <SectionHeader icon={<Radiation size={16} />} title="Danger zone" sub="Permanently delete your account and all data." color={C.rose} />
@@ -469,7 +482,7 @@ export default function Settings() {
         onConfirm={confirmConfig.onConfirm}
         onCancel={() => setConfirmConfig((p) => ({ ...p, isOpen: false }))}
       />
-    </div>
+    </PageShell>
   );
 }
 

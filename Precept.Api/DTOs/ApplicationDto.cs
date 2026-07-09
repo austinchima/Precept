@@ -4,6 +4,29 @@ using Precept.Api.Models;
 namespace Precept.Api.DTOs;
 
 /// <summary>
+/// DTO representing the request payload to capture a job posting from a URL.
+/// The server will fetch the page, extract structured fields, create a
+/// JobDescription, and seed a draft Application for the authenticated user.
+/// </summary>
+public class CaptureApplicationRequest
+{
+    [Required]
+    [Url]
+    public string Url { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional page title already gathered by the bookmarklet. Used as a
+    /// fallback when server-side fetching is blocked or incomplete.
+    /// </summary>
+    public string? Title { get; set; }
+
+    /// <summary>
+    /// Optional free-form notes to attach to the draft application.
+    /// </summary>
+    public string? Notes { get; set; }
+}
+
+/// <summary>
 /// DTO representing the request payload to create a new job application.
 /// </summary>
 public class CreateApplicationRequest

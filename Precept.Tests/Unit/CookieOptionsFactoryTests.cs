@@ -19,7 +19,7 @@ public class CookieOptionsFactoryTests
         _envMock = Substitute.For<IWebHostEnvironment>();
         _jwtSettingsMock = Substitute.For<IOptions<JwtSettings>>();
 
-        _jwtSettingsMock.Value.Returns(new JwtSettings { RefreshTokenExpiryDays = 7 });
+        _jwtSettingsMock.Value.Returns(new JwtSettings { RefreshTokenExpiryDays = 7, AccessTokenExpiryMinutes = 15 });
 
         _factory = new CookieOptionsFactory(_envMock, _jwtSettingsMock);
     }
@@ -54,5 +54,22 @@ public class CookieOptionsFactoryTests
         options.Secure.Should().BeFalse("Development cookies cannot be Secure without HTTPS");
         options.SameSite.Should().Be(SameSiteMode.Lax, "Development cookies must use Lax for local dev ease");
         options.Expires.Should().BeNull("rememberMe=false should not set an explicit expiration");
+    }
+
+    [Fact]
+    public void CreateAccessTokenCookieOptions_InProduction_SetsSecureStrictAndPathApi()
+    {
+        // Arrange
+        _envMock.EnvironmentName.Returns("Production");
+
+        // Act
+        var options = _factory.CreateAccessTokenCookieOptions();
+
+        // Assert
+        options.HttpOnly.Should().BeTrue("access token cookie must be HttpOnly");
+        options.Secure.Should().BeTrue("access token cookie must be Secure in production");
+        options.SameSite.Should().Be(SameSiteMode.Strict, "access token cookie must use Strict SameSite in production");
+        options.Path.Should().Be("/api", "access token cookie must be sent to all API endpoints");
+        options.Expires.Should().NotBeNull("access token cookie must have an explicit expiry");
     }
 }
