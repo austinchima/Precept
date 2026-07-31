@@ -58,8 +58,8 @@ export default function JDMatcher() {
 
   const loadSavedJDs = async () => {
     try {
-      const data = await api.get<JobDescription[]>('/api/jobdescription');
-      setSavedJDs(data);
+      const data = await api.get<PagedResponse<JobDescription>>('/api/jobdescription');
+      setSavedJDs(data.items ?? []);
     } catch (err) {
       console.error('Failed to load saved JDs:', err);
     } finally {

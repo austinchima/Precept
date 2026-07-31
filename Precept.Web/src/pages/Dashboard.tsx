@@ -84,18 +84,18 @@ export default function Dashboard() {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [statsData, appsData, storiesData, skillsData, behavioralStoriesData] = await Promise.all([
+        const [statsData, appsRes, storiesRes, skillsRes, behavioralStoriesRes] = await Promise.all([
           api.get<DashboardStats>('/api/dashboard'),
-          api.get<Application[]>('/api/application'),
-          api.get<Story[]>('/api/story'),
-          api.get<Skill[]>('/api/skill'),
-          api.get<BehavioralStory[]>('/api/behavioralstory'),
+          api.get<PagedResponse<Application>>('/api/application'),
+          api.get<PagedResponse<Story>>('/api/story'),
+          api.get<PagedResponse<Skill>>('/api/skill'),
+          api.get<PagedResponse<BehavioralStory>>('/api/behavioralstory'),
         ]);
         setStats(statsData);
-        setApplications(appsData);
-        setStories(storiesData);
-        setSkills(skillsData);
-        setBehavioralStories(behavioralStoriesData);
+        setApplications(appsRes.items ?? []);
+        setStories(storiesRes.items ?? []);
+        setSkills(skillsRes.items ?? []);
+        setBehavioralStories(behavioralStoriesRes.items ?? []);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {

@@ -107,21 +107,32 @@ public class JobDescriptionService(
         return MapToResponse(jd);
     }
 
-    public async Task<List<JobDescriptionResponse>> GetJobDescriptionsAsync(string userId)
+    public async Task<PagedResponse<JobDescriptionResponse>> GetJobDescriptionsAsync(string userId, PaginationQuery? pagination = null)
     {
+        pagination ??= new PaginationQuery();
         logger.JobDescriptionsRetrieved(userId);
 
-        var jds = await dbContext.JobDescriptions
-            .Where(j => j.UserId == userId)
+        var query = dbContext.JobDescriptions
+            .Where(j => j.UserId == userId);
+
+        var totalCount = await query.CountAsync();
+        var jds = await query
+            .OrderByDescending(j => j.DatePosted)
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
             .ToListAsync();
 
-        return jds.Select(MapToResponse).ToList();
+        return new PagedResponse<JobDescriptionResponse>(
+            jds.Select(MapToResponse).ToList(),
+            totalCount,
+            pagination.Page,
+            pagination.PageSize);
     }
 
-    public async Task<JobDescriptionResponse> GetJobDescriptionAsync(string userId, string id)
+    public async Task<JobDescriptionResponse?> GetJobDescriptionAsync(string userId, string id)
     {
         if (!Guid.TryParse(id, out var guid))
-            return new JobDescriptionResponse();
+            return null;
 
         var jd = await dbContext.JobDescriptions
             .FirstOrDefaultAsync(j => j.Id == guid && j.UserId == userId);
@@ -129,16 +140,16 @@ public class JobDescriptionService(
         if (jd == null)
         {
             logger.JobDescriptionNotFound(guid, userId);
-            return new JobDescriptionResponse();
+            return null;
         }
 
         return MapToResponse(jd);
     }
 
-    public async Task<JobDescriptionResponse> UpdateJobDescriptionAsync(string userId, string id, UpdateJobDescriptionRequest request)
+    public async Task<JobDescriptionResponse?> UpdateJobDescriptionAsync(string userId, string id, UpdateJobDescriptionRequest request)
     {
         if (!Guid.TryParse(id, out var guid))
-            return new JobDescriptionResponse();
+            return null;
 
         var jd = await dbContext.JobDescriptions
             .FirstOrDefaultAsync(j => j.Id == guid && j.UserId == userId);
@@ -146,7 +157,7 @@ public class JobDescriptionService(
         if (jd == null)
         {
             logger.JobDescriptionNotFound(guid, userId);
-            return new JobDescriptionResponse();
+            return null;
         }
 
         jd.CompanyName = request.CompanyName;

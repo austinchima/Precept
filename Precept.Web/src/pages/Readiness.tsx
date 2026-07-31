@@ -63,14 +63,14 @@ export default function Readiness() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [skillsData, storiesData, jdData] = await Promise.all([
-          api.get<Skill[]>('/api/skill'),
-          api.get<Story[]>('/api/story'),
-          api.get<JobDescriptionResponse[]>('/api/jobdescription'),
+        const [skillsRes, storiesRes, jdRes] = await Promise.all([
+          api.get<PagedResponse<Skill>>('/api/skill'),
+          api.get<PagedResponse<Story>>('/api/story'),
+          api.get<PagedResponse<JobDescriptionResponse>>('/api/jobdescription'),
         ]);
-        setSkills(skillsData);
-        setStories(storiesData);
-        setJds(jdData);
+        setSkills(skillsRes.items ?? []);
+        setStories(storiesRes.items ?? []);
+        setJds(jdRes.items ?? []);
       } catch (err) {
         console.error('Failed to load readiness data:', err);
       } finally {

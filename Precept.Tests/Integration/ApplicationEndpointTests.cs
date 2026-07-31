@@ -69,9 +69,9 @@ public class ApplicationEndpointTests : IAsyncLifetime
         var response = await client.GetAsync("/api/application?status=Applied");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var apps = await response.Content.ReadFromJsonAsync<List<ApplicationResponse>>(JsonOptions);
-        apps!.Should().HaveCount(1);
-        apps![0].Status.Should().Be(ApplicationStatus.Applied);
+        var apps = await response.Content.ReadFromJsonAsync<PagedResponse<ApplicationResponse>>(JsonOptions);
+        apps!.Items.Should().HaveCount(1);
+        apps.Items[0].Status.Should().Be(ApplicationStatus.Applied);
     }
 
     // ─────────────────────────────────────────────────────────────

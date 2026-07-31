@@ -43,33 +43,44 @@ namespace Precept.Api.Services
             return true;
         }
 
-        public async Task<List<BehavioralStoryResponse>> GetStoriesAsync(string userId)
+        public async Task<PagedResponse<BehavioralStoryResponse>> GetStoriesAsync(string userId, PaginationQuery? pagination = null)
         {
-            var stories = await context.BehavioralStories
+            pagination ??= new PaginationQuery();
+
+            var query = context.BehavioralStories
                 .AsNoTracking()
-                .Where(s => s.UserId == userId)
+                .Where(s => s.UserId == userId);
+
+            var totalCount = await query.CountAsync();
+            var stories = await query
                 .OrderByDescending(s => s.UpdatedAt)
+                .Skip(pagination.Skip)
+                .Take(pagination.PageSize)
                 .ToListAsync();
 
-            return stories.Select(MapToResponse).ToList();
+            return new PagedResponse<BehavioralStoryResponse>(
+                stories.Select(MapToResponse).ToList(),
+                totalCount,
+                pagination.Page,
+                pagination.PageSize);
         }
 
-        public async Task<BehavioralStoryResponse> GetStoryAsync(string userId, string storyId)
+        public async Task<BehavioralStoryResponse?> GetStoryAsync(string userId, string storyId)
         {
             if (!Guid.TryParse(storyId, out var id))
-                return new BehavioralStoryResponse();
+                return null;
 
             var story = await context.BehavioralStories
                 .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
 
             if (story == null)
-                return new BehavioralStoryResponse();
+                return null;
 
             return MapToResponse(story);
         }
 
-        public async Task<BehavioralStoryResponse> GetQuizStoryAsync(string userId)
+        public async Task<BehavioralStoryResponse?> GetQuizStoryAsync(string userId)
         {
             var story = await context.BehavioralStories
                 .AsNoTracking()
@@ -78,21 +89,21 @@ namespace Precept.Api.Services
                 .FirstOrDefaultAsync();
 
             if (story == null)
-                return new BehavioralStoryResponse();
+                return null;
 
             return MapToResponse(story);
         }
 
-        public async Task<BehavioralStoryResponse> UpdateStoryAsync(string userId, string storyId, UpdateBehavioralStoryRequest request)
+        public async Task<BehavioralStoryResponse?> UpdateStoryAsync(string userId, string storyId, UpdateBehavioralStoryRequest request)
         {
             if (!Guid.TryParse(storyId, out var id))
-                return new BehavioralStoryResponse();
+                return null;
 
             var story = await context.BehavioralStories
                 .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
 
             if (story == null)
-                return new BehavioralStoryResponse();
+                return null;
 
             story.Title = request.Title;
             story.Situation = request.Situation;

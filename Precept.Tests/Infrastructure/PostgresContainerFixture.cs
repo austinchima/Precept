@@ -50,7 +50,7 @@ public class PostgresContainerFixture : IAsyncLifetime
         }
 
         return $"Host={_container!.Hostname};Port={_container.GetMappedPublicPort(5432)};" +
-               $"Database={databaseName};Username=precept_test;Password=precept_test_password;Include Error Detail=true";
+               $"Database={databaseName};Username=precept_test;Password=precept_test_password;Include Error Detail=true;Pooling=false";
     }
 
     /// <summary>

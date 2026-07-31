@@ -49,8 +49,8 @@ export default function StoryBank() {
     setIsLoading(true);
     try {
       const url = cat === 'All' ? '/api/story' : `/api/story?category=${cat}`;
-      const data = await api.get<Story[]>(url);
-      setStories(data);
+      const data = await api.get<PagedResponse<Story>>(url);
+      setStories(data.items ?? []);
     } catch (err) {
       console.error('Failed to load stories:', err);
     } finally {
@@ -110,10 +110,12 @@ export default function StoryBank() {
   const confirmDelete = (id: string) => setStoryToDelete(id);
   const executeDelete = async () => {
     if (!storyToDelete) return;
+    const targetId = storyToDelete;
     try {
-      await api.delete(`/api/story/${storyToDelete}`);
-      setStories((prev) => prev.filter((s) => s.id !== storyToDelete));
+      await api.delete(`/api/story/${targetId}`);
+      setStories((prev) => prev.filter((s) => s.id !== targetId));
       setStoryToDelete(null);
+      toast.success('Story moved to trash.');
     } catch (err) {
       console.error(err);
       toast.error((err as Error).message || 'Failed to delete story.');

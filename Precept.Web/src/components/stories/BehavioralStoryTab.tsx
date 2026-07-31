@@ -26,8 +26,8 @@ export const BehavioralStoryTab: React.FC<BehavioralStoryTabProps> = ({ createNe
   const loadStories = async () => {
     setIsLoading(true);
     try {
-      const data = await api.get<BehavioralStory[]>('/api/behavioralstory');
-      setStories(data);
+      const data = await api.get<PagedResponse<BehavioralStory>>('/api/behavioralstory');
+      setStories(data.items ?? []);
     } catch (err) {
       console.error('Failed to load behavioral stories:', err);
     } finally {

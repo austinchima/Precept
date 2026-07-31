@@ -261,9 +261,9 @@ public class StoryServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetQuizStory_ReturnsEmptyDto_WhenNoStoriesExist()
+    public async Task GetQuizStory_ReturnsNull_WhenNoStoriesExist()
     {
         var result = await _svc.GetQuizStoryAsync(DefaultUserId);
-        result.Id.Should().BeEmpty();
+        result.Should().BeNull();
     }
 }

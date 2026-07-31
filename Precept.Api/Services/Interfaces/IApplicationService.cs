@@ -16,13 +16,17 @@ public interface IApplicationService
     /// </summary>
     Task<ApplicationResponse> CaptureApplicationAsync(string userId, CaptureApplicationRequest request);
 
-    Task<List<ApplicationResponse>> GetAllApplicationsAsync(string userId, ApplicationStatus? status = null);
+    Task<PagedResponse<ApplicationResponse>> GetAllApplicationsAsync(string userId, ApplicationStatus? status = null, PaginationQuery? pagination = null);
 
-    Task<ApplicationResponse> GetApplicationAsync(string userId, string id);
+    Task<PagedResponse<ApplicationResponse>> GetTrashApplicationsAsync(string userId, PaginationQuery? pagination = null);
 
-    Task<ApplicationResponse> UpdateApplicationAsync(string userId, string id, UpdateApplicationRequest request);
+    Task<ApplicationResponse?> GetApplicationAsync(string userId, string id);
 
-    Task<ApplicationResponse> UpdateApplicationStatusAsync(string userId, string id, ApplicationStatus status);
+    Task<ApplicationResponse?> UpdateApplicationAsync(string userId, string id, UpdateApplicationRequest request);
+
+    Task<ApplicationResponse?> UpdateApplicationStatusAsync(string userId, string id, ApplicationStatus status);
 
     Task<bool> DeleteApplicationAsync(string userId, string id);
+
+    Task<bool> RestoreApplicationAsync(string userId, string id);
 }

@@ -1,6 +1,15 @@
 export type ConfidenceLevel = 'Panic' | 'Shaky' | 'Okay' | 'Solid' | 'CanTeach';
 export type StoryCategory = 'Auth' | 'Database' | 'Ai' | 'ML' | 'DevOps' | 'Frontend' | 'Backend' | 'SystemDesign' | 'Security' | 'Testing' | 'Cloud' | 'Architecture';
 
+export interface PagedResponse<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+}
+
 export interface Story {
   id: string;
   title: string;
@@ -84,8 +93,6 @@ export interface UserContextType {
 
 export type SkillProficiency = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 
-// Canonical skill-category vocabulary. Must match the backend allow-list in
-// Precept.Api/Models/SkillCategories.cs — the API rejects values outside this set.
 export const SKILL_CATEGORIES = [
   'Language',
   'Framework',
@@ -135,7 +142,7 @@ export interface SearchResult {
   title: string;
   subtitle: string;
   route: string;
-  icon: string;
+  icon?: string;
 }
 
 export interface JobDescription {
@@ -153,4 +160,34 @@ export interface JobDescription {
   isRemote: boolean;
   source: string;
   datePosted: string;
+}
+
+export interface DashboardStats {
+  storyStats: {
+    totalStories: number;
+    confidenceBreakdown: Record<string, number>;
+    categoryBreakdown: Record<string, number>;
+    totalReviewed: number;
+    needsReview: number;
+  };
+  applicationStats: {
+    totalApplications: number;
+    statusBreakdown: Record<string, number>;
+    interviewingCount: number;
+    offersCount: number;
+    rejectionRate: number;
+    responseRate: number;
+  };
+  jobDescriptionStats: {
+    totalJobDescriptions: number;
+    averageMatchScore: number;
+  };
+}
+
+export interface SessionInfo {
+  id: string;
+  deviceInfo: string;
+  createdAt: string;
+  expiresAt: string;
+  isCurrent: boolean;
 }

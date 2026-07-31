@@ -12,8 +12,7 @@ public class ApplicationUser : IdentityUser
 
     public string FullName => $"{FirstName.Trim()} {LastName.Trim()}";
 
-    // When I created my account
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
     // I can generate many stories from job descriptions
     public ICollection<Story> Stories { get; set; } = [];

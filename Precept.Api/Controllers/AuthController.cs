@@ -1,13 +1,10 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Precept.Api.Data;
 using Precept.Api.DTOs;
 using Precept.Api.Models;
 using Precept.Api.Services.Interfaces;
@@ -19,8 +16,8 @@ namespace Precept.Api.Controllers;
 public class AuthController(
     UserManager<ApplicationUser> userManager,
     ITokenService tokenService,
+    IRefreshTokenService refreshTokenService,
     ICookieOptionsFactory cookieOptionsFactory,
-    PreceptDbContext dbContext,
     IOptions<JwtSettings> jwtSettings,
     IWebHostEnvironment environment,
     ILogger<AuthController> logger) : ControllerBase
@@ -30,13 +27,8 @@ public class AuthController(
     private static string NormalizeEmail(string email) =>
         new(email.Where(c => !char.IsWhiteSpace(c)).ToArray());
 
-    // ─────────────────────────────────────────────────────────────
-    //  POST /api/auth/register
-    // ─────────────────────────────────────────────────────────────
-
     /// <summary>
     /// Creates a new user account and returns tokens.
-    /// In production, consider requiring email verification before returning tokens.
     /// </summary>
     [HttpPost("register")]
     [EnableRateLimiting("auth")]
@@ -47,11 +39,9 @@ public class AuthController(
 
         request.Email = NormalizeEmail(request.Email);
 
-        // Check if a user with this email already exists
         var existingUser = await userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
-            // Generic message to prevent user enumeration
             return Conflict(new { message = "A user with this email already exists." });
         }
 
@@ -60,41 +50,20 @@ public class AuthController(
             UserName = request.Email,
             Email = request.Email,
             FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            CreatedAt = DateTime.UtcNow
+            LastName = request.LastName.Trim()
         };
 
-        // ASP.NET Identity handles password hashing (PBKDF2) and validation rules
         var result = await userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
         {
-            foreach (var error in result.Errors)
-            {
-                ModelState.AddModelError(error.Code, error.Description);
-            }
-            return BadRequest(ModelState);
-        }
-
-        // Generate email confirmation token (dev: logged below; prod: sent via email)
-        user.EmailConfirmed = false;
-        await userManager.UpdateAsync(user);
-        var emailToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
-
-        if (environment.IsDevelopment())
-        {
-            logger.LogWarning("[DEV ONLY] Email verification token for {Email}: {Token}", request.Email, emailToken);
+            return BadRequest(new { message = string.Join("; ", result.Errors.Select(e => e.Description)) });
         }
 
         logger.UserRegistered(request.Email);
 
-        // Generate tokens for the newly registered user
         var roles = await userManager.GetRolesAsync(user);
         return await GenerateAuthResponse(user, roles, true);
     }
-
-    // ─────────────────────────────────────────────────────────────
-    //  POST /api/auth/login
-    // ─────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Authenticates a user and returns an access token + refresh cookie.
@@ -108,188 +77,109 @@ public class AuthController(
 
         request.Email = NormalizeEmail(request.Email);
 
-        // 1. Find user by email (ASP.NET Identity)
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
             return Unauthorized(new { message = "Invalid credentials." });
         }
 
-        // 2. Verify password (ASP.NET Identity — constant-time comparison)
+        if (await userManager.IsLockedOutAsync(user))
+        {
+            return Unauthorized(new { message = "Account locked due to too many failed attempts. Please try again later." });
+        }
+
         var isPasswordValid = await userManager.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
         {
+            await userManager.AccessFailedAsync(user);
             return Unauthorized(new { message = "Invalid credentials." });
         }
 
         logger.UserLoggedIn(request.Email);
 
-        // 3. Generate tokens
         var roles = await userManager.GetRolesAsync(user);
         return await GenerateAuthResponse(user, roles, request.RememberMe);
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  GET /api/auth/me
-    // ─────────────────────────────────────────────────────────────
-
     /// <summary>
-    /// Retrieves the current authenticated user's profile information.
-    /// </summary>
-    [Authorize]
-    [HttpGet("me")]
-    [EnableRateLimiting("auth")]
-    public async Task<IActionResult> GetCurrentUser()
-    {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                     ?? User.FindFirst("sub")?.Value;
-
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        var user = await userManager.FindByIdAsync(userId);
-        if (user == null)
-            return NotFound();
-
-        return Ok(new
-        {
-            user.Id,
-            user.Email,
-            user.FirstName,
-            user.LastName,
-            user.CreatedAt
-        });
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  POST /api/auth/refresh
-    // ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Rotates the refresh token and returns a new access token.
-    /// Reads the refresh token from the HTTP-only cookie.
+    /// Refreshes expired access tokens using a valid HTTP-only refresh token cookie.
+    /// Includes reuse detection, lineage verification, and atomic token rotation.
     /// </summary>
     [HttpPost("refresh")]
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> Refresh()
     {
-        // 1. Read refresh token from cookie
         var rawToken = Request.Cookies["refreshToken"];
         if (string.IsNullOrWhiteSpace(rawToken))
         {
             return Unauthorized(new { message = "Refresh token is required." });
         }
 
-        // 2. Hash the incoming token and look it up
-        var tokenHash = HashToken(rawToken);
-        var storedToken = await dbContext.RefreshTokens
-            .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.Token == tokenHash);
+        var tokenHash = refreshTokenService.HashToken(rawToken);
+        var storedToken = await refreshTokenService.FindByTokenHashAsync(tokenHash);
 
         if (storedToken == null)
         {
             return Unauthorized(new { message = "Invalid refresh token." });
         }
 
-        // =================================================================================================
-        // STAGE 3: REUSE DETECTION & REPLAY INTERCEPTION (THE CROWN JEWEL)
-        // Threat Model: If an attacker intercepts or steals a refresh token, they will attempt to exchange
-        // it for an access token. If the legitimate client has already rotated this token, storedToken.IsRevoked
-        // is TRUE. Presenting a revoked token triggers immediate breach containment.
-        // =================================================================================================
         if (storedToken.IsRevoked)
         {
-            // [Pillar I - Lineage Guard]: We must distinguish between malicious replay attacks and benign
-            // network anomalies (dual browser tabs refreshing simultaneously or double-click retries).
-            // First, find the user's currently active session token in this lineage.
-            var activeToken = await dbContext.RefreshTokens
-                .Where(rt => rt.UserId == storedToken.UserId && rt.RevokedAt == null)
-                // gets the most recent token in this lineage by arranging it from top to show the newest token,
-                // and FirstOrDefaultAsync() gets the first one, which is the newest token in this case
-                .OrderByDescending(rt => rt.CreatedAt)  
-                .FirstOrDefaultAsync();
+            var activeSessions = await refreshTokenService.GetActiveSessionsAsync(storedToken.UserId);
+            var activeToken = activeSessions.FirstOrDefault();
 
-            // Check if the presented revoked token is the EXACT immediate predecessor (parent) of the active token.
-            // If an attacker replays a token 2 generations old (A -> B -> C), A.ReplacedByToken == B (not C).
-            // This lineage guard prevents deep historical replay bypasses.
             var isDirectParent = activeToken != null &&
                                  storedToken.ReplacedByToken != null &&
-                                 storedToken.ReplacedByToken == activeToken.Token;
+                                 storedToken.ReplacedByToken == refreshTokenService.HashToken(activeToken.Id);
 
-            // Check if the rotation occurred within a 10-second concurrency grace window.
             var withinGrace = storedToken.RevokedAt.HasValue &&
                               (DateTime.UtcNow - storedToken.RevokedAt.Value).TotalSeconds <= 10;
 
-            // Benign Anomaly: If direct parent AND within grace window, treat as concurrent client retry.
             if (isDirectParent && withinGrace)
             {
-                // Suppress cascade revocation. Return gentle 401 allowing client HTTP interceptor to resync.
                 return Unauthorized(new { message = "Token just refreshed" });
             }
 
-            // Confirmed Breach: Replay attack detected outside grace window or across broken lineage.
-            // Execute Family-Wide Cascade Revocation to lock down all devices immediately.
-            await RevokeAllUserTokens(storedToken.UserId);
+            await refreshTokenService.RevokeAllForUserAsync(storedToken.UserId);
             ClearRefreshCookie();
             ClearAccessTokenCookie();
             return Unauthorized(new { message = "Token reuse detection. All sessions have been revoked. Please log in again." });
         }
 
-        // 4. Check if expired
         if (storedToken.IsExpired)
         {
             return Unauthorized(new { message = "Refresh token has expired. Please log in again." });
         }
 
-        // =================================================================================================
-        // STAGE 5: CRYPTOGRAPHIC TOKEN ROTATION
-        // Every refresh exchange invalidates the spent token and binds it to a newly generated SHA-256 hash.
-        // =================================================================================================
-        var user = storedToken.User;
+        var user = await userManager.FindByIdAsync(storedToken.UserId);
+        if (user == null)
+        {
+            return Unauthorized(new { message = "User not found." });
+        }
+
         var roles = await userManager.GetRolesAsync(user);
 
-        // Generate new 64-byte CSPRNG refresh token and compute its SHA-256 hash for DB storage
         var newRawToken = tokenService.GenerateRefreshToken();
-        var newTokenHash = HashToken(newRawToken);
+        var newTokenHash = refreshTokenService.HashToken(newRawToken);
 
-        // Mark spent token as revoked and record its successor hash to preserve family lineage tracking
-        storedToken.RevokedAt = DateTime.UtcNow;
-        storedToken.ReplacedByToken = newTokenHash;
-
-        // Persist the replacement refresh token entity
-        var newRefreshToken = new RefreshToken
-        {
-            Token = newTokenHash,
-            UserId = user.Id,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
-            DeviceInfo = Request.Headers.UserAgent.ToString(),
-            RememberMe = storedToken.RememberMe
-        };
-
-        dbContext.RefreshTokens.Add(newRefreshToken);
-        
         try
         {
-            // [Pillar II & III - Single-Save Atomic Rotation & Optimistic Concurrency]:
-            // Both parent revocation (UPDATE) and child creation (INSERT) execute in ONE atomic transaction.
-            // The [ConcurrencyCheck] attribute on RevokedAt forces EF Core to append 'WHERE RevokedAt IS NULL'.
-            // If two overlapping network requests race to rotate this token at the exact same millisecond,
-            // the second query affects 0 rows, throwing DbUpdateConcurrencyException.
-            await dbContext.SaveChangesAsync();
+            await refreshTokenService.RevokeAsync(storedToken, newTokenHash);
+            await refreshTokenService.CreateAsync(
+                user.Id,
+                newRawToken,
+                Request.Headers.UserAgent.ToString(),
+                storedToken.RememberMe,
+                _jwtSettings.RefreshTokenExpiryDays);
         }
         catch (DbUpdateConcurrencyException)
         {
-            // [Dead-Heat Race Defense]: Another overlapping thread rotated this token 1 millisecond ago.
-            // Catching this prevents split-brain duplicate child tokens. Uncommitted changes evaporate safely.
             return Unauthorized(new { message = "Token just refreshed" });
         }
 
-        // Generate new access token
         var accessToken = tokenService.GenerateAccessToken(user, roles);
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpiryMinutes);
 
-        // Set the new refresh token cookie and access token cookie
         SetRefreshCookie(newRawToken, storedToken.RememberMe);
         SetAccessTokenCookie(accessToken);
 
@@ -304,13 +194,34 @@ public class AuthController(
         });
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  POST /api/auth/revoke
-    // ─────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Returns the profile of the currently authenticated user.
+    /// </summary>
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMe()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await userManager.FindByIdAsync(userId);
+        if (user == null)
+            return NotFound();
+
+        var roles = await userManager.GetRolesAsync(user);
+        return Ok(new
+        {
+            UserId = user.Id,
+            user.Email,
+            user.FirstName,
+            user.LastName,
+            Roles = roles
+        });
+    }
 
     /// <summary>
     /// Revokes the current refresh token (logout).
-    /// Requires a valid access token.
     /// </summary>
     [Authorize]
     [HttpPost("revoke")]
@@ -323,17 +234,13 @@ public class AuthController(
             return BadRequest(new { message = "No refresh token found." });
         }
 
-        var tokenHash = HashToken(rawToken);
-        var storedToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == tokenHash);
+        var tokenHash = refreshTokenService.HashToken(rawToken);
+        var storedToken = await refreshTokenService.FindByTokenHashAsync(tokenHash);
 
         if (storedToken is { IsActive: true })
         {
-            storedToken.RevokedAt = DateTime.UtcNow;
-            await dbContext.SaveChangesAsync();
-
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                         ?? User.FindFirst("sub")?.Value;
+            await refreshTokenService.RevokeAsync(storedToken);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             logger.TokenRevoked(userId);
         }
 
@@ -342,15 +249,40 @@ public class AuthController(
         return Ok(new { message = "Token revoked successfully." });
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  POST /api/auth/forgot-password
-    // ─────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Retrieves active sessions for the current user.
+    /// </summary>
+    [HttpGet("sessions")]
+    [Authorize]
+    public async Task<IActionResult> GetActiveSessions()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var rawToken = Request.Cookies["refreshToken"];
+        var sessions = await refreshTokenService.GetActiveSessionsAsync(userId, rawToken);
+        return Ok(sessions);
+    }
 
     /// <summary>
-    /// Initiates a password reset for the given email address.
-    /// In development, the reset token is logged to the console.
-    /// In production, configure an email service (e.g. SendGrid) to send the token.
+    /// Revokes a specific session by its session ID.
     /// </summary>
+    [HttpDelete("sessions/{sessionId}")]
+    [Authorize]
+    public async Task<IActionResult> RevokeSession(string sessionId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var success = await refreshTokenService.RevokeSessionByIdAsync(userId, sessionId);
+        if (!success)
+            return NotFound(new { message = "Session not found or already revoked." });
+
+        return Ok(new { message = "Session revoked successfully." });
+    }
+
     [HttpPost("forgot-password")]
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
@@ -363,7 +295,6 @@ public class AuthController(
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
-            // Generic response to prevent user enumeration
             return Ok(new { message = "If an account exists, a password reset email has been sent." });
         }
 
@@ -371,23 +302,12 @@ public class AuthController(
 
         if (environment.IsDevelopment())
         {
-            // DEV ONLY: log the token so the developer can test without an email provider
             logger.LogWarning("[DEV ONLY] Password reset token for {Email}: {Token}", request.Email, token);
         }
-
-        // TODO: In production, send this token via a secure email service.
-        // Example: await _emailService.SendPasswordResetEmail(request.Email, token);
 
         return Ok(new { message = "If an account exists, a password reset email has been sent." });
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  POST /api/auth/reset-password
-    // ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Resets the password using a token from the forgot-password flow.
-    /// </summary>
     [HttpPost("reset-password")]
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
@@ -404,23 +324,13 @@ public class AuthController(
         var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
         if (!result.Succeeded)
         {
-            return BadRequest(new { message = "Invalid or expired token." });
+            return BadRequest(new { message = string.Join("; ", result.Errors.Select(e => e.Description)) });
         }
 
-        // Revoke all refresh tokens for this user as a security measure
-        await RevokeAllUserTokens(user.Id);
-
+        await refreshTokenService.RevokeAllForUserAsync(user.Id);
         return Ok(new { message = "Password reset successfully. Please sign in again." });
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  POST /api/auth/verify-email
-    // ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Confirms the email address using a token.
-    /// In development, the token is logged during registration.
-    /// </summary>
     [HttpPost("verify-email")]
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
@@ -436,40 +346,24 @@ public class AuthController(
 
         var result = await userManager.ConfirmEmailAsync(user, request.Token);
         if (!result.Succeeded)
-            return BadRequest(new { message = "Invalid or expired token." });
+            return BadRequest(new { message = string.Join("; ", result.Errors.Select(e => e.Description)) });
 
         return Ok(new { message = "Email verified successfully." });
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  Private Helpers
-    // ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Generates access + refresh tokens, persists the refresh token, sets the cookie, and returns the response.
-    /// </summary>
     private async Task<IActionResult> GenerateAuthResponse(ApplicationUser user, IList<string> roles, bool rememberMe)
     {
-        // Generate tokens
         var accessToken = tokenService.GenerateAccessToken(user, roles);
         var rawRefreshToken = tokenService.GenerateRefreshToken();
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpiryMinutes);
 
-        // Hash and persist the refresh token
-        var refreshTokenEntity = new RefreshToken
-        {
-            Token = HashToken(rawRefreshToken),
-            UserId = user.Id,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
-            DeviceInfo = Request.Headers.UserAgent.ToString(),
-            RememberMe = rememberMe
-        };
+        await refreshTokenService.CreateAsync(
+            user.Id,
+            rawRefreshToken,
+            Request.Headers.UserAgent.ToString(),
+            rememberMe,
+            _jwtSettings.RefreshTokenExpiryDays);
 
-        dbContext.RefreshTokens.Add(refreshTokenEntity);
-        await dbContext.SaveChangesAsync();
-
-        // Set HTTP-only secure cookies
         SetRefreshCookie(rawRefreshToken, rememberMe);
         SetAccessTokenCookie(accessToken);
 
@@ -482,33 +376,16 @@ public class AuthController(
         });
     }
 
-    /// <summary>
-    /// Computes a SHA-256 hash of the raw token for secure storage.
-    /// </summary>
-    private static string HashToken(string token)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-        return Convert.ToBase64String(bytes);
-    }
-
-    /// <summary>
-    /// Sets the refresh token as an HTTP-only secure cookie scoped to /api/auth.
-    /// </summary>
     private void SetRefreshCookie(string rawToken, bool rememberMe)
     {
         var options = cookieOptionsFactory.CreateCookieOptions(rememberMe);
-
         if (rememberMe)
         {
             options.Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays);
         }
-
         Response.Cookies.Append("refreshToken", rawToken, options);
     }
 
-    /// <summary>
-    /// Sets the access token as an HTTP-only secure cookie scoped to /api.
-    /// </summary>
     private void SetAccessTokenCookie(string accessToken)
     {
         var options = cookieOptionsFactory.CreateAccessTokenCookieOptions();
@@ -526,10 +403,6 @@ public class AuthController(
         var options = cookieOptionsFactory.CreateAccessTokenCookieOptions();
         Response.Cookies.Delete("accessToken", options);
     }
-
-    // ─────────────────────────────────────────────────────────────
-    //  PUT /api/auth/profile
-    // ─────────────────────────────────────────────────────────────
 
     [HttpPut("profile")]
     [Authorize]
@@ -553,7 +426,7 @@ public class AuthController(
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return BadRequest(new { message = string.Join("; ", result.Errors.Select(e => e.Description)) });
         }
 
         return Ok(new
@@ -565,17 +438,6 @@ public class AuthController(
         });
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  DELETE /api/auth/account
-    // ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Permanently deletes the authenticated user's account and ALL of their data.
-    /// Deleting the AspNetUsers row triggers ON DELETE CASCADE on every owned table
-    /// (stories, applications + events, job descriptions, skills, behavioral stories,
-    /// testimonials, refresh tokens, and the Identity claim/login/role/token tables),
-    /// so nothing is left behind in PostgreSQL. This is irreversible.
-    /// </summary>
     [Authorize]
     [HttpDelete("account")]
     [EnableRateLimiting("auth")]
@@ -589,44 +451,19 @@ public class AuthController(
         if (user == null)
             return NotFound();
 
-        // Single DELETE FROM "AspNetUsers" — the database cascades to all dependent rows.
         var result = await userManager.DeleteAsync(user);
         if (!result.Succeeded)
         {
             logger.AccountDeletionFailed(userId);
-            return BadRequest(result.Errors);
+            return BadRequest(new { message = string.Join("; ", result.Errors.Select(e => e.Description)) });
         }
 
-        // Refresh-token rows are gone via cascade; clear the client cookies too.
         ClearRefreshCookie();
         ClearAccessTokenCookie();
         logger.AccountDeleted(userId);
 
         return Ok(new { message = "Account and all associated data have been permanently deleted." });
     }
-
-    /// <summary>
-    /// [Fail-Safe Identity-Wide Cascade Revocation]: Invalidates all active sessions for a user identity.
-    /// Design Scope Note: While our replay detection mechanism is strictly "Lineage-Aware" (using ReplacedByToken
-    /// to trace parent-child lineages and filter out benign concurrent tab retries), the revocation action
-    /// itself is intentionally "Identity-Wide" (WHERE UserId == userId). Under the OWASP Fail-Safe doctrine,
-    /// a confirmed token theft on Device A (e.g. laptop) assumes the user's underlying credentials or machine
-    /// are compromised, nuking all active sessions (phone, tablet) to contain lateral threat movement.
-    /// </summary>
-    private async Task RevokeAllUserTokens(string userId)
-    {
-        var activeTokens = await dbContext.RefreshTokens
-            .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
-            .ToListAsync();
-
-        foreach (var token in activeTokens)
-        {
-            token.RevokedAt = DateTime.UtcNow;
-        }
-
-        await dbContext.SaveChangesAsync();
-    }
-
 }
 
 public static partial class AuthControllerLoggerExtensions
