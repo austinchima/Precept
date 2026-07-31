@@ -191,6 +191,8 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 //  7. Application Services
 // ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddHostedService<RefreshTokenCleanupService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<IBehavioralStoryService, BehavioralStoryService>();
 builder.Services.AddScoped<IApplicationService, ApplicationService>();
@@ -304,7 +306,15 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("RunMigr
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Middleware Pipeline
+//  Middleware Pipeline (ORDER IS SIGNIFICANT)
+//  1. Exception handler  — outermost, catches everything downstream
+//  2. HTTPS redirect     — before any content can be served over HTTP
+//  3. Security headers   — applied before any response body is written
+//  4. Rate limiting      — reject DoS before auth work starts
+//  5. CORS               — must precede auth so pre-flight OPTIONS succeeds
+//  6. Authentication     — establishes identity
+//  7. Authorization      — enforces policy using established identity
+//  8. Endpoints          — actual business logic
 // ─────────────────────────────────────────────────────────────
 
 app.Use(async (context, next) =>

@@ -193,7 +193,7 @@ export const api = {
     return res.json() as Promise<T>;
   },
 
-  async post<T>(url: string, body?: any, options?: RequestOptions): Promise<T> {
+  async post<T, TBody = unknown>(url: string, body?: TBody, options?: RequestOptions): Promise<T> {
     const res = await apiFetch(url, {
       ...options,
       method: 'POST',
@@ -204,7 +204,7 @@ export const api = {
     return res.json() as Promise<T>;
   },
 
-  async put<T>(url: string, body?: any, options?: RequestOptions): Promise<T> {
+  async put<T, TBody = unknown>(url: string, body?: TBody, options?: RequestOptions): Promise<T> {
     const res = await apiFetch(url, {
       ...options,
       method: 'PUT',
@@ -215,7 +215,7 @@ export const api = {
     return res.json() as Promise<T>;
   },
 
-  async patch<T>(url: string, body?: any, options?: RequestOptions): Promise<T> {
+  async patch<T, TBody = unknown>(url: string, body?: TBody, options?: RequestOptions): Promise<T> {
     const res = await apiFetch(url, {
       ...options,
       method: 'PATCH',

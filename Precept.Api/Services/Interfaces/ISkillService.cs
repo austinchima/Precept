@@ -9,11 +9,11 @@ public interface ISkillService
 {
     Task<SkillResponse> CreateSkillAsync(string userId, CreateSkillRequest request);
 
-    Task<List<SkillResponse>> GetSkillsAsync(string userId);
+    Task<PagedResponse<SkillResponse>> GetSkillsAsync(string userId, PaginationQuery? pagination = null);
 
-    Task<SkillResponse> GetSkillAsync(string userId, string id);
+    Task<SkillResponse?> GetSkillAsync(string userId, string id);
 
-    Task<SkillResponse> UpdateSkillAsync(string userId, string id, UpdateSkillRequest request);
+    Task<SkillResponse?> UpdateSkillAsync(string userId, string id, UpdateSkillRequest request);
 
     Task<bool> DeleteSkillAsync(string userId, string id);
 }

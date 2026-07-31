@@ -5,21 +5,23 @@ namespace Precept.Api.Services.Interfaces;
 
 public interface IStoryService
 {
-    // Beautiful and clean!
     Task<StoryResponse> CreateStoryAsync(string userId, CreateStoryRequest request);
 
     Task<bool> DeleteStoryAsync(string userId, string storyId);
 
-    Task<StoryResponse> UpdateStoryAsync(string userId, string storyId, UpdateStoryRequest request);
+    Task<bool> RestoreStoryAsync(string userId, string storyId);
 
-    Task<StoryResponse> UpdateStoryConfidenceLevelAsync(string userId, string storyId, ConfidenceLevel confidenceLevel);
+    Task<StoryResponse?> UpdateStoryAsync(string userId, string storyId, UpdateStoryRequest request);
 
-    Task<StoryResponse> GetStoryAsync(string userId, string storyId);
+    Task<StoryResponse?> UpdateStoryConfidenceLevelAsync(string userId, string storyId, ConfidenceLevel confidenceLevel);
 
-    Task<StoryResponse> GetRandomStoryAsync(string userId, Category? category = null);
+    Task<StoryResponse?> GetStoryAsync(string userId, string storyId);
 
-    Task<StoryResponse> GetQuizStoryAsync(string userId, Category? category = null);
+    Task<StoryResponse?> GetRandomStoryAsync(string userId, Category? category = null);
 
-    Task<List<StoryResponse>> GetStoriesAsync(string userId, Category? category = null);
+    Task<StoryResponse?> GetQuizStoryAsync(string userId, Category? category = null);
 
+    Task<PagedResponse<StoryResponse>> GetStoriesAsync(string userId, Category? category = null, PaginationQuery? pagination = null);
+
+    Task<PagedResponse<StoryResponse>> GetTrashStoriesAsync(string userId, PaginationQuery? pagination = null);
 }

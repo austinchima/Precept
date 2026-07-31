@@ -43,17 +43,29 @@ namespace Precept.Api.Data
             // login run before any principal exists, so filtering those tables breaks auth.
 
             builder.Entity<Application>()
-                .HasQueryFilter(a => a.UserId == _currentUserId);
+                .HasQueryFilter(a => !a.IsDeleted && a.UserId == _currentUserId);
 
             // ApplicationEvent has a required FK to Application (which is filtered).
             // Filtering the dependent through the navigation silences EF's
             // RequiredNavigationWithQueryFilterInteractionWarning and keeps events
             // correctly scoped when queried directly.
             builder.Entity<ApplicationEvent>()
-                .HasQueryFilter(e => e.Application!.UserId == _currentUserId);
+                .HasQueryFilter(e => !e.Application!.IsDeleted && e.Application!.UserId == _currentUserId);
 
             builder.Entity<Story>()
-                .HasQueryFilter(s => s.UserId == _currentUserId);
+                .HasQueryFilter(s => !s.IsDeleted && s.UserId == _currentUserId);
+
+            // ─────────────────────────────────────────────────────────
+            //  Default SQL values
+            // ─────────────────────────────────────────────────────────
+            builder.Entity<Story>()
+                .Property(s => s.CreatedAt).HasDefaultValueSql("NOW()");
+            builder.Entity<Story>()
+                .Property(s => s.UpdatedAt).HasDefaultValueSql("NOW()");
+            builder.Entity<Application>()
+                .Property(a => a.FollowUpDate).HasDefaultValueSql("NOW() + INTERVAL '7 days'");
+            builder.Entity<ApplicationUser>()
+                .Property(u => u.CreatedAt).HasDefaultValueSql("NOW()");
 
             // ─────────────────────────────────────────────────────────
             //  Relationship configuration (unchanged)

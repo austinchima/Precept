@@ -125,10 +125,10 @@ export default function AppTracker() {
   const loadApplications = async () => {
     setIsLoading(true);
     try {
-      const data = await api.get<Application[]>('/api/application');
-      setApps(data);
-      const jdData = await api.get<{ id: string; companyName: string; roleTitle: string }[]>('/api/jobdescription');
-      setJds(jdData);
+      const data = await api.get<PagedResponse<Application>>('/api/application');
+      setApps(data.items ?? []);
+      const jdData = await api.get<PagedResponse<{ id: string; companyName: string; roleTitle: string }>>('/api/jobdescription');
+      setJds(jdData.items ?? []);
     } catch (err) {
       console.error('Failed to load application pipeline:', err);
     } finally {

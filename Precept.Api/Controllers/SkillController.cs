@@ -7,10 +7,6 @@ using Precept.Api.Services.Interfaces;
 
 namespace Precept.Api.Controllers;
 
-/// <summary>
-/// Controller handling all HTTP operations for managing a user's skills inventory.
-/// All endpoints require JWT authentication.
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -22,9 +18,6 @@ public class SkillController(ISkillService skillService) : ControllerBase
         ?? User.FindFirst("sub")?.Value
         ?? throw new InvalidOperationException("User ID is missing from the claims.");
 
-    /// <summary>
-    /// Creates a new skill in the user's inventory.
-    /// </summary>
     [HttpPost]
     public async Task<ActionResult<SkillResponse>> CreateSkill([FromBody] CreateSkillRequest request)
     {
@@ -36,35 +29,26 @@ public class SkillController(ISkillService skillService) : ControllerBase
         return CreatedAtAction(nameof(GetSkill), new { id = response.Id }, response);
     }
 
-    /// <summary>
-    /// Retrieves all skills in the authenticated user's inventory, ordered by name.
-    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<SkillResponse>>> GetSkills()
+    public async Task<ActionResult<PagedResponse<SkillResponse>>> GetSkills([FromQuery] PaginationQuery? pagination = null)
     {
         var userId = GetUserId();
-        var response = await skillService.GetSkillsAsync(userId);
+        var response = await skillService.GetSkillsAsync(userId, pagination);
         return Ok(response);
     }
 
-    /// <summary>
-    /// Retrieves a specific skill by ID.
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<SkillResponse>> GetSkill(string id)
     {
         var userId = GetUserId();
         var response = await skillService.GetSkillAsync(userId, id);
 
-        if (string.IsNullOrEmpty(response.Id))
+        if (response is null)
             return NotFound();
 
         return Ok(response);
     }
 
-    /// <summary>
-    /// Updates a specific skill in the user's inventory.
-    /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<SkillResponse>> UpdateSkill(string id, [FromBody] UpdateSkillRequest request)
     {
@@ -74,15 +58,12 @@ public class SkillController(ISkillService skillService) : ControllerBase
         var userId = GetUserId();
         var response = await skillService.UpdateSkillAsync(userId, id, request);
 
-        if (string.IsNullOrEmpty(response.Id))
+        if (response is null)
             return NotFound();
 
         return Ok(response);
     }
 
-    /// <summary>
-    /// Deletes a specific skill from the user's inventory.
-    /// </summary>
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteSkill(string id)
     {

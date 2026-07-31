@@ -45,6 +45,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Redirects already-authenticated users to /dashboard
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) return <RouteLoader />;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 // Fallback loader for lazy routes
 const RouteLoader = () => (
   <div className="min-h-[50vh] flex items-center justify-center font-mono text-sm text-brand-primary/60">
@@ -62,8 +71,8 @@ export default function App() {
       <Router>
         <Suspense fallback={<RouteLoader />}>
           <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+            <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
+            <Route path="/login" element={<PublicOnlyRoute><PageTransition><LoginPage /></PageTransition></PublicOnlyRoute>} />
             
             <Route path="/" element={
               <ProtectedRoute>

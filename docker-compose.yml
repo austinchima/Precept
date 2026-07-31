@@ -31,7 +31,8 @@ services:
       - ASPNETCORE_URLS=http://0.0.0.0:8080
       - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+      - AllowedHosts=${ALLOWED_HOSTS:-*}
+      - RunMigrationsOnStartup=true
 
   web:
     build:

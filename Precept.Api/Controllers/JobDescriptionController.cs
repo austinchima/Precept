@@ -7,10 +7,6 @@ using Precept.Api.Services.Interfaces;
 
 namespace Precept.Api.Controllers;
 
-/// <summary>
-/// Controller handling all HTTP operations for managing job descriptions.
-/// All endpoints require JWT authentication.
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -22,10 +18,6 @@ public class JobDescriptionController(IJobDescriptionService jobDescriptionServi
         ?? User.FindFirst("sub")?.Value
         ?? throw new InvalidOperationException("User ID is missing from the claims.");
 
-    /// <summary>
-    /// Creates a new job description. Keywords are extracted automatically from the
-    /// description text and matched against the user's skills inventory.
-    /// </summary>
     [HttpPost]
     public async Task<ActionResult<JobDescriptionResponse>> CreateJobDescription([FromBody] CreateJobDescriptionRequest request)
     {
@@ -37,36 +29,26 @@ public class JobDescriptionController(IJobDescriptionService jobDescriptionServi
         return CreatedAtAction(nameof(GetJobDescription), new { id = response.Id }, response);
     }
 
-    /// <summary>
-    /// Retrieves all job descriptions belonging to the authenticated user.
-    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<JobDescriptionResponse>>> GetJobDescriptions()
+    public async Task<ActionResult<PagedResponse<JobDescriptionResponse>>> GetJobDescriptions([FromQuery] PaginationQuery? pagination = null)
     {
         var userId = GetUserId();
-        var response = await jobDescriptionService.GetJobDescriptionsAsync(userId);
+        var response = await jobDescriptionService.GetJobDescriptionsAsync(userId, pagination);
         return Ok(response);
     }
 
-    /// <summary>
-    /// Retrieves a specific job description by ID, including match score and missing keywords.
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<JobDescriptionResponse>> GetJobDescription(string id)
     {
         var userId = GetUserId();
         var response = await jobDescriptionService.GetJobDescriptionAsync(userId, id);
 
-        if (string.IsNullOrEmpty(response.Id))
+        if (response is null)
             return NotFound();
 
         return Ok(response);
     }
 
-    /// <summary>
-    /// Updates a job description. Keywords are re-extracted from the description text
-    /// and the match score is recomputed against current skills.
-    /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<JobDescriptionResponse>> UpdateJobDescription(string id, [FromBody] UpdateJobDescriptionRequest request)
     {
@@ -76,16 +58,12 @@ public class JobDescriptionController(IJobDescriptionService jobDescriptionServi
         var userId = GetUserId();
         var response = await jobDescriptionService.UpdateJobDescriptionAsync(userId, id, request);
 
-        if (string.IsNullOrEmpty(response.Id))
+        if (response is null)
             return NotFound();
 
         return Ok(response);
     }
 
-    /// <summary>
-    /// Deletes a specific job description. Associated applications will have their
-    /// JobDescriptionId set to null (not deleted).
-    /// </summary>
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteJobDescription(string id)
     {

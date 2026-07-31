@@ -194,38 +194,61 @@ public class ApplicationService(
     /// <summary>
     /// Returns true for loopback, private IPv4 ranges, and link-local IPv6.
     /// </summary>
-    private static bool IsPrivateOrLoopback(string host)
+    private static bool IsPrivateOrLoopbackHost(System.Net.IPAddress ip)
     {
-        if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+        if (System.Net.IPAddress.IsLoopback(ip))
             return true;
 
-        if (Uri.IsWellFormedUriString($"http://{host}", UriKind.Absolute))
+        var bytes = ip.GetAddressBytes();
+        if (bytes.Length == 4)
         {
-            // Use DnsSafeHost isn't available on Uri in all targets; TryCreate handles most cases.
-        }
-
-        if (System.Net.IPAddress.TryParse(host, out var ip))
-        {
-            if (System.Net.IPAddress.IsLoopback(ip))
-                return true;
-
-            var bytes = ip.GetAddressBytes();
-            if (bytes.Length == 4)
-            {
-                // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-                if (bytes[0] == 10) return true;
-                if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return true;
-                if (bytes[0] == 192 && bytes[1] == 168) return true;
-                // 127.0.0.0/8 (covered by IsLoopback, but kept for clarity)
-                if (bytes[0] == 127) return true;
-            }
+            // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8
+            if (bytes[0] == 10) return true;
+            if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return true;
+            if (bytes[0] == 192 && bytes[1] == 168) return true;
+            if (bytes[0] == 127) return true;
+            // 169.254.0.0/16 (Link-local / Cloud Metadata API)
+            if (bytes[0] == 169 && bytes[1] == 254) return true;
+            // 100.64.0.0/10 (Carrier-Grade NAT)
+            if (bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127) return true;
         }
 
         return false;
     }
 
-    public async Task<List<ApplicationResponse>> GetAllApplicationsAsync(string userId, ApplicationStatus? status = null)
+    /// <summary>
+    /// Returns true for loopback, private IPv4 ranges, link-local metadata IPs, and hostnames resolving to private IPs.
+    /// </summary>
+    private static bool IsPrivateOrLoopback(string host)
     {
+        if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (System.Net.IPAddress.TryParse(host, out var ip))
+        {
+            return IsPrivateOrLoopbackHost(ip);
+        }
+
+        try
+        {
+            var addresses = System.Net.Dns.GetHostAddresses(host);
+            foreach (var addr in addresses)
+            {
+                if (IsPrivateOrLoopbackHost(addr))
+                    return true;
+            }
+        }
+        catch
+        {
+            // If DNS resolution fails, allow default handling or block if suspicious
+        }
+
+        return false;
+    }
+
+    public async Task<PagedResponse<ApplicationResponse>> GetAllApplicationsAsync(string userId, ApplicationStatus? status = null, PaginationQuery? pagination = null)
+    {
+        pagination ??= new PaginationQuery();
         logger.ApplicationsRetrieved(userId);
 
         var query = dbContext.Applications
@@ -237,14 +260,47 @@ public class ApplicationService(
             query = query.Where(a => a.Status == status.Value);
         }
 
-        var apps = await query.ToListAsync();
-        return [.. apps.Select(MapToResponse)];
+        var totalCount = await query.CountAsync();
+        var apps = await query
+            .OrderByDescending(a => a.DateApplied ?? a.FollowUpDate)
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
+            .ToListAsync();
+
+        return new PagedResponse<ApplicationResponse>(
+            apps.Select(MapToResponse).ToList(),
+            totalCount,
+            pagination.Page,
+            pagination.PageSize);
     }
 
-    public async Task<ApplicationResponse> GetApplicationAsync(string userId, string id)
+    public async Task<PagedResponse<ApplicationResponse>> GetTrashApplicationsAsync(string userId, PaginationQuery? pagination = null)
+    {
+        pagination ??= new PaginationQuery();
+
+        var query = dbContext.Applications
+            .IgnoreQueryFilters()
+            .Include(a => a.Events)
+            .Where(a => a.UserId == userId && a.IsDeleted);
+
+        var totalCount = await query.CountAsync();
+        var apps = await query
+            .OrderByDescending(a => a.DeletedAt)
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
+            .ToListAsync();
+
+        return new PagedResponse<ApplicationResponse>(
+            apps.Select(MapToResponse).ToList(),
+            totalCount,
+            pagination.Page,
+            pagination.PageSize);
+    }
+
+    public async Task<ApplicationResponse?> GetApplicationAsync(string userId, string id)
     {
         if (!Guid.TryParse(id, out var guid))
-            return new ApplicationResponse();
+            return null;
 
         var app = await dbContext.Applications
             .Include(a => a.Events)
@@ -253,17 +309,17 @@ public class ApplicationService(
         if (app == null)
         {
             logger.ApplicationNotFound(guid, userId);
-            return new ApplicationResponse();
+            return null;
         }
 
         logger.ApplicationRetrieved(guid);
         return MapToResponse(app);
     }
 
-    public async Task<ApplicationResponse> UpdateApplicationAsync(string userId, string id, UpdateApplicationRequest request)
+    public async Task<ApplicationResponse?> UpdateApplicationAsync(string userId, string id, UpdateApplicationRequest request)
     {
         if (!Guid.TryParse(id, out var guid))
-            return new ApplicationResponse();
+            return null;
 
         var app = await dbContext.Applications
             .Include(a => a.Events)
@@ -272,7 +328,7 @@ public class ApplicationService(
         if (app == null)
         {
             logger.ApplicationNotFound(guid, userId);
-            return new ApplicationResponse();
+            return null;
         }
 
         var originalStatus = app.Status;
@@ -320,10 +376,10 @@ public class ApplicationService(
         return MapToResponse(app);
     }
 
-    public async Task<ApplicationResponse> UpdateApplicationStatusAsync(string userId, string id, ApplicationStatus status)
+    public async Task<ApplicationResponse?> UpdateApplicationStatusAsync(string userId, string id, ApplicationStatus status)
     {
         if (!Guid.TryParse(id, out var guid))
-            return new ApplicationResponse();
+            return null;
 
         var app = await dbContext.Applications
             .Include(a => a.Events)
@@ -332,7 +388,7 @@ public class ApplicationService(
         if (app == null)
         {
             logger.ApplicationNotFound(guid, userId);
-            return new ApplicationResponse();
+            return null;
         }
 
         if (app.Status != status)
@@ -370,12 +426,6 @@ public class ApplicationService(
         _                              => UtcNow.AddDays(7)
     };
 
-    /// <summary>
-    /// Deletes an application by its ID.
-    /// </summary>
-    /// <param name="userId">The ID of the user who owns the application.</param>
-    /// <param name="id">The ID of the application to delete.</param>
-    /// <returns>True if the application was deleted successfully, false otherwise.</returns>
     public async Task<bool> DeleteApplicationAsync(string userId, string id)
     {
         if (!Guid.TryParse(id, out var guid))
@@ -387,7 +437,26 @@ public class ApplicationService(
         if (app == null)
             return false;
 
-        dbContext.Applications.Remove(app);
+        app.IsDeleted = true;
+        app.DeletedAt = UtcNow;
+        await dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RestoreApplicationAsync(string userId, string id)
+    {
+        if (!Guid.TryParse(id, out var guid))
+            return false;
+
+        var app = await dbContext.Applications
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(a => a.Id == guid && a.UserId == userId && a.IsDeleted);
+
+        if (app == null)
+            return false;
+
+        app.IsDeleted = false;
+        app.DeletedAt = null;
         await dbContext.SaveChangesAsync();
         return true;
     }

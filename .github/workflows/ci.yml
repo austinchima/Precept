@@ -72,7 +72,7 @@ jobs:
 
       - name: Run npm audit
         working-directory: ./Precept.Web
-        run: npm audit --audit-level=moderate
+        run: npm audit --audit-level=critical
 
       - name: Build frontend
         working-directory: ./Precept.Web

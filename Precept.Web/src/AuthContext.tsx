@@ -114,13 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateProfile = async (firstName: string, lastName: string) => {
-    try {
-      const updatedUser = await api.put<User>('/api/auth/profile', { firstName, lastName });
-      setUser(updatedUser);
-    } catch (err) {
-      console.error('Failed to update profile:', err);
-      throw err;
-    }
+    const updatedUser = await api.put<User>('/api/auth/profile', { firstName, lastName });
+    setUser(updatedUser);
   };
 
   const logout = async () => {

@@ -30,10 +30,10 @@ public class BehavioralStoryController(IBehavioralStoryService storyService) : C
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<BehavioralStoryResponse>>> GetStories()
+    public async Task<ActionResult<PagedResponse<BehavioralStoryResponse>>> GetStories([FromQuery] PaginationQuery? pagination = null)
     {
         var userId = GetUserId();
-        var response = await storyService.GetStoriesAsync(userId);
+        var response = await storyService.GetStoriesAsync(userId, pagination);
         return Ok(response);
     }
 
@@ -42,11 +42,8 @@ public class BehavioralStoryController(IBehavioralStoryService storyService) : C
     {
         var userId = GetUserId();
         var response = await storyService.GetQuizStoryAsync(userId);
-
-        if (string.IsNullOrEmpty(response.Id))
-        {
+        if (response is null)
             return NotFound();
-        }
 
         return Ok(response);
     }
@@ -56,11 +53,8 @@ public class BehavioralStoryController(IBehavioralStoryService storyService) : C
     {
         var userId = GetUserId();
         var response = await storyService.GetStoryAsync(userId, id);
-        
-        if (string.IsNullOrEmpty(response.Id))
-        {
+        if (response is null)
             return NotFound();
-        }
 
         return Ok(response);
     }
@@ -73,10 +67,8 @@ public class BehavioralStoryController(IBehavioralStoryService storyService) : C
 
         var userId = GetUserId();
         var response = await storyService.UpdateStoryAsync(userId, id, request);
-        if (string.IsNullOrEmpty(response.Id))
-        {
+        if (response is null)
             return NotFound();
-        }
 
         return Ok(response);
     }
@@ -87,9 +79,7 @@ public class BehavioralStoryController(IBehavioralStoryService storyService) : C
         var userId = GetUserId();
         var success = await storyService.DeleteStoryAsync(userId, id);
         if (!success)
-        {
             return NotFound();
-        }
 
         return NoContent();
     }

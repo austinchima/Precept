@@ -14,13 +14,14 @@ namespace Precept.Api.Services
                 return Enumerable.Empty<SearchResultDto>();
             }
 
-            var normalizedQuery = query.ToLower().Trim();
+            var normalizedQuery = query.Trim();
+            var pattern = $"%{normalizedQuery}%";
             var results = new List<SearchResultDto>();
 
-            // 1. Search Applications
+            // 1. Search Applications using ILIKE
             var apps = await context.Applications
-                .Where(a => a.UserId == userId && 
-                       (a.CompanyName.ToLower().Contains(normalizedQuery) || a.RoleTitle.ToLower().Contains(normalizedQuery)))
+                .Where(a => a.UserId == userId &&
+                       (EF.Functions.ILike(a.CompanyName, pattern) || EF.Functions.ILike(a.RoleTitle, pattern)))
                 .Take(5)
                 .ToListAsync();
 
@@ -30,14 +31,13 @@ namespace Precept.Api.Services
                 Type = "Application",
                 Title = a.CompanyName,
                 Subtitle = $"{a.RoleTitle} • {a.Status}",
-                Route = $"/applications",
-                Icon = "fa-regular fa-file-lines"
+                Route = "/applications"
             }));
 
-            // 2. Search Stories
+            // 2. Search Stories using ILIKE
             var stories = await context.Stories
-                .Where(s => s.UserId == userId && 
-                       (s.Title.ToLower().Contains(normalizedQuery) || s.Explanation.ToLower().Contains(normalizedQuery)))
+                .Where(s => s.UserId == userId &&
+                       (EF.Functions.ILike(s.Title, pattern) || EF.Functions.ILike(s.Explanation, pattern)))
                 .Take(5)
                 .ToListAsync();
 
@@ -47,14 +47,13 @@ namespace Precept.Api.Services
                 Type = "Story",
                 Title = s.Title,
                 Subtitle = $"{s.Category} • {s.ConfidenceLevel}",
-                Route = $"/story-bank",
-                Icon = "fa-regular fa-star"
+                Route = "/story-bank"
             }));
 
-            // 3. Search Skills
+            // 3. Search Skills using ILIKE
             var skills = await context.Skills
-                .Where(s => s.UserId == userId && 
-                       s.Name.ToLower().Contains(normalizedQuery))
+                .Where(s => s.UserId == userId &&
+                       EF.Functions.ILike(s.Name, pattern))
                 .Take(5)
                 .ToListAsync();
 
@@ -64,11 +63,9 @@ namespace Precept.Api.Services
                 Type = "Skill",
                 Title = s.Name,
                 Subtitle = $"{s.ProficiencyLevel} • {s.Category ?? "General"}",
-                Route = $"/settings",
-                Icon = "fa-solid fa-code"
+                Route = "/settings"
             }));
 
-            // Sort logic: we could prioritize exact matches here if needed
             return results.OrderBy(r => r.Title).Take(10);
         }
     }

@@ -9,11 +9,11 @@ public interface IJobDescriptionService
 {
     Task<JobDescriptionResponse> CreateJobDescriptionAsync(string userId, CreateJobDescriptionRequest request);
 
-    Task<List<JobDescriptionResponse>> GetJobDescriptionsAsync(string userId);
+    Task<PagedResponse<JobDescriptionResponse>> GetJobDescriptionsAsync(string userId, PaginationQuery? pagination = null);
 
-    Task<JobDescriptionResponse> GetJobDescriptionAsync(string userId, string id);
+    Task<JobDescriptionResponse?> GetJobDescriptionAsync(string userId, string id);
 
-    Task<JobDescriptionResponse> UpdateJobDescriptionAsync(string userId, string id, UpdateJobDescriptionRequest request);
+    Task<JobDescriptionResponse?> UpdateJobDescriptionAsync(string userId, string id, UpdateJobDescriptionRequest request);
 
     Task<bool> DeleteJobDescriptionAsync(string userId, string id);
 }

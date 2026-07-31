@@ -24,10 +24,10 @@ public class TokenService : ITokenService
         _jwtSettings = jwtSettings.Value;
         _timeProvider = timeProvider;
 
-        if (string.IsNullOrWhiteSpace(_jwtSettings.SecretKey) || _jwtSettings.SecretKey.Length < 32)
+        if (string.IsNullOrWhiteSpace(_jwtSettings.SecretKey) || Encoding.UTF8.GetByteCount(_jwtSettings.SecretKey) < 32)
         {
             throw new InvalidOperationException(
-                "JWT SecretKey must be at least 32 characters (256 bits). " +
+                "JWT SecretKey must be at least 32 bytes (256 bits). " +
                 "Set it via the JWT_SECRET_KEY environment variable or in appsettings.");
         }
 

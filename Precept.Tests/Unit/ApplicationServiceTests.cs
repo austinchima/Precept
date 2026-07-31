@@ -252,7 +252,7 @@ public class ApplicationServiceTests : IAsyncLifetime
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetApplication_ReturnsEmpty_ForAnotherUsersApplication()
+    public async Task GetApplication_ReturnsNull_ForAnotherUsersApplication()
     {
         // Seed as user-a
         var created = await _svc.CreateApplicationAsync("user-a", MakeRequest());
@@ -270,15 +270,15 @@ public class ApplicationServiceTests : IAsyncLifetime
 
         var result = await svcAsB.GetApplicationAsync("user-b", created.Id);
 
-        result.Id.Should().BeEmpty("user-b's context cannot see user-a's application");
+        result.Should().BeNull("user-b's context cannot see user-a's application");
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  Delete
+    //  Delete (Soft Delete)
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task DeleteApplication_ReturnsTrue_AndEntityIsGone()
+    public async Task DeleteApplication_ReturnsTrue_AndEntityIsSoftDeleted()
     {
         var created = await _svc.CreateApplicationAsync("user-a", MakeRequest());
 
@@ -286,6 +286,10 @@ public class ApplicationServiceTests : IAsyncLifetime
 
         success.Should().BeTrue();
         (await _db.Applications.ToListAsync()).Should().BeEmpty();
+
+        var softDeleted = await _db.Applications.IgnoreQueryFilters().FirstOrDefaultAsync(a => a.Id == Guid.Parse(created.Id));
+        softDeleted.Should().NotBeNull();
+        softDeleted!.IsDeleted.Should().BeTrue();
     }
 
     [Fact]

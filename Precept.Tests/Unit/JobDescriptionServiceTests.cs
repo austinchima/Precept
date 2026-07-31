@@ -154,7 +154,7 @@ public class JobDescriptionServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task UpdateJobDescriptionAsync_NotFound_ReturnsEmptyResponse()
+    public async Task UpdateJobDescriptionAsync_NotFound_ReturnsNull()
     {
         var request = new UpdateJobDescriptionRequest
         {
@@ -169,6 +169,6 @@ public class JobDescriptionServiceTests : IAsyncLifetime
 
         var response = await _svc.UpdateJobDescriptionAsync("user-jd", Guid.NewGuid().ToString(), request);
 
-        response.Id.Should().BeNullOrWhiteSpace();
+        response.Should().BeNull();
     }
 }

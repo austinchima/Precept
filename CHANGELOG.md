@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-31
+
+_R1 Finalization — Platform maturity and operational hardening._
+
+### Added
+- **Global Search**: Cross-entity search (Stories, Skills, Applications, Job Descriptions) powered by PostgreSQL Full-Text Search.
+- **Active Session Management**: View all active devices/sessions from the Settings page and remotely revoke access to individual sessions.
+- **Soft-Delete & Trash Recovery**: Deleted items (Stories, Skills, Applications) are now soft-deleted. Added a 30-day "Trash" tab in Settings to view or recover items.
+- **Pagination (`PagedResponse<T>`)**: Added consistent cursor/offset pagination to all list endpoints in the API (Dashboard, Stories, JDs, Skills) to optimize load times and memory usage for large accounts.
+- **Public Routes Guarding**: Migrated public routes like `/login` and `/capture/index.html` to `PublicOnlyRoute`, which intercepts logged-in users and redirects them to the dashboard automatically.
+
+### Changed
+- **JWT / Auth Modernization**: Updated refresh token hashing to use standard `Convert.ToBase64String` rather than hex, syncing the frontend/backend payload expectations.
+- **Environment Bootstrapping**: Added `RunMigrationsOnStartup` environment variable mapping and updated `AllowedHosts` to gracefully support Docker Compose zero-config boots.
+
+### Fixed
+- **Testing Stability**: Addressed PostgreSQL connection pool exhaustion (Error 53300) in xUnit by disabling test parallelization and pooling. Added transient `AspNetUsers` Identity seeders to `InitializeAsync` for integration tests to satisfy strict foreign-key constraints on insert.
+
 ## [1.0.0] - 2026-07-08
 
 _R1 release — full-stack career command center._

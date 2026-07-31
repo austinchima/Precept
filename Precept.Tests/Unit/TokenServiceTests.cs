@@ -159,6 +159,6 @@ public class TokenServiceTests
     public void Constructor_Throws_WhenSecretKeyIsUnder32Chars()
     {
         var act = () => CreateService(secret: "too-short");
-        act.Should().Throw<InvalidOperationException>().WithMessage("*32 characters*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*32 bytes*");
     }
 }

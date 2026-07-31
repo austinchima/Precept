@@ -45,31 +45,32 @@ public class SkillService(PreceptDbContext dbContext, ILogger<SkillService> logg
         return MapToResponse(skill);
     }
 
-    public async Task<List<SkillResponse>> GetSkillsAsync(string userId)
+    public async Task<PagedResponse<SkillResponse>> GetSkillsAsync(string userId, PaginationQuery? pagination = null)
     {
+        pagination ??= new PaginationQuery();
         logger.SkillsRetrieved(userId);
 
-        return await dbContext.Skills
-            .Where(s => s.UserId == userId)
+        var query = dbContext.Skills
+            .Where(s => s.UserId == userId);
+
+        var totalCount = await query.CountAsync();
+        var skills = await query
             .OrderBy(s => s.Name)
-            .Select(s => new SkillResponse
-            {
-                Id = s.Id.ToString(),
-                UserId = s.UserId,
-                Name = s.Name,
-                Category = s.Category,
-                ProficiencyLevel = s.ProficiencyLevel,
-                Notes = s.Notes,
-                CreatedAt = s.CreatedAt,
-                UpdatedAt = s.UpdatedAt
-            })
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
             .ToListAsync();
+
+        return new PagedResponse<SkillResponse>(
+            skills.Select(MapToResponse).ToList(),
+            totalCount,
+            pagination.Page,
+            pagination.PageSize);
     }
 
-    public async Task<SkillResponse> GetSkillAsync(string userId, string id)
+    public async Task<SkillResponse?> GetSkillAsync(string userId, string id)
     {
         if (!Guid.TryParse(id, out var guid))
-            return new SkillResponse();
+            return null;
 
         var skill = await dbContext.Skills
             .FirstOrDefaultAsync(s => s.Id == guid && s.UserId == userId);
@@ -77,16 +78,16 @@ public class SkillService(PreceptDbContext dbContext, ILogger<SkillService> logg
         if (skill == null)
         {
             logger.LogWarning("Skill (ID: {skillId}) not found for user (ID: {userId})", guid, userId);
-            return new SkillResponse();
+            return null;
         }
 
         return MapToResponse(skill);
     }
 
-    public async Task<SkillResponse> UpdateSkillAsync(string userId, string id, UpdateSkillRequest request)
+    public async Task<SkillResponse?> UpdateSkillAsync(string userId, string id, UpdateSkillRequest request)
     {
         if (!Guid.TryParse(id, out var guid))
-            return new SkillResponse();
+            return null;
 
         var skill = await dbContext.Skills
             .FirstOrDefaultAsync(s => s.Id == guid && s.UserId == userId);
@@ -94,7 +95,7 @@ public class SkillService(PreceptDbContext dbContext, ILogger<SkillService> logg
         if (skill == null)
         {
             logger.SkillNotFound(guid, userId);
-            return new SkillResponse();
+            return null;
         }
 
         skill.Name = request.Name;
