@@ -102,7 +102,7 @@ export interface UserContextType {
   isLoading: boolean;
   user: User | null;
   login: (email: string, passcode: string, rememberMe?: boolean) => Promise<void>;
-  register: (firstName: string, lastName: string, email: string, passcode: string) => Promise<void>;
+  register: (firstName: string, lastName: string, email: string, passcode: string, agreedToTerms: boolean) => Promise<void>;
   updateProfile: (firstName: string, lastName: string, emailDigestEnabled?: boolean, digestIncludeFollowUps?: boolean, digestIncludeReviews?: boolean, digestHourUtc?: number) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;

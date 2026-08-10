@@ -305,7 +305,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <div className="animate-element animate-delay-600 flex items-center">
                 <label className="flex items-center gap-2 text-[12.5px] font-mono cursor-pointer" style={{ color: C.inkDim }}>
                   <input type="checkbox" name="acceptTerms" required className="w-4 h-4 cursor-pointer accent-current" style={{ accentColor: C.teal }} />
-                  <span>I agree to the <Link to="/terms" className="underline underline-offset-4" style={{ color: C.teal }}>Terms of Service</Link></span>
+                  <span>I agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4" style={{ color: C.teal }}>Terms of Service</Link></span>
                 </label>
               </div>
             )}

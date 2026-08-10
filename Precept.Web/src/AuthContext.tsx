@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (firstName: string, lastName: string, email: string, passcode: string) => {
+  const register = async (firstName: string, lastName: string, email: string, passcode: string, agreedToTerms: boolean) => {
     try {
       await api.post<{ accessToken: string; userId: string; email: string }>('/api/auth/register', {
         firstName,
@@ -100,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password: passcode,
         confirmPassword: passcode,
+        agreedToTerms,
       }, { skipAuth: true });
 
       setIsAuthenticated(true);

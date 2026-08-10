@@ -38,6 +38,9 @@ public class RegisterRequest
     [Required]
     [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
     public string ConfirmPassword { get; set; } = string.Empty;
+
+    [Required]
+    public bool AgreedToTerms { get; set; }
 }
 
 public class UpdateProfileRequest
