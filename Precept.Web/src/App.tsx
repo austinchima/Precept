@@ -22,6 +22,7 @@ const Readiness = lazy(() => import('./pages/Readiness'));
 const AppTracker = lazy(() => import('./pages/AppTracker'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Capture = lazy(() => import('./pages/Capture'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const NotFound1 = lazy(() => import('./components/ui/8bit-not-found1'));
 
 import PageTransition from './components/ui/PageTransition';
@@ -73,6 +74,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
             <Route path="/login" element={<PublicOnlyRoute><PageTransition><LoginPage /></PageTransition></PublicOnlyRoute>} />
+            <Route path="/terms" element={<PageTransition><TermsOfService /></PageTransition>} />
             
             <Route path="/" element={
               <ProtectedRoute>

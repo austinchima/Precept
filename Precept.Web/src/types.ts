@@ -10,6 +10,15 @@ export interface PagedResponse<T> {
   hasNextPage: boolean;
 }
 
+export interface QuizStoryResponse<T> {
+  story: T | null;
+  dueCount: number;
+  totalStories: number;
+  nextDueAt: string | null;
+}
+
+export type ReviewResult = 'NailedIt' | 'Partial' | 'BlankPanic';
+
 export interface Story {
   id: string;
   title: string;
@@ -21,6 +30,7 @@ export interface Story {
   confidenceLevel: ConfidenceLevel;
   createdAt: string;
   lastReviewedAt: string | null;
+  nextReviewAt: string | null;
   updatedAt: string;
 }
 
@@ -33,7 +43,10 @@ export interface BehavioralStory {
   action: string;
   result: string;
   tags: string;
+  confidenceLevel: ConfidenceLevel;
   createdAt: string;
+  lastReviewedAt: string | null;
+  nextReviewAt: string | null;
   updatedAt: string;
 }
 
@@ -78,6 +91,10 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  emailDigestEnabled?: boolean;
+  digestIncludeFollowUps?: boolean;
+  digestIncludeReviews?: boolean;
+  digestHourUtc?: number;
 }
 
 export interface UserContextType {
@@ -86,7 +103,7 @@ export interface UserContextType {
   user: User | null;
   login: (email: string, passcode: string, rememberMe?: boolean) => Promise<void>;
   register: (firstName: string, lastName: string, email: string, passcode: string) => Promise<void>;
-  updateProfile: (firstName: string, lastName: string) => Promise<void>;
+  updateProfile: (firstName: string, lastName: string, emailDigestEnabled?: boolean, digestIncludeFollowUps?: boolean, digestIncludeReviews?: boolean, digestHourUtc?: number) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
 }

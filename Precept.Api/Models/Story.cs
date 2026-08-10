@@ -33,6 +33,8 @@ public class Story
 
     public ConfidenceLevel ConfidenceLevel { get; set; } = ConfidenceLevel.Okay;
 
+    public DateTime? NextReviewAt { get; set; }
+
     public bool IsDeleted { get; set; } = false;
 
     public DateTime? DeletedAt { get; set; }

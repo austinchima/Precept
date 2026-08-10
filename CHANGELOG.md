@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Spaced Repetition Scheduler**: Integrated a custom scheduling algorithm replacing the simple priority queue, managing optimal review intervals for technical and behavioral stories.
+- **Email Digest Service**: Added a unified daily digest via Resend for surfacing spaced repetition tasks and follow-up reminders.
+- **Random Drill ("Practice anyway")**: Users can now pull random stories from their bank when no stories are currently due.
+- **Terms of Service**: Implemented a public Terms of Service page with acceptance enforced during the registration flow.
+- **GCP Deployment Config**: Added an isolated `docker-compose.gcp.yml` configuration for deploying the backend and database to Google Cloud.
+
+### Fixed
+- **Quiz Story Rating Bug**: Addressed a payload mismatch where the UI sent `result` instead of `rating`, resulting in all story assessments falling back to `NailedIt`. Included a migration (`FixConfidenceLevelBackfill`) to retroactively normalize missing confidence scores.
+
+### Changed
+- **Story Service Logic**: `GetQuizStoryAsync` properly serves due stories based on `NextReviewAt` instead of just an empty priority queue.
+
 ## [1.1.0] - 2026-07-31
 
 _R1 Finalization — Platform maturity and operational hardening._

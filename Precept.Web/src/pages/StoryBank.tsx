@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Story, StoryCategory, ConfidenceLevel } from '../types';
+import { Story, StoryCategory, ConfidenceLevel, PagedResponse } from '../types';
 import { api } from '../api';
 import { STORY_TEMPLATES, type StoryTemplate } from '../data/storyTemplates';
 import { BehavioralStoryTab } from '../components/stories/BehavioralStoryTab';

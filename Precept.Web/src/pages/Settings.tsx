@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Skill, SkillProficiency, SKILL_CATEGORIES } from '../types';
+import { Link } from 'react-router-dom';
+import { Skill, SkillProficiency, SKILL_CATEGORIES, PagedResponse } from '../types';
 import { getSkillIcon } from '../lib/utils';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
@@ -64,6 +65,10 @@ export default function Settings() {
 
   const [profileFirstName, setProfileFirstName] = useState(user?.firstName || '');
   const [profileLastName, setProfileLastName] = useState(user?.lastName || '');
+  const [profileEmailDigest, setProfileEmailDigest] = useState(user?.emailDigestEnabled ?? true);
+  const [profileDigestFollowUps, setProfileDigestFollowUps] = useState(user?.digestIncludeFollowUps ?? true);
+  const [profileDigestReviews, setProfileDigestReviews] = useState(user?.digestIncludeReviews ?? true);
+  const [profileDigestHour, setProfileDigestHour] = useState(user?.digestHourUtc ?? 13);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const [isSystemOnline, setIsSystemOnline] = useState<boolean | null>(null);
@@ -84,7 +89,14 @@ export default function Settings() {
   const [isSubmittingTestimony, setIsSubmittingTestimony] = useState(false);
 
   useEffect(() => {
-    if (user) { setProfileFirstName(user.firstName); setProfileLastName(user.lastName); }
+    if (user) { 
+      setProfileFirstName(user.firstName); 
+      setProfileLastName(user.lastName); 
+      setProfileEmailDigest(user.emailDigestEnabled ?? true);
+      setProfileDigestFollowUps(user.digestIncludeFollowUps ?? true);
+      setProfileDigestReviews(user.digestIncludeReviews ?? true);
+      setProfileDigestHour(user.digestHourUtc ?? 13);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -241,7 +253,7 @@ export default function Settings() {
     e.preventDefault();
     if (!profileFirstName.trim() || !profileLastName.trim()) return;
     setIsUpdatingProfile(true);
-    try { await updateProfile(profileFirstName, profileLastName); toast.success('Profile updated.'); }
+    try { await updateProfile(profileFirstName, profileLastName, profileEmailDigest, profileDigestFollowUps, profileDigestReviews, profileDigestHour); toast.success('Profile updated.'); }
     catch { toast.error('Failed to update profile.'); }
     finally { setIsUpdatingProfile(false); }
   };
@@ -284,8 +296,8 @@ export default function Settings() {
         <div className="lg:col-span-2 space-y-6">
           {/* Profile */}
           <section className="opacity-0 animate-fade-in-up delay-100 p-6" style={cardStyle()}>
-            <SectionHeader icon={<User2 size={16} />} title="Operator details" sub="Update your name." color={C.teal} />
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <SectionHeader icon={<User2 size={16} />} title="Operator details" sub="Update your name and preferences." color={C.teal} />
+            <form onSubmit={handleUpdateProfile} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="First name">
                   <input title="First Name" type="text" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} style={inputStyle} required data-testid="settings-firstname" />
@@ -294,6 +306,74 @@ export default function Settings() {
                   <input title="Last Name" type="text" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} style={inputStyle} required data-testid="settings-lastname" />
                 </Field>
               </div>
+
+              <div className="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
+                  id="emailDigestEnabled" 
+                  checked={profileEmailDigest} 
+                  onChange={(e) => setProfileEmailDigest(e.target.checked)} 
+                  style={{ accentColor: C.teal, width: 16, height: 16 }} 
+                  data-testid="pref-digest-enabled"
+                />
+                <div>
+                  <label htmlFor="emailDigestEnabled" className="font-display text-[14px] font-medium block" style={{ color: C.ink }}>
+                    Daily Digest Email
+                  </label>
+                  <p className="font-body text-[12px] mt-0.5" style={{ color: C.inkDim }}>
+                    Receive a unified daily email for follow-ups and reviews.
+                  </p>
+                </div>
+              </div>
+
+              {profileEmailDigest && (
+                <div className="ml-8 space-y-4 pt-2" style={{ borderLeft: `1px solid ${C.hair}`, paddingLeft: 16 }}>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      id="digestIncludeFollowUps" 
+                      checked={profileDigestFollowUps} 
+                      onChange={(e) => setProfileDigestFollowUps(e.target.checked)} 
+                      style={{ accentColor: C.teal, width: 14, height: 14 }} 
+                      data-testid="pref-digest-followups"
+                    />
+                    <label htmlFor="digestIncludeFollowUps" className="font-body text-[13px]" style={{ color: C.inkDim }}>
+                      Include application follow-ups
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      id="digestIncludeReviews" 
+                      checked={profileDigestReviews} 
+                      onChange={(e) => setProfileDigestReviews(e.target.checked)} 
+                      style={{ accentColor: C.teal, width: 14, height: 14 }} 
+                      data-testid="pref-digest-reviews"
+                    />
+                    <label htmlFor="digestIncludeReviews" className="font-body text-[13px]" style={{ color: C.inkDim }}>
+                      Include spaced-repetition reviews
+                    </label>
+                  </div>
+                  <div className="pt-2">
+                    <Field label="Delivery Hour (UTC)">
+                      <select 
+                        title="Digest Hour UTC" 
+                        value={profileDigestHour} 
+                        onChange={(e) => setProfileDigestHour(Number(e.target.value))} 
+                        style={{ ...inputStyle, width: 'auto', minWidth: 120 }} 
+                        data-testid="pref-digest-hour"
+                      >
+                        {Array.from({ length: 24 }).map((_, i) => (
+                          <option key={i} value={i} style={{ background: C.bg1 }}>
+                            {i.toString().padStart(2, '0')}:00 UTC
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                </div>
+              )}
+
               <button type="submit" disabled={isUpdatingProfile} data-testid="settings-save-profile"
                 className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
                 style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
@@ -534,6 +614,13 @@ export default function Settings() {
               style={{ background: 'transparent', color: C.rose, border: `1px solid ${C.rose}55` }}>
               Delete account
             </button>
+          </section>
+
+          {/* Footer links */}
+          <section className="pt-4 pb-8 flex justify-center">
+            <Link to="/terms" className="font-mono text-[11px] uppercase tracking-widest hover:underline underline-offset-4" style={{ color: C.inkMute }}>
+              Terms of Service
+            </Link>
           </section>
         </div>
       </AnimatedSection>

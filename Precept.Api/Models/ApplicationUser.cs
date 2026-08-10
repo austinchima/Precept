@@ -28,4 +28,10 @@ public class ApplicationUser : IdentityUser
 
     // I can manage my skills inventory
     public ICollection<Skill> Skills { get; set; } = [];
+
+    public bool EmailDigestEnabled { get; set; } = true;
+    public bool DigestIncludeFollowUps { get; set; } = true;
+    public bool DigestIncludeReviews { get; set; } = true;
+    public int DigestHourUtc { get; set; } = 13;
+    public DateTime? LastDigestSentAt { get; set; }
 }

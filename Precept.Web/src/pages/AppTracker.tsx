@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Application, ApplicationStatus } from '../types';
+import { Application, ApplicationStatus, PagedResponse } from '../types';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';

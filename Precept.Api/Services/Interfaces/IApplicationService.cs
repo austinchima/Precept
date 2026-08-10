@@ -20,6 +20,8 @@ public interface IApplicationService
 
     Task<PagedResponse<ApplicationResponse>> GetTrashApplicationsAsync(string userId, PaginationQuery? pagination = null);
 
+    Task<IReadOnlyList<ApplicationResponse>> GetFollowUpsDueAsync(string userId);
+
     Task<ApplicationResponse?> GetApplicationAsync(string userId, string id);
 
     Task<ApplicationResponse?> UpdateApplicationAsync(string userId, string id, UpdateApplicationRequest request);

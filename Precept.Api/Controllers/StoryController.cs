@@ -121,13 +121,32 @@ public class StoryController(IStoryService storyService) : ControllerBase
     }
 
     [HttpGet("quiz")]
-    public async Task<ActionResult<StoryResponse>> GetQuizStory([FromQuery] Category? category = null)
+    public async Task<ActionResult<QuizStoryResponse<StoryResponse>>> GetQuizStory([FromQuery] Category? category = null)
     {
         var userId = GetUserId();
         var response = await storyService.GetQuizStoryAsync(userId, category);
+        return Ok(response);
+    }
+
+    [HttpPost("{id}/review")]
+    public async Task<ActionResult<StoryResponse>> ReviewStory(string id, [FromBody] StoryReviewRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userId = GetUserId();
+        var response = await storyService.ReviewStoryAsync(userId, id, request.Rating!.Value);
         if (response is null)
             return NotFound();
 
+        return Ok(response);
+    }
+
+    [HttpGet("quiz/summary")]
+    public async Task<ActionResult<StoryReviewSummaryResponse>> GetQuizSummary()
+    {
+        var userId = GetUserId();
+        var response = await storyService.GetQuizSummaryAsync(userId);
         return Ok(response);
     }
 }

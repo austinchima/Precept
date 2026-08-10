@@ -1,0 +1,71 @@
+name: Deploy API to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    # Only trigger when the API code changes
+    paths:
+      - 'Precept.Api/**'
+      - '.github/workflows/deploy-api.yml'
+
+env:
+  # Customize these values for your GCP setup
+  REGION: us-central1
+  REPOSITORY: precept-repo # Name of your Artifact Registry repository
+  SERVICE: precept-api     # Name of your Cloud Run service
+  
+  # Secrets you need to add in GitHub repo settings
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    # Required for Workload Identity Federation
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+          
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker Auth
+        run: |-
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Build and Push Docker image
+        run: |-
+          # Format: LOCATION-docker.pkg.dev/PROJECT-ID/REPOSITORY/IMAGE:TAG
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}"
+          
+          docker build \
+            --tag "$IMAGE" \
+            --file ./Precept.Api/Dockerfile \
+            ./Precept.Api
+            
+          docker push "$IMAGE"
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}
+          # You can specify base env vars here, but sensitive ones like the DB string
+          # should ideally be set securely in the GCP Cloud Run Console (using Secret Manager).
+          env_vars: |-
+            ASPNETCORE_ENVIRONMENT=Production

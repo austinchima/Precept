@@ -66,6 +66,14 @@ public class ApplicationController(IApplicationService applicationService) : Con
         return Ok(response);
     }
 
+    [HttpGet("followups-due")]
+    public async Task<ActionResult> GetFollowUpsDue()
+    {
+        var userId = GetUserId();
+        var items = await applicationService.GetFollowUpsDueAsync(userId);
+        return Ok(new { items, count = items.Count });
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<ApplicationResponse>> GetApplication(string id)
     {

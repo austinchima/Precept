@@ -297,6 +297,20 @@ public class ApplicationService(
             pagination.PageSize);
     }
 
+    public async Task<IReadOnlyList<ApplicationResponse>> GetFollowUpsDueAsync(string userId)
+    {
+        var apps = await dbContext.Applications
+            .Include(a => a.Events)
+            .Where(a => a.UserId == userId 
+                     && a.FollowUpDate <= UtcNow 
+                     && a.Status != ApplicationStatus.Offer 
+                     && a.Status != ApplicationStatus.Rejected)
+            .OrderBy(a => a.FollowUpDate)
+            .ToListAsync();
+
+        return apps.Select(MapToResponse).ToList();
+    }
+
     public async Task<ApplicationResponse?> GetApplicationAsync(string userId, string id)
     {
         if (!Guid.TryParse(id, out var guid))

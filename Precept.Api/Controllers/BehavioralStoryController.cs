@@ -38,13 +38,32 @@ public class BehavioralStoryController(IBehavioralStoryService storyService) : C
     }
 
     [HttpGet("quiz")]
-    public async Task<ActionResult<BehavioralStoryResponse>> GetQuizStory()
+    public async Task<ActionResult<QuizStoryResponse<BehavioralStoryResponse>>> GetQuizStory()
     {
         var userId = GetUserId();
         var response = await storyService.GetQuizStoryAsync(userId);
+        return Ok(response);
+    }
+
+    [HttpPost("{id}/review")]
+    public async Task<ActionResult<BehavioralStoryResponse>> ReviewStory(string id, [FromBody] StoryReviewRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userId = GetUserId();
+        var response = await storyService.ReviewStoryAsync(userId, id, request.Rating!.Value);
         if (response is null)
             return NotFound();
 
+        return Ok(response);
+    }
+
+    [HttpGet("quiz/summary")]
+    public async Task<ActionResult<StoryReviewSummaryResponse>> GetQuizSummary()
+    {
+        var userId = GetUserId();
+        var response = await storyService.GetQuizSummaryAsync(userId);
         return Ok(response);
     }
 

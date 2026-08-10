@@ -64,6 +64,7 @@ public class StoryResponse
     public ConfidenceLevel ConfidenceLevel { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastReviewedAt { get; set; }
+    public DateTime? NextReviewAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
 

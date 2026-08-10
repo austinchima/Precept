@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowUpRight, Mail, Lock, Eye, EyeOff, ArrowLeft, ArrowRight, AlertTriangle, Loader2, Terminal } from 'lucide-react';
 
 /* ─────── DESIGN TOKENS (from Landing.tsx) ─────── */
@@ -291,13 +292,20 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             </div>
 
             {/* Remember me */}
-            {isLogin && (
+            {isLogin ? (
               <div className="animate-element animate-delay-600 flex items-center">
                 <label className="flex items-center gap-2.5 cursor-pointer">
                   <input type="checkbox" name="rememberMe" data-testid="signin-remember" className="w-4 h-4 cursor-pointer accent-current" style={{ accentColor: C.teal }} />
                   <span className="font-mono text-[11.5px] uppercase tracking-[0.14em]" style={{ color: C.inkDim }}>
                     Keep me signed in
                   </span>
+                </label>
+              </div>
+            ) : (
+              <div className="animate-element animate-delay-600 flex items-center">
+                <label className="flex items-center gap-2 text-[12.5px] font-mono cursor-pointer" style={{ color: C.inkDim }}>
+                  <input type="checkbox" name="acceptTerms" required className="w-4 h-4 cursor-pointer accent-current" style={{ accentColor: C.teal }} />
+                  <span>I agree to the <Link to="/terms" className="underline underline-offset-4" style={{ color: C.teal }}>Terms of Service</Link></span>
                 </label>
               </div>
             )}

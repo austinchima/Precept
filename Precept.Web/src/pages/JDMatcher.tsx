@@ -3,7 +3,7 @@ import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import { getSkillIcon } from '../lib/utils';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
-import { JobDescription } from '../types';
+import { JobDescription, PagedResponse } from '../types';
 import { Zap, FileText, Link2, ChartPie, CheckCircle2, XCircle, Plus, Loader2, Trash2, ChevronRight } from 'lucide-react';
 import PageShell from '../components/PageShell';
 

@@ -61,7 +61,8 @@ applications; Precept also makes you interview-ready.
 | **Testimonials (landing page)** | Authenticated users can submit a public testimonial; the landing page reads from `GET /api/testimonial/public`. |
 | **Settings & Recovery** | Manage active sessions (with remote revocation) and recover soft-deleted items (Stories, Applications, Skills) from a 30-day trash view. |
 
-**Not yet implemented (planned for R1 completion):** follow-up email reminders and onboarding example stories/templates for new accounts.
+| **Email Digests** | Daily background service generating unified reminders for follow-ups and story reviews due. |
+| **Onboarding** | Automatic starter-story seeding for new users and an inline 'Getting Started' dashboard checklist. |
 
 All endpoints are user-scoped (`[Authorize]` + `WHERE UserId = current_user` at the query
 layer) and rate-limited. The capture endpoint additionally validates the URL scheme,
@@ -153,7 +154,8 @@ graph TD
 │
 ├── design-system/pages/        Static design references (UI exploration)
 ├── .github/workflows/ci.yml    Build + test + vulnerability scans
-├── docker-compose.yml          db + api + web stack
+├── docker-compose.yml          db + api + web stack (local dev)
+├── docker-compose.gcp.yml      db + api only (for cloud backend deployment)
 ├── auth_reuse_detection_cascade_revocation.md   Auth architecture handbook
 └── CHANGELOG.md                Keep-a-Changelog format, semver
 ```

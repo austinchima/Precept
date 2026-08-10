@@ -11,6 +11,10 @@ namespace Precept.Api.Models
 
         public ApplicationUser? User { get; set; }
 
+        public ConfidenceLevel ConfidenceLevel { get; set; } = ConfidenceLevel.Okay;
+        public DateTime? LastReviewedAt { get; set; }
+        public DateTime? NextReviewAt { get; set; }
+
         [MaxLength(100, ErrorMessage = "Title must be less than 100 characters")]
         [Required]
         public string Title { get; set; } = string.Empty;
