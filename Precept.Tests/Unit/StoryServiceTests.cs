@@ -85,7 +85,7 @@ public class StoryServiceTests : IAsyncLifetime
         await migrateDb.SaveChangesAsync();
 
         _db = MakeDb(DefaultUserId);
-        _svc = new StoryService(_db, NullLogger<StoryService>.Instance, _fakeTime);
+        _svc = new StoryService(_db, NullLogger<StoryService>.Instance, _fakeTime, new Precept.Api.Services.ReviewScheduler());
     }
 
     public async Task DisposeAsync()
@@ -122,7 +122,8 @@ public class StoryServiceTests : IAsyncLifetime
     private async Task<Story> SeedStory(
         string userId = DefaultUserId,
         ConfidenceLevel confidence = ConfidenceLevel.Okay,
-        DateTime? lastReviewedAt = null)
+        DateTime? lastReviewedAt = null,
+        DateTime? nextReviewAt = null)
     {
         await using var seedDb = MakeDb(userId);
 
@@ -137,7 +138,8 @@ public class StoryServiceTests : IAsyncLifetime
             ConfidenceLevel = confidence,
             CreatedAt = _pinnedNow.UtcDateTime,
             UpdatedAt = _pinnedNow.UtcDateTime,
-            LastReviewedAt = lastReviewedAt
+            LastReviewedAt = lastReviewedAt,
+            NextReviewAt = nextReviewAt
         };
         seedDb.Stories.Add(story);
         await seedDb.SaveChangesAsync();
@@ -222,48 +224,59 @@ public class StoryServiceTests : IAsyncLifetime
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetQuizStory_Priority1_Unreviewed_BeatsRecentlyReviewed()
+    public async Task GetQuizStory_Priority1_Unreviewed_BeatsReviewed()
     {
-        await SeedStory(lastReviewedAt: _pinnedNow.UtcDateTime.AddMinutes(-5));
-        var unreviewed = await SeedStory(lastReviewedAt: null);
+        // One reviewed, NextReviewAt in future
+        await SeedStory(nextReviewAt: _pinnedNow.UtcDateTime.AddDays(1));
+        
+        // One unreviewed (NextReviewAt is null)
+        var unreviewed = await SeedStory(nextReviewAt: null);
 
         var result = await _svc.GetQuizStoryAsync(DefaultUserId);
 
-        result.Id.Should().Be(unreviewed.Id.ToString(),
-            "unreviewed stories take priority over reviewed ones");
+        result.Story.Should().NotBeNull();
+        result.Story!.Id.Should().Be(unreviewed.Id.ToString(),
+            "unreviewed stories (null NextReviewAt) take priority over stories in the future");
     }
 
     [Fact]
-    public async Task GetQuizStory_Priority2_Panic_BeatesSolid_WhenAllReviewed()
+    public async Task GetQuizStory_ReturnsDueStory_WhenNextReviewAtIsInPast()
     {
         var past = _pinnedNow.UtcDateTime.AddHours(-1);
-        await SeedStory(confidence: ConfidenceLevel.Solid, lastReviewedAt: past);
-        var panicStory = await SeedStory(confidence: ConfidenceLevel.Panic, lastReviewedAt: past);
+        var dueStory = await SeedStory(nextReviewAt: past);
+        
+        // Not due
+        await SeedStory(nextReviewAt: _pinnedNow.UtcDateTime.AddDays(1));
 
         var result = await _svc.GetQuizStoryAsync(DefaultUserId);
 
-        result.Id.Should().Be(panicStory.Id.ToString(),
-            "Panic/Shaky beats Solid when all stories have been reviewed");
+        result.Story.Should().NotBeNull();
+        result.Story!.Id.Should().Be(dueStory.Id.ToString());
     }
 
     [Fact]
-    public async Task GetQuizStory_Priority3_ReturnsOldestReviewedDate_AsFallback()
+    public async Task GetQuizStory_ReturnsNullStory_WithNextDueAt_WhenNoStoriesDue()
     {
-        await SeedStory(confidence: ConfidenceLevel.Solid,
-            lastReviewedAt: _pinnedNow.UtcDateTime.AddHours(-1));
-        var oldest = await SeedStory(confidence: ConfidenceLevel.Solid,
-            lastReviewedAt: _pinnedNow.UtcDateTime.AddHours(-10));
+        var future = _pinnedNow.UtcDateTime.AddHours(2);
+        await SeedStory(nextReviewAt: future);
+        await SeedStory(nextReviewAt: future.AddHours(1));
 
         var result = await _svc.GetQuizStoryAsync(DefaultUserId);
 
-        result.Id.Should().Be(oldest.Id.ToString(),
-            "fallback returns the story reviewed longest ago");
+        result.Story.Should().BeNull();
+        result.DueCount.Should().Be(0);
+        result.TotalStories.Should().Be(2);
+        result.NextDueAt.Should().Be(future);
     }
 
     [Fact]
     public async Task GetQuizStory_ReturnsNull_WhenNoStoriesExist()
     {
         var result = await _svc.GetQuizStoryAsync(DefaultUserId);
-        result.Should().BeNull();
+        
+        result.Story.Should().BeNull();
+        result.TotalStories.Should().Be(0);
+        result.DueCount.Should().Be(0);
+        result.NextDueAt.Should().BeNull();
     }
 }

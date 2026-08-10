@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { Application, Story, Skill, BehavioralStory, ConfidenceLevel } from '../types';
+import { Application, Story, Skill, BehavioralStory, ConfidenceLevel, PagedResponse } from '../types';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { getSkillIcon, getCompanyIcon } from '../lib/utils';
@@ -21,7 +21,9 @@ import {
   ArrowRight,
   Zap,
   Check,
-  ChevronDown
+  ChevronDown,
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
 import PageShell from '../components/PageShell';
 
@@ -74,6 +76,7 @@ export default function Dashboard() {
   const [stories, setStories] = useState<Story[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [behavioralStories, setBehavioralStories] = useState<BehavioralStory[]>([]);
+  const [followUpsDue, setFollowUpsDue] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Spotlight controls
@@ -81,27 +84,37 @@ export default function Dashboard() {
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
   const [selectedBehavioralIndex, setSelectedBehavioralIndex] = useState(0);
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const [statsData, appsRes, storiesRes, skillsRes, behavioralStoriesRes] = await Promise.all([
-          api.get<DashboardStats>('/api/dashboard'),
-          api.get<PagedResponse<Application>>('/api/application'),
-          api.get<PagedResponse<Story>>('/api/story'),
-          api.get<PagedResponse<Skill>>('/api/skill'),
-          api.get<PagedResponse<BehavioralStory>>('/api/behavioralstory'),
-        ]);
-        setStats(statsData);
-        setApplications(appsRes.items ?? []);
-        setStories(storiesRes.items ?? []);
-        setSkills(skillsRes.items ?? []);
-        setBehavioralStories(behavioralStoriesRes.items ?? []);
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-      } finally {
-        setIsLoading(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const loadDashboardData = async () => {
+    try {
+      const [statsData, appsRes, storiesRes, skillsRes, behavioralStoriesRes, followUpsRes] = await Promise.all([
+        api.get<DashboardStats>('/api/dashboard'),
+        api.get<PagedResponse<Application>>('/api/application'),
+        api.get<PagedResponse<Story>>('/api/story'),
+        api.get<PagedResponse<Skill>>('/api/skill'),
+        api.get<PagedResponse<BehavioralStory>>('/api/behavioralstory'),
+        api.get<{items: Application[], count: number}>('/api/application/followups-due'),
+      ]);
+      setStats(statsData);
+      setApplications(appsRes.items ?? []);
+      setStories(storiesRes.items ?? []);
+      setSkills(skillsRes.items ?? []);
+      setBehavioralStories(behavioralStoriesRes.items ?? []);
+      setFollowUpsDue(followUpsRes.items ?? []);
+
+      // Trigger onboarding checklist for new users
+      if (statsData.applicationStats.totalApplications === 0 && statsData.storyStats.totalReviewed === 0) {
+        setShowOnboarding(true);
       }
-    };
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadDashboardData();
   }, []);
 
@@ -138,6 +151,17 @@ export default function Dashboard() {
     );
   };
 
+  const getDaysOverdueText = (date: string) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffTime = now.getTime() - d.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 0) return { text: 'Due today', color: C.amber };
+    if (diffDays === 1) return { text: '1 day overdue', color: C.rose };
+    return { text: `${diffDays} days overdue`, color: C.rose };
+  };
+
   // Interactive handlers
   const handleUpdateConfidence = async (newRung: ConfidenceLevel) => {
     if (spotlightType === 'behavioral') return;
@@ -158,10 +182,42 @@ export default function Dashboard() {
     try {
       await api.patch(`/api/application/${appId}/status`, { status: newStatus });
       setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, status: newStatus } : a)));
+      setFollowUpsDue((prev) => prev.filter((a) => a.id !== appId));
       toast.success(`Moved application to ${newStatus}`);
     } catch (err) {
       console.error(err);
       toast.error('Failed to update status.');
+    }
+  };
+
+  const handleMarkContacted = async (appId: string) => {
+    try {
+      // Just update the status to whatever it is to trigger the backend logic that sets DateLastContact and recalculates FollowUpDate, 
+      // or we can call a specific endpoint. Wait, the backend doesn't have a specific `mark-contacted` endpoint. 
+      // We can just fetch the app, update DateLastContact and FollowUpDate (e.g. +7 days), and PUT it.
+      // But it's easier to just do a full PUT with the updated DateLastContact.
+      const appToUpdate = applications.find(a => a.id === appId) || followUpsDue.find(a => a.id === appId);
+      if (!appToUpdate) return;
+      
+      const now = new Date().toISOString();
+      // Add 7 days to follow up by default if marked contacted manually
+      const nextFollowUp = new Date();
+      nextFollowUp.setDate(nextFollowUp.getDate() + 7);
+      
+      const updated = { 
+        ...appToUpdate, 
+        dateLastContact: now,
+        followUpDate: nextFollowUp.toISOString() 
+      };
+      
+      await api.put(`/api/application/${appId}`, updated);
+      
+      setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, ...updated } : a)));
+      setFollowUpsDue((prev) => prev.filter((a) => a.id !== appId));
+      toast.success('Marked as contacted');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to mark as contacted.');
     }
   };
 
@@ -463,7 +519,7 @@ export default function Dashboard() {
               </div>
 
               {/* Due For Review Quick Action List */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 mb-6">
                 <div className="font-mono text-[10px] uppercase tracking-widest px-1 mb-1" style={{ color: C.inkMute }}>Immediate Review Queue</div>
                 {dueForReview.slice(0, 3).map((s) => (
                   <div 
@@ -485,6 +541,51 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
+
+              {/* Follow-Ups Due Widget */}
+              <div className="space-y-1.5" data-testid="followups-due-widget">
+                <div className="font-mono text-[10px] uppercase tracking-widest px-1 mb-1 flex items-center justify-between" style={{ color: C.inkMute }}>
+                  <span>Follow-Ups Due</span>
+                  {followUpsDue.length > 0 && <span className="rounded-full px-1.5 bg-rose-500/20 text-rose-400">{followUpsDue.length}</span>}
+                </div>
+                {followUpsDue.slice(0, 3).map((app) => {
+                  const overdueInfo = getDaysOverdueText(app.followUpDate);
+                  return (
+                    <div 
+                      key={app.id} 
+                      data-testid={`followup-row-${app.id}`}
+                      className="flex flex-col gap-2 rounded-lg p-3 transition-colors hover:border-white/20" 
+                      style={{ background: C.bg1, border: `1px solid ${C.hair}` }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {getCompanyLogo(app.companyName)}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-body text-[12px] font-semibold truncate" style={{ color: C.ink }}>{app.companyName}</div>
+                          <div className="font-mono text-[10px] truncate" style={{ color: C.inkMute }}>{app.roleTitle}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="font-mono text-[9.5px] font-semibold" style={{ color: overdueInfo.color }}>
+                          {overdueInfo.text}
+                        </span>
+                        <button
+                          data-testid={`mark-contacted-btn-${app.id}`}
+                          onClick={(e) => { e.stopPropagation(); handleMarkContacted(app.id); }}
+                          className="px-2 py-1 rounded text-[9px] uppercase tracking-wider font-semibold cursor-pointer transition-colors hover:bg-white/10"
+                          style={{ background: C.bg2, color: C.ink, border: `1px solid ${C.hair}` }}
+                        >
+                          Mark Contacted
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {followUpsDue.length === 0 && (
+                  <div className="py-4 text-center font-mono text-xs rounded-lg" style={{ background: C.bg1, color: C.emerald }}>
+                    ✓ No follow-ups pending. You're on top of things.
+                  </div>
+                )}
+              </div>
             </div>
 
             <button 
@@ -497,6 +598,65 @@ export default function Dashboard() {
           </div>
 
       </div>
+
+      {showOnboarding && (
+        <div className="rounded-xl p-5 md:p-6 opacity-0 animate-fade-in-up delay-300" style={{ background: `linear-gradient(135deg, ${C.tealDim} 0%, transparent 100%)`, border: `1px solid ${C.teal}44` }}>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="font-display text-lg font-semibold flex items-center gap-2" style={{ color: C.ink }}>
+                <Sparkles size={18} style={{ color: C.teal }} /> Getting Started Checklist
+              </h2>
+              <p className="font-body text-[13.5px] mt-1" style={{ color: C.inkDim }}>
+                We've seeded your bank with example stories. Complete these steps to configure your command center.
+              </p>
+            </div>
+            <button onClick={() => setShowOnboarding(false)} className="text-xs font-mono uppercase tracking-widest cursor-pointer hover:text-white" style={{ color: C.inkMute }}>
+              Dismiss
+            </button>
+          </div>
+          
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-lg p-4 flex gap-3" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
+              {stats?.storyStats.totalReviewed && stats.storyStats.totalReviewed > 0 ? (
+                <CheckCircle2 size={18} style={{ color: C.emerald }} className="shrink-0 mt-0.5" />
+              ) : (
+                <Circle size={18} style={{ color: C.inkMute }} className="shrink-0 mt-0.5" />
+              )}
+              <div>
+                <h3 className="font-semibold text-[13.5px]" style={{ color: C.ink }}>Drill a Story</h3>
+                <p className="font-body text-[12px] mt-1 mb-3" style={{ color: C.inkDim }}>Run the Spaced Repetition Drill to update your confidence on the seeded examples.</p>
+                <button onClick={() => navigate('/story-bank/quiz')} className="font-mono text-[10.5px] uppercase tracking-wider text-teal-400 hover:text-teal-300 transition-colors">Start Drill →</button>
+              </div>
+            </div>
+
+            <div className="rounded-lg p-4 flex gap-3" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
+              {stats?.applicationStats.totalApplications && stats.applicationStats.totalApplications > 0 ? (
+                <CheckCircle2 size={18} style={{ color: C.emerald }} className="shrink-0 mt-0.5" />
+              ) : (
+                <Circle size={18} style={{ color: C.inkMute }} className="shrink-0 mt-0.5" />
+              )}
+              <div>
+                <h3 className="font-semibold text-[13.5px]" style={{ color: C.ink }}>Log an Application</h3>
+                <p className="font-body text-[12px] mt-1 mb-3" style={{ color: C.inkDim }}>Track your first job application to initialize the Kanban pipeline view.</p>
+                <button onClick={() => navigate('/applications', { state: { openNewForm: true } })} className="font-mono text-[10.5px] uppercase tracking-wider text-teal-400 hover:text-teal-300 transition-colors">Add Application →</button>
+              </div>
+            </div>
+
+            <div className="rounded-lg p-4 flex gap-3" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
+              {stats?.jobDescriptionStats.totalJobDescriptions && stats.jobDescriptionStats.totalJobDescriptions > 0 ? (
+                <CheckCircle2 size={18} style={{ color: C.emerald }} className="shrink-0 mt-0.5" />
+              ) : (
+                <Circle size={18} style={{ color: C.inkMute }} className="shrink-0 mt-0.5" />
+              )}
+              <div>
+                <h3 className="font-semibold text-[13.5px]" style={{ color: C.ink }}>Run JD Matcher</h3>
+                <p className="font-body text-[12px] mt-1 mb-3" style={{ color: C.inkDim }}>Paste a job description to see how your story inventory stacks up.</p>
+                <button onClick={() => navigate('/jd-matcher')} className="font-mono text-[10.5px] uppercase tracking-wider text-teal-400 hover:text-teal-300 transition-colors">Analyze JD →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

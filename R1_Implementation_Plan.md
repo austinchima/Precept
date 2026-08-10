@@ -112,10 +112,10 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 - Respect user notification preferences (add a simple `EmailNotificationsEnabled` flag).
 
 **Acceptance criteria:**
-- [ ] A daily job finds applications with `FollowUpDate <= today` and active status.
-- [ ] A reminder email is sent to the owning user.
-- [ ] The email contains a link back to the application tracker.
-- [ ] Users can disable reminder emails in settings.
+- [x] A daily job finds applications with `FollowUpDate <= today` and active status.
+- [x] A reminder email is sent to the owning user.
+- [x] The email contains a link back to the application tracker.
+- [x] Users can disable reminder emails in settings.
 
 ---
 
@@ -275,10 +275,24 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 - **Task 4 — One-click job capture**
   - `POST /api/application/capture` endpoint, `JobPostingContentExtractor`, URL validation, private/loopback rejection, and a bookmarklet at `/capture/index.html` are all implemented.
 
+- **Task 5 (Part 1) — Follow-Ups Due Dashboard widget**
+  - Added `GetFollowUpsDueAsync` to `ApplicationService` and `GET /api/application/followups-due` to `ApplicationController`.
+  - Added a "Follow-Ups Due" section to `Dashboard.tsx` with a `Mark Contacted` button.
+  - Added `GetFollowUpsDue_ReturnsOnlyOverdueNonTerminalApplications` integration test.
+
+### Completed (Recent)
+
+- **Task 5 (Part 2) — Follow-up email reminders**
+  - Added `EmailReminderService.cs` as a hosted service.
+  - Generates a single digest for all follow-ups and due reviews via `DigestQueryService`.
+
+- **Task 6 — Onboarding empty states and templates**
+  - Updated `AuthController` and `StoryService` / `BehavioralStoryService` to auto-seed starter stories for new users.
+  - Added a "Getting Started Checklist" in `Dashboard.tsx` that replaces the previous API-based `OnboardingWizard`.
+  - Verified `StoryBank` and `Landing` pages feature detailed empty states and mockups.
+
 ### Pending / Deferred
 
-- **Task 5 — Follow-up email reminders**
-- **Task 6 — Onboarding empty states and templates**
 - **Task 7 — AI mock interview paywall** (deferred to R2)
 - **Task 8 — Build AI mock interview feature** (deferred to R2)
 - **Task 9 — Launch publicly and measure retention** (deferred to user)

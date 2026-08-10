@@ -19,9 +19,15 @@ public interface IStoryService
 
     Task<StoryResponse?> GetRandomStoryAsync(string userId, Category? category = null);
 
-    Task<StoryResponse?> GetQuizStoryAsync(string userId, Category? category = null);
+    Task<QuizStoryResponse<StoryResponse>> GetQuizStoryAsync(string userId, Category? category = null);
+
+    Task<StoryResponse?> ReviewStoryAsync(string userId, string storyId, ReviewRating rating);
+
+    Task<StoryReviewSummaryResponse> GetQuizSummaryAsync(string userId);
 
     Task<PagedResponse<StoryResponse>> GetStoriesAsync(string userId, Category? category = null, PaginationQuery? pagination = null);
 
     Task<PagedResponse<StoryResponse>> GetTrashStoriesAsync(string userId, PaginationQuery? pagination = null);
+
+    Task SeedExampleStoriesAsync(string userId);
 }

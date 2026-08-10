@@ -44,6 +44,8 @@ public class Application
     public bool IsDeleted { get; set; } = false;
 
     public DateTime? DeletedAt { get; set; }
+
+    public DateTime? ReminderSentAt { get; set; }
 }
 
 public enum ApplicationStatus

@@ -113,8 +113,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile = async (firstName: string, lastName: string) => {
-    const updatedUser = await api.put<User>('/api/auth/profile', { firstName, lastName });
+  const updateProfile = async (firstName: string, lastName: string, emailDigestEnabled?: boolean, digestIncludeFollowUps?: boolean, digestIncludeReviews?: boolean, digestHourUtc?: number) => {
+    const payload: any = { firstName, lastName };
+    if (emailDigestEnabled !== undefined) {
+      payload.emailDigestEnabled = emailDigestEnabled;
+    } else if (user?.emailDigestEnabled !== undefined) {
+      payload.emailDigestEnabled = user.emailDigestEnabled;
+    }
+    
+    if (digestIncludeFollowUps !== undefined) {
+      payload.digestIncludeFollowUps = digestIncludeFollowUps;
+    } else if (user?.digestIncludeFollowUps !== undefined) {
+      payload.digestIncludeFollowUps = user.digestIncludeFollowUps;
+    }
+
+    if (digestIncludeReviews !== undefined) {
+      payload.digestIncludeReviews = digestIncludeReviews;
+    } else if (user?.digestIncludeReviews !== undefined) {
+      payload.digestIncludeReviews = user.digestIncludeReviews;
+    }
+
+    if (digestHourUtc !== undefined) {
+      payload.digestHourUtc = digestHourUtc;
+    } else if (user?.digestHourUtc !== undefined) {
+      payload.digestHourUtc = user.digestHourUtc;
+    }
+
+    const updatedUser = await api.put<User>('/api/auth/profile', payload);
     setUser(updatedUser);
   };
 

@@ -55,13 +55,27 @@ namespace Precept.Api.Data
             builder.Entity<Story>()
                 .HasQueryFilter(s => !s.IsDeleted && s.UserId == _currentUserId);
 
+            builder.Entity<BehavioralStory>()
+                .HasQueryFilter(b => b.UserId == _currentUserId);
+
+            builder.Entity<JobDescription>()
+                .HasQueryFilter(j => j.UserId == _currentUserId);
+
+            builder.Entity<Skill>()
+                .HasQueryFilter(s => s.UserId == _currentUserId);
+
+            builder.Entity<Testimonial>()
+                .HasQueryFilter(t => t.UserId == _currentUserId);
+
             // ─────────────────────────────────────────────────────────
             //  Default SQL values
             // ─────────────────────────────────────────────────────────
-            builder.Entity<Story>()
-                .Property(s => s.CreatedAt).HasDefaultValueSql("NOW()");
-            builder.Entity<Story>()
-                .Property(s => s.UpdatedAt).HasDefaultValueSql("NOW()");
+            builder.Entity<Story>(entity => 
+            {
+                entity.Property(s => s.CreatedAt).HasDefaultValueSql("NOW()");
+                entity.Property(s => s.UpdatedAt).HasDefaultValueSql("NOW()");
+                entity.HasIndex(s => new { s.UserId, s.NextReviewAt });
+            });
             builder.Entity<Application>()
                 .Property(a => a.FollowUpDate).HasDefaultValueSql("NOW() + INTERVAL '7 days'");
             builder.Entity<ApplicationUser>()
@@ -97,6 +111,7 @@ namespace Precept.Api.Data
 
             builder.Entity<BehavioralStory>(entity =>
             {
+                entity.HasIndex(bs => new { bs.UserId, bs.NextReviewAt });
                 // Cascade delete: when a user is deleted, remove all their behavioral stories
                 entity.HasOne(bs => bs.User)
                     .WithMany(u => u.BehavioralStories)

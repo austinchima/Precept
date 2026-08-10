@@ -66,7 +66,7 @@ public class BehavioralStoryServiceTests : IAsyncLifetime
         await seedCmd.ExecuteNonQueryAsync();
 
         _db = MakeDb(UserId);
-        _svc = new BehavioralStoryService(_db);
+        _svc = new BehavioralStoryService(_db, TimeProvider.System, new Precept.Api.Services.ReviewScheduler());
     }
 
     public async Task DisposeAsync()

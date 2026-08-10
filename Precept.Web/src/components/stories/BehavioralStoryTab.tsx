@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BehavioralStory } from '../../types';
+import { BehavioralStory, PagedResponse } from '../../types';
 import { api } from '../../api';
 import { useToast } from '../ui/Toast';
 import { BehavioralStoryCard } from './BehavioralStoryCard';

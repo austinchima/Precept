@@ -20,6 +20,8 @@ public class AuthController(
     ICookieOptionsFactory cookieOptionsFactory,
     IOptions<JwtSettings> jwtSettings,
     IWebHostEnvironment environment,
+    IStoryService storyService,
+    IBehavioralStoryService behavioralStoryService,
     ILogger<AuthController> logger) : ControllerBase
 {
     private readonly JwtSettings _jwtSettings = jwtSettings.Value;
@@ -60,6 +62,10 @@ public class AuthController(
         }
 
         logger.UserRegistered(request.Email);
+
+        // Seed example stories for new users
+        await storyService.SeedExampleStoriesAsync(user.Id);
+        await behavioralStoryService.SeedExampleStoriesAsync(user.Id);
 
         var roles = await userManager.GetRolesAsync(user);
         return await GenerateAuthResponse(user, roles, true);
@@ -216,6 +222,10 @@ public class AuthController(
             user.Email,
             user.FirstName,
             user.LastName,
+            user.EmailDigestEnabled,
+            user.DigestIncludeFollowUps,
+            user.DigestIncludeReviews,
+            user.DigestHourUtc,
             Roles = roles
         });
     }
@@ -422,6 +432,10 @@ public class AuthController(
 
         user.FirstName = request.FirstName.Trim();
         user.LastName = request.LastName.Trim();
+        user.EmailDigestEnabled = request.EmailDigestEnabled;
+        user.DigestIncludeFollowUps = request.DigestIncludeFollowUps;
+        user.DigestIncludeReviews = request.DigestIncludeReviews;
+        user.DigestHourUtc = request.DigestHourUtc;
 
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -434,7 +448,11 @@ public class AuthController(
             user.Id,
             user.Email,
             user.FirstName,
-            user.LastName
+            user.LastName,
+            user.EmailDigestEnabled,
+            user.DigestIncludeFollowUps,
+            user.DigestIncludeReviews,
+            user.DigestHourUtc
         });
     }
 

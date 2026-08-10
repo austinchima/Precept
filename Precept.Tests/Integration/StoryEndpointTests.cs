@@ -129,7 +129,7 @@ public class StoryEndpointTests : IAsyncLifetime
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task UpdateConfidenceLevel_StampsLastReviewedAt()
+    public async Task UpdateConfidenceLevel_StampsLastReviewedAt_AndNextReviewAt()
     {
         var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
         var createResp = await client.PostAsJsonAsync("/api/story", ValidPayload());
@@ -147,6 +147,40 @@ public class StoryEndpointTests : IAsyncLifetime
             .And.BeOnOrAfter(before)
             .And.BeOnOrBefore(after.AddSeconds(1));
         updated.ConfidenceLevel.Should().Be(ConfidenceLevel.CanTeach);
+        
+        // 21 days for CanTeach
+        updated.NextReviewAt.Should().NotBeNull()
+            .And.BeOnOrAfter(before.AddDays(21))
+            .And.BeOnOrBefore(after.AddDays(21).AddSeconds(1));
+    }
+
+    [Fact]
+    public async Task UpdateStory_UpdatesNextReviewAt_WhenConfidenceChanges()
+    {
+        var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
+        var createResp = await client.PostAsJsonAsync("/api/story", ValidPayload());
+        var story = await createResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+
+        var before = DateTime.UtcNow;
+        var payload = new
+        {
+            Title = story!.Title,
+            Explanation = story.Explanation,
+            CodeSnippet = story.CodeSnippet,
+            SourceProject = story.SourceProject,
+            Category = "Auth",
+            ConfidenceLevel = "Okay"
+        };
+        var putResp = await client.PutAsJsonAsync($"/api/story/{story.Id}", payload);
+        var after = DateTime.UtcNow;
+
+        putResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await putResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+        
+        // 4 days for Okay
+        updated!.NextReviewAt.Should().NotBeNull()
+            .And.BeOnOrAfter(before.AddDays(4))
+            .And.BeOnOrBefore(after.AddDays(4).AddSeconds(1));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -167,5 +201,76 @@ public class StoryEndpointTests : IAsyncLifetime
         var story = await response.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
         story!.UserId.Should().Be(auth.UserId,
             "random story must belong to the requesting user");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Review (Rating) binding tests
+    // ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ReviewStory_Returns400_WhenWrongKeyProvided()
+    {
+        var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
+        var createResp = await client.PostAsJsonAsync("/api/story", ValidPayload());
+        var story = await createResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+
+        // Send the old wrong key "result" instead of "rating"
+        var reviewResp = await client.PostAsJsonAsync($"/api/story/{story!.Id}/review", new { result = "Partial" });
+        reviewResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ReviewStory_WithPartial_KeepsLevel()
+    {
+        var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
+        var createResp = await client.PostAsJsonAsync("/api/story", ValidPayload()); // Creates with 'Solid'
+        var story = await createResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+
+        var reviewResp = await client.PostAsJsonAsync($"/api/story/{story!.Id}/review", new { rating = "Partial" });
+        reviewResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var getResp = await client.GetAsync($"/api/story/{story!.Id}");
+        var updatedStory = await getResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+        updatedStory!.ConfidenceLevel.Should().Be(ConfidenceLevel.Solid); // Remains Solid
+    }
+
+    [Fact]
+    public async Task ReviewStory_WithBlankPanic_DemotesToPanic()
+    {
+        var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
+        var createResp = await client.PostAsJsonAsync("/api/story", ValidPayload());
+        var story = await createResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+
+        var reviewResp = await client.PostAsJsonAsync($"/api/story/{story!.Id}/review", new { rating = "BlankPanic" });
+        reviewResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var getResp = await client.GetAsync($"/api/story/{story!.Id}");
+        var updatedStory = await getResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+        updatedStory!.ConfidenceLevel.Should().Be(ConfidenceLevel.Panic);
+    }
+
+    [Fact]
+    public async Task ReviewStory_WithNailedIt_PromotesOneRung()
+    {
+        var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
+        // Start with Shaky
+        var payload = new
+        {
+            Title = "Shaky Story",
+            Explanation = new string('E', 60),
+            CodeSnippet = "var x = 1;",
+            SourceProject = "Precept",
+            Category = "Auth",
+            ConfidenceLevel = "Shaky"
+        };
+        var createResp = await client.PostAsJsonAsync("/api/story", payload);
+        var story = await createResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+
+        var reviewResp = await client.PostAsJsonAsync($"/api/story/{story!.Id}/review", new { rating = "NailedIt" });
+        reviewResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var getResp = await client.GetAsync($"/api/story/{story!.Id}");
+        var updatedStory = await getResp.Content.ReadFromJsonAsync<StoryResponse>(JsonOptions);
+        updatedStory!.ConfidenceLevel.Should().Be(ConfidenceLevel.Okay); // Promoted from Shaky to Okay
     }
 }

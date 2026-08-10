@@ -22,6 +22,7 @@ namespace Precept.Api.Controllers
         public async Task<IActionResult> GetPublicTestimonials()
         {
             var testimonials = await context.Testimonials
+                .IgnoreQueryFilters()
                 .Where(t => t.IsApproved)
                 .OrderByDescending(t => t.DateSubmitted)
                 .Take(10)
@@ -54,13 +55,27 @@ namespace Precept.Api.Controllers
                 Handle = dto.Handle,
                 Text = dto.Text,
                 AvatarSrc = dto.AvatarSrc,
-                IsApproved = true // Auto-approved as requested
+                IsApproved = false // Requires admin approval
             };
 
             context.Testimonials.Add(testimonial);
             await context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetPublicTestimonials), new { id = testimonial.Id }, testimonial);
+        }
+
+        // POST: api/testimonial/{id}/approve
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id}/approve")]
+        public async Task<IActionResult> ApproveTestimonial(string id)
+        {
+            var testimonial = await context.Testimonials.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
+            if (testimonial == null) return NotFound();
+
+            testimonial.IsApproved = true;
+            await context.SaveChangesAsync();
+
+            return NoContent();
         }
     }
 

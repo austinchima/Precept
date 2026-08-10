@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   ArrowRight, ArrowUpRight, Check, Menu, X, Quote, Sparkles,
   Mic, RefreshCw, FileCode2, GitBranch, FileSearch, Layers,
@@ -1047,6 +1047,39 @@ function HowItWorks() {
     },
   ];
 
+  const loopRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (prefersReducedMotion() || !loopRef.current) return;
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ repeat: -1 });
+
+      // Story card moves in
+      tl.fromTo(".loop-story", 
+        { opacity: 0, x: -60, scale: 0.9 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.8, ease: "power2.out" }
+      )
+      // Pause
+      .to({}, { duration: 0.5 })
+      // Story moves to quiz
+      .to(".loop-story", { x: 180, scale: 0.8, opacity: 0, duration: 0.8, ease: "power2.in" })
+      // Quiz pulses
+      .to(".loop-quiz", { scale: 1.15, duration: 0.2, yoyo: true, repeat: 1, ease: "power1.inOut" })
+      // Rating emerges from quiz
+      .fromTo(".loop-rating", 
+        { opacity: 0, x: -30, scale: 0.8 }, 
+        { opacity: 1, x: 0, scale: 1, duration: 0.8, ease: "power2.out" }, 
+        "-=0.1"
+      )
+      // Pause to show rating
+      .to({}, { duration: 1.2 })
+      // Rating returns to bank (moves left and fades)
+      .to(".loop-rating", { x: -250, opacity: 0, scale: 0.9, duration: 1, ease: "power2.inOut" });
+
+    }, loopRef);
+    return () => ctx.revert();
+  }, { scope: loopRef });
+
   return (
     <section
       id="how"
@@ -1103,6 +1136,45 @@ function HowItWorks() {
               )}
             </div>
           ))}
+        </div>
+
+        {/* Animated Story-to-Quiz Loop */}
+        <div 
+          ref={loopRef} 
+          className="relative mt-12 hidden md:flex items-center justify-center h-48 rounded-2xl overflow-hidden" 
+          style={{ background: `linear-gradient(90deg, ${c.bg1} 0%, ${c.bg2} 50%, ${c.bg1} 100%)`, border: `1px solid ${c.hair}` }}
+        >
+          {/* Background Track Line */}
+          <div className="absolute inset-x-12 top-1/2 -z-0 h-px -translate-y-1/2 border-t border-dashed" style={{ borderColor: c.hair2 }} />
+          
+          {/* Quiz Node in Center */}
+          <div className="loop-quiz z-10 grid h-[72px] w-[72px] place-items-center rounded-2xl shadow-2xl relative" style={{ background: `linear-gradient(135deg, ${c.bg1}, ${c.bg2})`, border: `1px solid ${c.hair2}` }}>
+            <div className="absolute inset-0 rounded-2xl opacity-20" style={{ background: `linear-gradient(135deg, ${c.teal}, ${c.violet})` }} />
+            <RefreshCw size={28} className="text-white relative z-10" />
+            <div className="absolute -bottom-7 w-max font-mono text-[10px] uppercase tracking-widest" style={{ color: c.inkMute }}>Quiz Engine</div>
+          </div>
+          
+          {/* Story Node (Left Side) */}
+          <div className="loop-story absolute left-[15%] z-20 flex w-48 items-center gap-3 rounded-xl p-3 shadow-xl" style={{ background: c.bg1, border: `1px solid ${c.hair2}` }}>
+            <div className="grid h-10 w-10 place-items-center rounded-lg" style={{ background: `${c.teal}1c`, color: c.teal }}>
+              <FileCode2 size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-display text-[13px] font-semibold truncate" style={{ color: c.ink }}>JWT Rotation</div>
+              <div className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: c.rose }}>Panic</div>
+            </div>
+          </div>
+          
+          {/* Rating Node (Right Side) */}
+          <div className="loop-rating absolute right-[15%] z-20 flex w-44 items-center gap-3 rounded-xl p-3 shadow-xl" style={{ background: c.bg1, border: `1px solid ${c.hair2}` }}>
+            <div className="grid h-10 w-10 place-items-center rounded-lg" style={{ background: `${c.emerald}1c`, color: c.emerald }}>
+              <Activity size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-display text-[13px] font-semibold truncate" style={{ color: c.ink }}>Confidence ↑</div>
+              <div className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: c.emerald }}>Solid</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1384,6 +1456,9 @@ function Footer() {
                   <a href={h} target="_blank" rel="noopener noreferrer" className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>{l}</a>
                 </li>
               ))}
+              <li>
+                <Link to="/terms" className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>Terms of Service</Link>
+              </li>
             </ul>
           </div>
 

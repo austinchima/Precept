@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { Skill, Story } from '../types';
+import { Skill, Story, PagedResponse } from '../types';
 import { computeSkillAxes, computeStoryAxes, READINESS_TARGET, SkillAxis, formatCategoryName } from '../lib/skills';
 import SkillRadar from '../components/SkillRadar';
 import { CountUp } from '../components/animation/CountUp';

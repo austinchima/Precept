@@ -196,6 +196,9 @@ namespace Precept.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ResumeVersion")
                         .IsRequired()
                         .HasColumnType("text");
@@ -270,6 +273,15 @@ namespace Precept.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<int>("DigestHourUtc")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("DigestIncludeFollowUps")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("DigestIncludeReviews")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -277,9 +289,15 @@ namespace Precept.Api.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("EmailDigestEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastDigestSentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -340,7 +358,16 @@ namespace Precept.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("ConfidenceLevel")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("NextReviewAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Result")
@@ -373,7 +400,7 @@ namespace Precept.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "NextReviewAt");
 
                     b.ToTable("BehavioralStories");
                 });
@@ -556,6 +583,9 @@ namespace Precept.Api.Migrations
                     b.Property<DateTime?>("LastReviewedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("NextReviewAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("SourceProject")
                         .IsRequired()
                         .HasColumnType("text");
@@ -576,7 +606,7 @@ namespace Precept.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "NextReviewAt");
 
                     b.ToTable("Stories");
                 });

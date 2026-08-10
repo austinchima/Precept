@@ -25,7 +25,7 @@ namespace Precept.Api.Models
 
         public string? AvatarSrc { get; set; }
 
-        public bool IsApproved { get; set; } = true; // Auto-approved per user request
+        public bool IsApproved { get; set; } = false; // Requires admin approval
 
         public DateTime DateSubmitted { get; set; } = DateTime.UtcNow;
     }

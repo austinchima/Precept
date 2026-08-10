@@ -193,8 +193,12 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddHostedService<RefreshTokenCleanupService>();
+builder.Services.AddScoped<IDigestQueryService, DigestQueryService>();
+builder.Services.AddHostedService<DailyDigestService>();
+builder.Services.AddSingleton<IReviewScheduler, ReviewScheduler>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<IBehavioralStoryService, BehavioralStoryService>();
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ISkillService, SkillService>();
@@ -210,11 +214,12 @@ builder.Services.AddScoped<ICookieOptionsFactory, CookieOptionsFactory>();
 // ─────────────────────────────────────────────────────────────
 builder.Services.AddRateLimiter(options =>
 {
-    // Auth endpoints: stricter limits
-    options.AddFixedWindowLimiter("auth", opt =>
+    // Auth endpoints: stricter limits (sliding window to prevent boundary bursts)
+    options.AddSlidingWindowLimiter("auth", opt =>
     {
         opt.PermitLimit = 10;
         opt.Window = TimeSpan.FromMinutes(1);
+        opt.SegmentsPerWindow = 6;
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
     });

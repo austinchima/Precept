@@ -74,6 +74,50 @@ public class ApplicationEndpointTests : IAsyncLifetime
         apps.Items[0].Status.Should().Be(ApplicationStatus.Applied);
     }
 
+    [Fact]
+    public async Task GetFollowUpsDue_ReturnsOnlyOverdueNonTerminalApplications()
+    {
+        var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
+
+        // 1. Overdue (should be returned)
+        await client.PostAsJsonAsync("/api/application", new
+        {
+            CompanyName = "Overdue Corp",
+            RoleTitle = "Eng",
+            Status = "Applied",
+            FollowUpDate = DateTime.UtcNow.AddDays(-1)
+        });
+
+        // 2. Future (should NOT be returned)
+        await client.PostAsJsonAsync("/api/application", new
+        {
+            CompanyName = "Future Corp",
+            RoleTitle = "Eng",
+            Status = "Applied",
+            FollowUpDate = DateTime.UtcNow.AddDays(1)
+        });
+
+        // 3. Rejected + Overdue (should NOT be returned because it's terminal)
+        await client.PostAsJsonAsync("/api/application", new
+        {
+            CompanyName = "Rejected Corp",
+            RoleTitle = "Eng",
+            Status = "Rejected",
+            FollowUpDate = DateTime.UtcNow.AddDays(-1)
+        });
+
+        var response = await client.GetAsync("/api/application/followups-due");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        var items = body.GetProperty("items").EnumerateArray().ToList();
+        var count = body.GetProperty("count").GetInt32();
+
+        items.Should().HaveCount(1);
+        count.Should().Be(1);
+        items[0].GetProperty("companyName").GetString().Should().Be("Overdue Corp");
+    }
+
     // ─────────────────────────────────────────────────────────────
     //  Status update — follow-up date within server-clock window
     // ─────────────────────────────────────────────────────────────

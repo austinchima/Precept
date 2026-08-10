@@ -49,6 +49,11 @@ public class UpdateProfileRequest
     [Required]
     [StringLength(50, MinimumLength = 1)]
     public string LastName { get; set; } = string.Empty;
+
+    public bool EmailDigestEnabled { get; set; } = true;
+    public bool DigestIncludeFollowUps { get; set; } = true;
+    public bool DigestIncludeReviews { get; set; } = true;
+    public int DigestHourUtc { get; set; } = 13;
 }
 
 /// <summary>

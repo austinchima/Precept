@@ -1,31 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Story, BehavioralStory, ConfidenceLevel, StoryCategory } from '../types';
+import { Story, BehavioralStory, ConfidenceLevel, StoryCategory, QuizStoryResponse, ReviewResult } from '../types';
 import { formatCategoryName } from '../lib/skills';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import { AnimatedSection } from '../components/animation/AnimatedSection';
 import { C, cardStyle, Eyebrow } from '../components/stories/storyTheme';
-import { Mic, MicOff, ArrowRight, Eye, X, CheckCircle2, Minus, AlertTriangle, Brain, Loader2 } from 'lucide-react';
-
-const getIncrementedConfidence = (current: ConfidenceLevel): ConfidenceLevel => {
-  switch (current) {
-    case 'Panic': return 'Shaky';
-    case 'Shaky': return 'Okay';
-    case 'Okay': return 'Solid';
-    case 'Solid': return 'CanTeach';
-    case 'CanTeach': return 'CanTeach';
-  }
-};
-const getDecrementedConfidence = (current: ConfidenceLevel): ConfidenceLevel => {
-  switch (current) {
-    case 'CanTeach': return 'Solid';
-    case 'Solid': return 'Okay';
-    case 'Okay': return 'Shaky';
-    case 'Shaky': return 'Panic';
-    case 'Panic': return 'Panic';
-  }
-};
+import { Mic, MicOff, ArrowRight, Eye, X, CheckCircle2, Minus, AlertTriangle, Brain, Loader2, Check } from 'lucide-react';
 
 const VALID_CATEGORIES: StoryCategory[] = ['Auth', 'Database', 'Ai', 'ML', 'DevOps', 'Frontend', 'Backend', 'SystemDesign', 'Security', 'Testing', 'Cloud', 'Architecture'];
 type QuizSource = 'technical' | 'behavioral';
@@ -44,7 +25,7 @@ export default function QuizMode() {
   const source: QuizSource = sourceParam === 'behavioral' ? 'behavioral' : 'technical';
 
   const [phase, setPhase] = useState<'prompt' | 'reveal'>('prompt');
-  const [story, setStory] = useState<Story | BehavioralStory | null>(null);
+  const [quizState, setQuizState] = useState<QuizStoryResponse<Story | BehavioralStory> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userAnswer, setUserAnswer] = useState('');
   const toast = useToast();
@@ -58,18 +39,38 @@ export default function QuizMode() {
     setPhase('prompt');
     setUserAnswer('');
     try {
-      let data: Story | BehavioralStory | null = null;
       if (source === 'behavioral') {
-        data = await api.get<BehavioralStory>('/api/behavioralstory/quiz');
+        const data = await api.get<QuizStoryResponse<BehavioralStory>>('/api/behavioralstory/quiz');
+        setQuizState(data);
       } else {
         const url = category ? `/api/story/quiz?category=${encodeURIComponent(category)}` : '/api/story/quiz';
-        data = await api.get<Story>(url);
+        const data = await api.get<QuizStoryResponse<Story>>(url);
+        setQuizState(data);
       }
-      if (data && data.id) setStory(data);
-      else setStory(null);
     } catch (err) {
       console.error('Quiz story fetch failed:', err);
-      setStory(null);
+      setQuizState(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadRandomStory = async () => {
+    setIsLoading(true);
+    setPhase('prompt');
+    setUserAnswer('');
+    try {
+      if (source === 'behavioral') {
+        const data = await api.get<BehavioralStory>('/api/behavioralstory/random');
+        setQuizState({ story: data, dueCount: 0, nextDueAt: null, totalStories: quizState?.totalStories || 1 });
+      } else {
+        const url = category ? `/api/story/random?category=${encodeURIComponent(category)}` : '/api/story/random';
+        const data = await api.get<Story>(url);
+        setQuizState({ story: data, dueCount: 0, nextDueAt: null, totalStories: quizState?.totalStories || 1 });
+      }
+    } catch (err) {
+      console.error('Random story fetch failed:', err);
+      toast.error('Failed to load random story');
     } finally {
       setIsLoading(false);
     }
@@ -101,16 +102,14 @@ export default function QuizMode() {
     else { setIsRecording(true); recognitionRef.current.start(); }
   };
 
-  const handleAssessment = async (result: 'Nailed it' | 'Partial' | 'Blank panic') => {
-    if (!story) return;
+  const handleAssessment = async (result: ReviewResult) => {
+    if (!quizState?.story) return;
     setIsLoading(true);
     try {
-      if (!isBehavioralStory(story)) {
-        let target: ConfidenceLevel = story.confidenceLevel;
-        if (result === 'Nailed it') target = getIncrementedConfidence(story.confidenceLevel);
-        else if (result === 'Partial') target = getDecrementedConfidence(story.confidenceLevel);
-        else if (result === 'Blank panic') target = 'Panic';
-        await api.patch(`/api/story/${story.id}/confidence`, { confidenceLevel: target });
+      if (source === 'behavioral') {
+        await api.post(`/api/behavioralstory/${quizState.story.id}/review`, { rating: result });
+      } else {
+        await api.post(`/api/story/${quizState.story.id}/review`, { rating: result });
       }
       await loadNextStory();
     } catch (err) {
@@ -130,7 +129,7 @@ export default function QuizMode() {
     setSearchParams(params);
   };
 
-  if (isLoading && !story) {
+  if (isLoading && !quizState?.story) {
     return (
       <div className="font-body h-full flex items-center justify-center" style={{ background: C.bg0, color: C.ink }}>
         <div className="flex flex-col items-center gap-3">
@@ -141,18 +140,36 @@ export default function QuizMode() {
     );
   }
 
+  const story = quizState?.story;
+
   if (!story) {
     const isBehavioral = source === 'behavioral';
+    const total = quizState?.totalStories || 0;
+    const isDoneForNow = total > 0;
+    
+    // Formatting relative time for NextDueAt
+    const formatNextDue = (dateStr: string | null | undefined) => {
+      if (!dateStr) return 'later';
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffMs = d.getTime() - now.getTime();
+      const diffHrs = diffMs / (1000 * 60 * 60);
+      if (diffHrs < 1) return 'in less than an hour';
+      if (diffHrs < 24) return `in ${Math.round(diffHrs)} hours`;
+      return `in ${Math.round(diffHrs / 24)} days`;
+    };
     return (
       <div className="font-body h-full flex flex-col items-center justify-center px-6 isolate relative overflow-hidden" style={{ background: C.bg0, color: C.ink }}>
         <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-50 z-0" />
         <div className="relative z-10 max-w-[480px] w-full p-10 text-center opacity-0 animate-fade-in-up" style={cardStyle()}>
-          <div className="mx-auto w-14 h-14 rounded-xl grid place-items-center mb-5" style={{ background: `${C.teal}14`, border: `1px solid ${C.teal}33` }}>
-            <Brain size={24} style={{ color: C.teal }} />
+          <div className="mx-auto w-14 h-14 rounded-xl grid place-items-center mb-5" style={{ background: isDoneForNow ? `${C.emerald}14` : `${C.teal}14`, border: isDoneForNow ? `1px solid ${C.emerald}33` : `1px solid ${C.teal}33` }}>
+            {isDoneForNow ? <Check size={24} style={{ color: C.emerald }} /> : <Brain size={24} style={{ color: C.teal }} />}
           </div>
-          <Eyebrow color={C.teal}>Quiz mode{category && !isBehavioral ? ` · ${formatCategoryName(category)}` : ''}</Eyebrow>
+          <Eyebrow color={isDoneForNow ? C.emerald : C.teal}>Quiz mode{category && !isBehavioral ? ` · ${formatCategoryName(category)}` : ''}</Eyebrow>
           <h2 className="mt-5 font-display text-3xl font-bold leading-[1.05]" style={{ color: C.ink }}>
-            {isBehavioral ? (
+            {isDoneForNow ? (
+              <>You're all <span className="font-editorial" style={{ color: C.emerald, fontWeight: 400 }}>caught up!</span></>
+            ) : isBehavioral ? (
               <>No behavioral <span className="font-editorial" style={{ color: C.amber, fontWeight: 400 }}>STAR stories</span> yet.</>
             ) : category ? (
               <>No <span className="font-editorial" style={{ color: C.amber, fontWeight: 400 }}>{formatCategoryName(category)}</span> stories yet.</>
@@ -161,7 +178,9 @@ export default function QuizMode() {
             )}
           </h2>
           <p className="mt-4 font-body text-[14.5px] leading-relaxed" style={{ color: C.inkDim }}>
-            {isBehavioral
+            {isDoneForNow
+              ? `You've reviewed all ${total} ${isBehavioral ? 'behavioral ' : ''}stories. Your next drill is due ${formatNextDue(quizState?.nextDueAt)}.`
+              : isBehavioral
               ? 'Bank some STAR narratives first — Precept will drill them once they exist.'
               : category
                 ? `Bank some ${formatCategoryName(category)} narratives first, or clear the filter to drill all categories.`
@@ -173,13 +192,23 @@ export default function QuizMode() {
               style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
               Go to story bank <ArrowRight size={12} />
             </button>
-            <button onClick={() => navigate('/story-bank')}
-              className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
-              style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = `${C.teal}22`; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = `${C.teal}14`; }}>
-              Start from a template <ArrowRight size={12} />
-            </button>
+            {isDoneForNow ? (
+              <button onClick={loadRandomStory}
+                className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
+                style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = `${C.teal}22`; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = `${C.teal}14`; }}>
+                Practice anyway <ArrowRight size={12} />
+              </button>
+            ) : (
+              <button onClick={() => navigate('/story-bank')}
+                className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
+                style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = `${C.teal}22`; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = `${C.teal}14`; }}>
+                Start from a template <ArrowRight size={12} />
+              </button>
+            )}
             {!isBehavioral && category && (
               <button onClick={() => setSearchParams({})}
                 className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
@@ -208,17 +237,22 @@ export default function QuizMode() {
 
       {/* Top bar */}
       <header className="relative z-10 flex items-center justify-between px-6 md:px-12 h-20 backdrop-blur-md sticky top-0" style={{ background: 'rgba(2,5,10,0.7)', borderBottom: `1px solid ${C.hair}` }}>
-        <div className="flex items-center gap-3">
-          <Eyebrow color={C.teal}>Drill · {behavioral ? 'Behavioral' : formatCategoryName(story.category)}</Eyebrow>
-          {source === 'technical' && category && (
-            <button
-              onClick={() => setSearchParams({})}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
-              style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
-              title="Clear category filter">
-              {formatCategoryName(category)} <X size={10} />
-            </button>
-          )}
+        <div className="flex flex-col">
+          <div className="flex items-center gap-3">
+            <Eyebrow color={C.teal}>Drill · {behavioral ? 'Behavioral' : formatCategoryName(story.category)}</Eyebrow>
+            {source === 'technical' && category && (
+              <button
+                onClick={() => setSearchParams({})}
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
+                style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
+                title="Clear category filter">
+                {formatCategoryName(category)} <X size={10} />
+              </button>
+            )}
+          </div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] mt-1" style={{ color: C.inkDim }}>
+            {quizState?.dueCount || 0} remaining
+          </div>
         </div>
         <button onClick={() => { if (isRecording && recognitionRef.current) recognitionRef.current.stop(); navigate('/story-bank'); }}
           data-testid="quiz-exit"
@@ -361,9 +395,9 @@ export default function QuizMode() {
                   <div className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-center" style={{ color: C.inkMute }}>How did you do?</div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {[
-                      { label: 'Nailed it', icon: <CheckCircle2 size={14} />, color: C.emerald, action: 'Nailed it' as const, testid: 'quiz-nailed' },
-                      { label: 'Partial', icon: <Minus size={14} />, color: C.amber, action: 'Partial' as const, testid: 'quiz-partial' },
-                      { label: 'Blank panic', icon: <AlertTriangle size={14} />, color: C.rose, action: 'Blank panic' as const, testid: 'quiz-panic' },
+                      { label: 'Nailed it', icon: <CheckCircle2 size={14} />, color: C.emerald, action: 'NailedIt' as ReviewResult, testid: 'quiz-nailed' },
+                      { label: 'Partial', icon: <Minus size={14} />, color: C.amber, action: 'Partial' as ReviewResult, testid: 'quiz-partial' },
+                      { label: 'Blank panic', icon: <AlertTriangle size={14} />, color: C.rose, action: 'BlankPanic' as ReviewResult, testid: 'quiz-panic' },
                     ].map((opt) => (
                       <button key={opt.label} onClick={() => handleAssessment(opt.action)} data-testid={opt.testid}
                         className="rounded-full py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] flex items-center justify-center gap-2 transition-all cursor-pointer"

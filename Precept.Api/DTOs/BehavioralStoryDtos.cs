@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Precept.Api.Models;
 
 namespace Precept.Api.DTOs
 {
@@ -13,6 +14,9 @@ namespace Precept.Api.DTOs
         public string Tags { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public ConfidenceLevel ConfidenceLevel { get; set; }
+        public DateTime? LastReviewedAt { get; set; }
+        public DateTime? NextReviewAt { get; set; }
     }
 
     public class CreateBehavioralStoryRequest
