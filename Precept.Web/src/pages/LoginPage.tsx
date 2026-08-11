@@ -55,7 +55,13 @@ export default function LoginPage() {
       if (isLogin) {
         await login(email, data.password as string, data.rememberMe === 'on');
       } else {
-        await register(data.firstName as string, data.lastName as string, email, data.password as string);
+        const acceptTerms = data.acceptTerms === 'on';
+        if (!acceptTerms) {
+          setError('You must agree to the Terms of Service to register.');
+          setIsLoading(false);
+          return;
+        }
+        await register(data.firstName as string, data.lastName as string, email, data.password as string, acceptTerms);
       }
       navigate('/dashboard');
     } catch (err: any) {

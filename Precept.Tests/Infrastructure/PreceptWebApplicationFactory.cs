@@ -106,7 +106,8 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
             LastName = "User",
             Email = email,
             Password = password,
-            ConfirmPassword = password
+            ConfirmPassword = password,
+            AgreedToTerms = true
         });
 
         registerResponse.EnsureSuccessStatusCode();

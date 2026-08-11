@@ -39,6 +39,9 @@ public class AuthController(
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        if (!request.AgreedToTerms)
+            return BadRequest(new { message = "You must agree to the Terms of Service to register." });
+
         request.Email = NormalizeEmail(request.Email);
 
         var existingUser = await userManager.FindByEmailAsync(request.Email);
