@@ -47,7 +47,8 @@ public class AuthEndpointTests : IAsyncLifetime
         var response = await client.PostAsJsonAsync("/api/auth/register", new
         {
             FirstName = "Test", LastName = "User",
-            Email = email, Password = password, ConfirmPassword = password
+            Email = email, Password = password, ConfirmPassword = password,
+            AgreedToTerms = true
         });
         return (response, client);
     }
