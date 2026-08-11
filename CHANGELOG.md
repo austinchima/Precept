@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2026-07-31
 
-_R1 Finalization — Platform maturity and operational hardening._
+_R1 Finalization: Platform maturity and operational hardening._
 
 ### Added
 - **Global Search**: Cross-entity search (Stories, Skills, Applications, Job Descriptions) powered by PostgreSQL Full-Text Search.
@@ -40,7 +40,7 @@ _R1 Finalization — Platform maturity and operational hardening._
 
 ## [1.0.0] - 2026-07-08
 
-_R1 release — full-stack career command center._
+_R1 release: full-stack career command center._
 
 ### Added
 - **One-click job capture** via a zero-install bookmarklet. `JobPostingContentExtractor` fetches the posting URL, extracts company/role/location/salary/remote/description, and seeds a draft `Application`.
@@ -65,7 +65,7 @@ _R1 release — full-stack career command center._
 
 ## [0.2.0] - 2026-06-28
 
-_R1 candidate — Technical Readiness (Skills Matrix Visualizer)._
+_R1 candidate: Technical Readiness (Skills Matrix Visualizer)._
 
 ### Added
 - **Technical Readiness page** (`/readiness`): a full-page Skills Matrix radar of current proficiency per skill category, plotted against a labeled interview-ready threshold (75%). All values derive from persisted Skill entities; sparse data (<3 categories) shows an honest empty state instead of placeholder shapes.
@@ -168,32 +168,32 @@ _R1 release candidate. Green CI and production-secret hardening on top of the 0.
 ### Security (OWASP Top 10 Full Compliance Audit)
 Full OWASP Top 10 security review completed and all findings remediated. See `OWASP-SECURITY-AUDIT.md` for details.
 
-- **A01 — Broken Access Control**: Already compliant. `[Authorize]` on all controllers, user-scoped queries, and global `HasQueryFilter` on `PreceptDbContext`.
-- **A02 — Cryptographic Failures**: Already compliant. PBKDF2 password hashing, HMAC-SHA256 JWT, SHA-256 hashed refresh tokens.
-- **A03 — Injection**: Already compliant. All EF Core LINQ queries (no raw SQL), React auto-escapes frontend output.
-- **A04 — Insecure Design**: Fixed.
+- **A01: Broken Access Control**: Already compliant. `[Authorize]` on all controllers, user-scoped queries, and global `HasQueryFilter` on `PreceptDbContext`.
+- **A02: Cryptographic Failures**: Already compliant. PBKDF2 password hashing, HMAC-SHA256 JWT, SHA-256 hashed refresh tokens.
+- **A03: Injection**: Already compliant. All EF Core LINQ queries (no raw SQL), React auto-escapes frontend output.
+- **A04: Insecure Design**: Fixed.
   - Added rate limiting (`AddRateLimiter` with `auth` 10 req/min and `general` 100 req/min policies).
   - `[EnableRateLimiting]` applied to all controllers (`Auth`, `Application`, `Story`, `Dashboard`, `Search`, `Skill`, `JobDescription`, `BehavioralStory`, `Testimonial`).
   - Added `ForgotPassword` / `ResetPassword` endpoints (`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`).
   - Added `[StringLength]` validation on `TestimonialDto` (Name 100, Handle 50, Text 2000, AvatarSrc 500).
-- **A05 — Security Misconfiguration**: Fixed.
+- **A05: Security Misconfiguration**: Fixed.
   - Error middleware: `exception.Message` only returned in **Development**; production gets generic `"An unexpected error occurred."`.
   - CORS split: `AllowViteDev` policy for Development only; `Production` policy with restricted origins/headers/methods for non-dev.
   - Added security headers middleware (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `CSP`, `X-XSS-Protection`, `Permissions-Policy`).
   - `AllowedHosts`: `localhost;127.0.0.1` in dev; production config uses `your-production-domain.com`.
   - Gated migrations: `Database.Migrate()` only runs when `IsDevelopment()` OR `RunMigrationsOnStartup: true`.
   - Docker Compose: credentials now use `${VAR:-default}` env syntax; exposed port 5432 marked DEV ONLY.
-- **A06 — Vulnerable Components**: Fixed.
+- **A06: Vulnerable Components**: Fixed.
   - Added `dotnet list package --vulnerable --include-transitive` to CI.
   - Added `npm-audit` CI job (`npm audit --audit-level=moderate`) for `Precept.Web`.
-- **A07 — Auth Failures**: Fixed.
+- **A07: Auth Failures**: Fixed.
   - Added `POST /api/auth/verify-email` endpoint with token generation (logged in dev for testing).
   - Added `POST /api/auth/forgot-password` and `POST /api/auth/reset-password` endpoints.
   - All auth endpoints (`register`, `login`, `refresh`, `revoke`, `forgot-password`, `reset-password`, `verify-email`, `me`, `profile`) now have `[EnableRateLimiting("auth")]`.
   - Added `lockout` policy (5 failed attempts, 15-minute lockout) and `RequireUniqueEmail` in `AddIdentity`.
-- **A08 — Data Integrity**: Already compliant. No unsafe deserialization, no CDN scripts requiring SRI (Vite-bundled), no artifact signing (low-priority defense-in-depth gap).
-- **A09 — Logging & Monitoring**: Already compliant. Serilog structured logging with auth events (login, register, token rotation, reuse detection). No centralized audit logging or SIEM alerting (low-priority defense-in-depth gaps).
-- **A10 — SSRF**: Already compliant. No server-side URL fetching, webhooks, or proxies.
+- **A08: Data Integrity**: Already compliant. No unsafe deserialization, no CDN scripts requiring SRI (Vite-bundled), no artifact signing (low-priority defense-in-depth gap).
+- **A09: Logging & Monitoring**: Already compliant. Serilog structured logging with auth events (login, register, token rotation, reuse detection). No centralized audit logging or SIEM alerting (low-priority defense-in-depth gaps).
+- **A10: SSRF**: Already compliant. No server-side URL fetching, webhooks, or proxies.
 
 ### Changed
 - **Authentication**: Registration now sets `EmailConfirmed = false` and generates a confirmation token (dev-friendly: token logged to console).
@@ -214,7 +214,7 @@ Full OWASP Top 10 security review completed and all findings remediated. See `OW
 
 ### Changed
 - **Frontend HTTP Client**: Implemented a benign retry interceptor in `api.ts` to silently recover from concurrent multi-tab token rotations (`"Token just refreshed"` 401 response) by polling `localStorage`.
-- **Codebase Documentation**: Added comprehensive architectural commentary across `RefreshToken` and `AuthController` detailing Optimistic Concurrency (`[ConcurrencyCheck]`) and Lineage tracking.
+- **Codebase Documentation**: Added architectural commentary across `RefreshToken` and `AuthController` detailing Optimistic Concurrency (`[ConcurrencyCheck]`) and Lineage tracking.
 
 ### Added
 - **Architecture Handbook**: Published `auth_reuse_detection_cascade_revocation.md` detailing the threat model, race condition defenses (Three Pillars), and test verification invariants.
@@ -240,4 +240,4 @@ Full OWASP Top 10 security review completed and all findings remediated. See `OW
 - **Testing**: Updated the test suite to ensure coverage for the new auth concurrency guards.
 
 ### Chore
-- Updated `.gitignore` to comprehensively exclude the `.vscode` directory rather than just its contents.
+- Updated `.gitignore` to entirely exclude the `.vscode` directory rather than just its contents.
