@@ -74,9 +74,20 @@ function Navbar() {
     { label: "Roadmap", href: "#r2" },
   ];
 
+  const { demoLogin } = useAuth();
+
   const goLogin = (mode?: "signup") => {
     navigate("/login", mode === "signup" ? { state: { mode: "signup" } } : undefined);
     setMobileOpen(false);
+  };
+
+  const handleLaunchDemo = async () => {
+    try {
+      await demoLogin();
+      navigate('/dashboard');
+    } catch {
+      navigate('/login');
+    }
   };
 
   return (
@@ -128,7 +139,20 @@ function Navbar() {
           </div>
 
           {/* Right CTA */}
-          <div className="hidden items-center gap-6 pl-4 md:flex">
+          <div className="hidden items-center gap-4 pl-4 md:flex">
+            <button
+              type="button"
+              data-testid="nav-demo-btn"
+              onClick={handleLaunchDemo}
+              className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.14em] transition-all cursor-pointer"
+              style={{
+                background: "rgba(45,212,191,0.12)",
+                color: c.teal,
+                border: "1px solid rgba(45,212,191,0.35)",
+              }}
+            >
+              <span>⚡</span> Live Demo
+            </button>
             <a
               href="https://github.com/austinchima/Precept"
               target="_blank"
@@ -214,8 +238,18 @@ const ConfidenceRungs = [
 
 function Hero() {
   const navigate = useNavigate();
+  const { demoLogin } = useAuth();
   const heroRef = useRef<HTMLElement>(null);
   const [activeRung, setActiveRung] = useState(3); // Solid by default
+
+  const handleLaunchDemo = async () => {
+    try {
+      await demoLogin();
+      navigate('/dashboard');
+    } catch {
+      navigate('/login');
+    }
+  };
 
   // cycle the rung in the mockup
   useEffect(() => {
@@ -302,27 +336,27 @@ function Hero() {
         </p>
 
         {/* CTAs */}
-        <div className="hero-ctas mt-9 flex flex-wrap items-center justify-center gap-3">
+        <div className="hero-ctas mt-9 flex flex-wrap items-center justify-center gap-2.5">
           <button
             type="button"
             data-testid="hero-primary-cta"
             onClick={() => navigate("/login", { state: { mode: "signup" } })}
-            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full border border-transparent px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-colors"
+            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full border border-transparent px-5 py-3 font-mono text-[12px] font-semibold uppercase leading-none tracking-[0.14em] transition-colors cursor-pointer"
             style={{
               background: c.ink,
               color: c.bg0,
-              boxShadow: `0 0 0 1px ${c.ink}, 0 18px 60px -20px rgba(45,212,191,0.5)`,
+              boxShadow: `0 0 0 1px ${c.ink}, 0 14px 40px -15px rgba(45,212,191,0.5)`,
             }}
           >
             Get started — free
-            <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+            <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
           </button>
           <a
             data-testid="hero-github-cta"
             href="https://github.com/austinchima/Precept"
             target="_blank"
             rel="noopener noreferrer"
-            className="gsap-magnetic inline-flex items-center gap-2 rounded-full border px-6 py-3.5 font-mono text-[12.5px] font-semibold uppercase leading-none tracking-[0.16em] transition-colors"
+            className="gsap-magnetic inline-flex items-center gap-2 rounded-full border px-5 py-3 font-mono text-[12px] font-semibold uppercase leading-none tracking-[0.14em] transition-colors"
             style={{
               background: "rgba(255,255,255,0.025)",
               borderColor: c.hair2,
@@ -332,6 +366,21 @@ function Hero() {
           >
             <i className="fa-brands fa-github" /> View on GitHub
           </a>
+          <button
+            type="button"
+            data-testid="hero-demo-cta"
+            onClick={handleLaunchDemo}
+            className="gsap-magnetic group inline-flex items-center gap-1.5 rounded-full border px-4 py-3 font-mono text-[12px] font-semibold uppercase leading-none tracking-[0.14em] transition-all cursor-pointer"
+            style={{
+              background: "rgba(45,212,191,0.10)",
+              borderColor: "rgba(45,212,191,0.35)",
+              color: c.teal,
+              boxShadow: "0 0 20px rgba(45,212,191,0.10)",
+            }}
+          >
+            <span>⚡</span>
+            <span>Live Demo</span>
+          </button>
         </div>
 
         {/* tech credibility */}
@@ -386,6 +435,7 @@ function Hero() {
                 { i: <Layers size={14} />, l: "Dashboard" },
                 { i: <FileCode2 size={14} />, l: "Story Bank", active: true },
                 { i: <RefreshCw size={14} />, l: "Quiz Mode" },
+                { i: <Mic size={14} />, l: "Mock Interview" },
                 { i: <FileSearch size={14} />, l: "JD Matcher" },
                 { i: <GitBranch size={14} />, l: "Pipeline" },
                 { i: <Activity size={14} />, l: "Analytics" },
@@ -524,13 +574,13 @@ function Hero() {
 function Marquee() {
   const items = [
     "“Replaced 3 spreadsheets + a Notion doc.”",
-    "Spaced repetition for your career",
+    "SuperMemo-2 (SM-2) Spaced Repetition",
     "“I rehearsed STAR until I knew them cold.”",
-    "Open source · MIT",
+    "AI Mock Interview with Voice STAR Grading",
     "“Pipeline view killed my tab graveyard.”",
-    "Built for engineers, by engineers",
+    "AI-Agnostic Engine (OpenAI · Claude · Gemini · DeepSeek)",
     "“Walked into the round without freezing.”",
-    "Self-host or hosted — your call",
+    "1-Click Interactive Live Demo · Zero Friction",
   ];
   const loop = [...items, ...items];
 
@@ -660,10 +710,11 @@ function Wedge() {
               <ul className="mt-6 space-y-3 font-body text-[13.5px]" style={{ color: c.ink }}>
                 {[
                   "Full pipeline tracker with event history",
-                  "Technical & behavioral story banks",
-                  "Spaced-repetition Quiz Mode (Panic → Can Teach)",
+                  "Technical & behavioral STAR story banks",
+                  "SuperMemo-2 (SM-2) Spaced Repetition Drill Engine",
+                  "AI Mock Interview Studio with Voice STAR Grading",
                   "JD Matcher: paste a JD, see your gaps",
-                  "Voice practice + analytics + skills matrix",
+                  "Interactive visual analytics & velocity funnel",
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-2">
                     <Check size={14} className="mt-0.5 shrink-0" style={{ color: c.teal }} /> {t}
@@ -697,10 +748,10 @@ function Modules() {
             className="mt-5 max-w-[760px] font-display font-bold leading-[1.05]"
             style={{ fontSize: "clamp(32px, 4.6vw, 56px)", color: c.ink }}
           >
-            Seven instruments, <span className="font-editorial" style={{ color: c.violet, fontWeight: 400 }}>one cockpit.</span>
+            Eight instruments, <span className="font-editorial" style={{ color: c.violet, fontWeight: 400 }}>one cockpit.</span>
           </h2>
           <p className="mt-4 max-w-[560px] font-body text-[15.5px] leading-relaxed" style={{ color: c.inkDim }}>
-            Every module is wired into the next — your stories feed the quiz, the quiz updates your confidence, the JD analyzer pulls from both.
+            Every module is wired into the next — your stories feed the SM-2 active recall drills, the mock interview tests your live delivery, and the JD analyzer pulls from both.
           </p>
         </div>
 
@@ -773,9 +824,59 @@ function Modules() {
             </div>
           </div>
 
-          {/* 3. JD Matcher */}
+          {/* 3. AI Mock Interview Studio */}
+          <div className="mod-card col-span-12 rounded-2xl p-6 lg:col-span-7" style={modCardStyle()}>
+            <ModuleHeader index="03" title="AI Mock Interview Studio" color={c.sky} />
+            <p className="mt-3 max-w-[500px] font-body text-[14px]" style={{ color: c.inkDim }}>
+              Rehearse out loud with live browser STT transcription. The AI judge grades STAR structure, delivery tone, and provides actionable model answers.
+            </p>
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-xl p-3.5" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
+                <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-widest" style={{ color: c.inkMute }}>
+                  <span>AI STAR Evaluation</span>
+                  <span className="font-bold text-emerald-400">88/100</span>
+                </div>
+                <div className="mt-3 space-y-1.5 font-mono text-[10.5px]">
+                  <div className="flex justify-between"><span style={{ color: c.inkDim }}>Situation &amp; Task</span><span style={{ color: c.teal }}>Strong (9/10)</span></div>
+                  <div className="flex justify-between"><span style={{ color: c.inkDim }}>Action &amp; Agency</span><span style={{ color: c.emerald }}>Excellent (10/10)</span></div>
+                  <div className="flex justify-between"><span style={{ color: c.inkDim }}>Quantified Result</span><span style={{ color: c.amber }}>Partial (7.5/10)</span></div>
+                </div>
+              </div>
+              <div className="flex flex-col justify-between rounded-xl p-3.5" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: c.teal }}>LLM Agnostic Engine</div>
+                  <div className="mt-1 font-body text-[12.5px] leading-snug" style={{ color: c.ink }}>
+                    Bring your own key: OpenAI, Claude 3.5, Gemini 2.0, DeepSeek, or run local Ollama models.
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-2 font-mono text-[10px]" style={{ color: c.inkMute }}>
+                  <Mic size={11} style={{ color: c.sky }} /> Real-time Speech-to-Text
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. SM-2 Spaced Repetition Quiz */}
           <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-5" style={modCardStyle()}>
-            <ModuleHeader index="03" title="JD Analyzer" color={c.sky} />
+            <ModuleHeader index="04" title="SM-2 Active Recall Quiz" color={c.amber} />
+            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
+              Drill weak stories with SuperMemo-2 mathematical scheduling. Ease Factor ($EF$) updates keep review intervals optimal.
+            </p>
+            <div className="mt-5 space-y-2 font-mono text-[11px]">
+              <div className="flex items-center justify-between rounded-md px-3 py-2" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
+                <span style={{ color: c.ink }}>Panic → Lapse Reset</span>
+                <span className="font-bold" style={{ color: c.rose }}>1 Day</span>
+              </div>
+              <div className="flex items-center justify-between rounded-md px-3 py-2" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
+                <span style={{ color: c.ink }}>Nailed It → Compounded</span>
+                <span className="font-bold" style={{ color: c.emerald }}>I × EF (16d+)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. JD Matcher */}
+          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-4" style={modCardStyle()}>
+            <ModuleHeader index="05" title="JD Analyzer" color={c.teal} />
             <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
               Paste a job description. Precept maps requirements against your inventory and surfaces gaps.
             </p>
@@ -783,104 +884,52 @@ function Modules() {
               {[
                 { skill: "Go",                cov: true,  note: "3 stories" },
                 { skill: "Kubernetes",        cov: true,  note: "2 stories" },
-                { skill: "Distributed locks", cov: false, note: "no coverage" },
-                { skill: "gRPC",              cov: false, note: "no coverage" },
-                { skill: "SRE on-call",       cov: true,  note: "1 story" },
+                { skill: "Distributed locks", cov: false, note: "gap" },
               ].map((g) => (
                 <div key={g.skill} className="flex items-center justify-between rounded-md px-3 py-1.5" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
                   <span style={{ color: c.ink }}>{g.skill}</span>
-                  <span className="flex items-center gap-2 text-[10px] uppercase tracking-widest" style={{ color: g.cov ? c.emerald : c.rose }}>
+                  <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest" style={{ color: g.cov ? c.emerald : c.rose }}>
                     {g.note} {g.cov ? <Check size={11} /> : <X size={11} />}
                   </span>
                 </div>
               ))}
-              <div className="flex items-center justify-between pt-2 font-mono text-[10px] uppercase tracking-widest">
-                <span style={{ color: c.inkMute }}>Coverage</span>
-                <span style={{ color: c.teal }}>62%</span>
-              </div>
             </div>
           </div>
 
-          {/* 4. Pipeline */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 lg:col-span-7" style={modCardStyle()}>
-            <ModuleHeader index="04" title="Pipeline Tracker" color={c.emerald} />
-            <p className="mt-3 max-w-[480px] font-body text-[14px]" style={{ color: c.inkDim }}>
-              Every application moves through five stages with automatic event history. No more "wait, did I hear back?"
+          {/* 6. Pipeline */}
+          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-4" style={modCardStyle()}>
+            <ModuleHeader index="06" title="Pipeline Tracker" color={c.emerald} />
+            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
+              Applications move through five stages with event history and follow-up alerts.
             </p>
-            <div className="mt-5 grid grid-cols-5 gap-1.5 font-mono text-[10px] uppercase tracking-widest">
+            <div className="mt-5 grid grid-cols-4 gap-1 font-mono text-[10px] uppercase tracking-widest text-center">
               {[
                 { l: "Applied",      n: 14, color: c.inkDim },
-                { l: "Phone Screen", n: 6,  color: c.sky },
-                { l: "Interviewing", n: 5,  color: c.amber },
+                { l: "Screen",       n: 6,  color: c.sky },
+                { l: "Rounds",       n: 5,  color: c.amber },
                 { l: "Offer",        n: 2,  color: c.emerald },
-                { l: "Ghosted",      n: 3,  color: c.inkMute },
               ].map((s) => (
-                <div key={s.l} className="rounded-md p-3 text-center" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                  <div className="font-display text-[26px] font-bold" style={{ color: s.color }}>{s.n}</div>
+                <div key={s.l} className="rounded-md p-2" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
+                  <div className="font-display text-[20px] font-bold" style={{ color: s.color }}>{s.n}</div>
                   <div className="mt-0.5" style={{ color: c.inkMute }}>{s.l}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* 5. Analytics */}
+          {/* 7. Analytics */}
           <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-4" style={modCardStyle()}>
-            <ModuleHeader index="05" title="Analytics" color={c.amber} />
+            <ModuleHeader index="07" title="Analytics & Velocity" color={c.violet} />
             <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
-              Conversion, pipeline health, and trajectory at a glance.
+              Conversion velocity, readiness trajectory, and domain mastery over time.
             </p>
-            <div className="mt-5 flex items-end gap-2 h-24">
-              {[40, 65, 52, 78, 90, 72, 88].map((h, i) => (
-                <div key={i} className="flex-1 rounded-t-sm" style={{ height: `${h}%`, background: i === 4 ? c.amber : c.tealDim, opacity: i === 4 ? 1 : 0.7 }} />
+            <div className="mt-5 flex items-end gap-1.5 h-20">
+              {[40, 55, 65, 52, 78, 90, 84, 94].map((h, i) => (
+                <div key={i} className="flex-1 rounded-t-sm" style={{ height: `${h}%`, background: i >= 6 ? c.teal : c.tealDim, opacity: i >= 6 ? 1 : 0.7 }} />
               ))}
             </div>
             <div className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-widest" style={{ color: c.inkMute }}>
-              <span>Wk1</span><span>Wk7</span>
-            </div>
-          </div>
-
-          {/* 6. Skills matrix */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-4" style={modCardStyle()}>
-            <ModuleHeader index="06" title="Skills Matrix" color={c.rose} />
-            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
-              A living inventory of every technical capability you can credibly defend.
-            </p>
-            <div className="mt-5 space-y-2">
-              {[
-                { s: "TypeScript", lvl: 92 },
-                { s: "PostgreSQL", lvl: 78 },
-                { s: "Kubernetes", lvl: 58 },
-                { s: "Distributed Systems", lvl: 44 },
-              ].map((k) => (
-                <div key={k.s}>
-                  <div className="flex justify-between font-mono text-[11px]"><span style={{ color: c.ink }}>{k.s}</span><span style={{ color: c.inkMute }}>{k.lvl}%</span></div>
-                  <div className="mt-1 h-1 overflow-hidden rounded-full" style={{ background: c.hair }}>
-                    <div className="h-full rounded-full" style={{ width: `${k.lvl}%`, background: `linear-gradient(90deg, ${c.teal}, ${c.sky})` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 7. Trajectory Scanner */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-12 lg:col-span-4 overflow-hidden" style={modCardStyle()}>
-            <ModuleHeader index="07" title="Trajectory Scanner" color={c.violet} />
-            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
-              An exact, real-time timeline of every status change across your hunt.
-            </p>
-            <div className="mt-5 space-y-2">
-              {[
-                { t: "Today",      ev: "Vercel · Offer received",     color: c.emerald },
-                { t: "2d ago",     ev: "Linear · Onsite scheduled",   color: c.amber },
-                { t: "5d ago",     ev: "Stripe · Phone screen done",  color: c.sky },
-                { t: "1w ago",     ev: "Replit · Applied",            color: c.inkDim },
-              ].map((e) => (
-                <div key={e.t} className="flex items-center gap-3 font-mono text-[11px]">
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: e.color, boxShadow: `0 0 6px ${e.color}` }} />
-                  <span style={{ color: c.inkMute, width: 56 }}>{e.t}</span>
-                  <span style={{ color: c.ink }}>{e.ev}</span>
-                </div>
-              ))}
+              <span>Wk 1</span><span>Wk 8 (Readiness 94%)</span>
             </div>
           </div>
         </AnimatedSection>
@@ -935,16 +984,18 @@ function ConfidenceLadder() {
               The Confidence <span className="font-editorial" style={{ color: c.teal, fontWeight: 400 }}>Ladder.</span>
             </h2>
             <p className="mt-5 font-body text-[16px] leading-relaxed" style={{ color: c.inkDim }}>
-              After every drill, you rate yourself on a 5-rung ladder. Precept's spaced-repetition engine resurfaces the
-              right story next — unreviewed first, then your weakest, then whatever you reviewed longest ago.
+              After every drill, you rate your recall. Precept's <b style={{ color: c.teal }}>SuperMemo-2 (SM-2)</b> spaced-repetition
+              engine dynamically calculates per-story Ease Factors ($EF$), compounding intervals, and anti-bunching schedules so knowledge decays are caught before the interview.
             </p>
             <p className="mt-4 font-body text-[16px] leading-relaxed" style={{ color: c.inkDim }}>
-              It's <span className="font-editorial" style={{ color: c.ink }}>Anki for your career.</span> You walk into the room having already
-              rehearsed the answer — out loud, last Thursday.
+              It's <span className="font-editorial" style={{ color: c.ink }}>Anki engineered for software engineers.</span> You walk into the onsite having already
+              rehearsed the answer — out loud, with zero hesitation.
             </p>
 
-            <div className="mt-7 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: c.inkMute }}>
-              <Mic size={13} style={{ color: c.teal }} /> Voice practice supported
+            <div className="mt-7 flex flex-wrap items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: c.inkMute }}>
+              <span className="flex items-center gap-1.5"><Mic size={13} style={{ color: c.teal }} /> Voice STT practice</span>
+              <span className="opacity-30">/</span>
+              <span className="flex items-center gap-1.5"><Sparkles size={13} style={{ color: c.emerald }} /> SM-2 Algorithmic decay</span>
             </div>
           </div>
 

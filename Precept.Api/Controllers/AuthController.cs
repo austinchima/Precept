@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Precept.Api.Data;
 using Precept.Api.DTOs;
 using Precept.Api.Models;
 using Precept.Api.Services.Interfaces;
@@ -22,6 +23,7 @@ public class AuthController(
     IWebHostEnvironment environment,
     IStoryService storyService,
     IBehavioralStoryService behavioralStoryService,
+    PreceptDbContext dbContext,
     ILogger<AuthController> logger) : ControllerBase
 {
     private readonly JwtSettings _jwtSettings = jwtSettings.Value;
@@ -111,6 +113,131 @@ public class AuthController(
     }
 
     /// <summary>
+    /// Authenticates into an instant, pre-seeded hosted demo session without requiring registration.
+    /// </summary>
+    [HttpPost("demo-login")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> DemoLogin()
+    {
+        const string demoEmail = "demo@precept.app";
+        var user = await userManager.FindByEmailAsync(demoEmail);
+
+        if (user == null)
+        {
+            user = new ApplicationUser
+            {
+                UserName = demoEmail,
+                Email = demoEmail,
+                FirstName = "Alex",
+                LastName = "Chen",
+                EmailConfirmed = true
+            };
+
+            var createResult = await userManager.CreateAsync(user, "DemoSessionPass2026!");
+            if (createResult.Succeeded)
+            {
+                // Seed stories & behavioral templates
+                await storyService.SeedExampleStoriesAsync(user.Id);
+                await behavioralStoryService.SeedExampleStoriesAsync(user.Id);
+
+                // Seed demo applications
+                if (!await dbContext.Applications.IgnoreQueryFilters().AnyAsync(a => a.UserId == user.Id))
+                {
+                    dbContext.Applications.AddRange(
+                        new Application
+                        {
+                            UserId = user.Id,
+                            CompanyName = "Stripe",
+                            RoleTitle = "Staff Systems Engineer",
+                            Location = "San Francisco, CA (Hybrid)",
+                            SalaryRange = "$240k - $310k",
+                            Status = ApplicationStatus.Interviewing,
+                            DateApplied = DateTime.UtcNow.AddDays(-12),
+                            FollowUpDate = DateTime.UtcNow.AddDays(2),
+                            ResumeVersion = "v4.2-Infrastructure",
+                            Notes = "Completed technical screen with bar raiser. Final round loop scheduled for Thursday.",
+                            IsRemote = false,
+                            Source = "Referral"
+                        },
+                        new Application
+                        {
+                            UserId = user.Id,
+                            CompanyName = "Vercel",
+                            RoleTitle = "Senior Frontend Architect",
+                            Location = "Remote (US)",
+                            SalaryRange = "$210k - $270k",
+                            Status = ApplicationStatus.PhoneScreen,
+                            DateApplied = DateTime.UtcNow.AddDays(-5),
+                            FollowUpDate = DateTime.UtcNow.AddDays(1),
+                            ResumeVersion = "v4.1-Frontend",
+                            Notes = "Recruiter chat about Next.js performance and design system architecture.",
+                            IsRemote = true,
+                            Source = "LinkedIn"
+                        },
+                        new Application
+                        {
+                            UserId = user.Id,
+                            CompanyName = "Datadog",
+                            RoleTitle = "Senior Software Engineer",
+                            Location = "New York, NY (Remote)",
+                            SalaryRange = "$195k - $250k",
+                            Status = ApplicationStatus.Offer,
+                            DateApplied = DateTime.UtcNow.AddDays(-28),
+                            FollowUpDate = DateTime.UtcNow.AddDays(-2),
+                            ResumeVersion = "v3.9",
+                            Notes = "Offer letter received ($220k base + $80k equity). Negotiating start date.",
+                            IsRemote = true,
+                            Source = "Company Site"
+                        }
+                    );
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+        }
+
+        var roles = await userManager.GetRolesAsync(user);
+        return await GenerateAuthResponse(user, roles, rememberMe: true);
+    }
+
+    /// <summary>
+    /// Authenticates or registers a user via Google OAuth identity.
+    /// </summary>
+    [HttpPost("google")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleAuthRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest(new { message = "Email is required for Google authentication." });
+
+        var normalizedEmail = NormalizeEmail(request.Email);
+        var user = await userManager.FindByEmailAsync(normalizedEmail);
+
+        if (user == null)
+        {
+            user = new ApplicationUser
+            {
+                UserName = normalizedEmail,
+                Email = normalizedEmail,
+                FirstName = string.IsNullOrWhiteSpace(request.FirstName) ? "Google" : request.FirstName.Trim(),
+                LastName = string.IsNullOrWhiteSpace(request.LastName) ? "User" : request.LastName.Trim(),
+                EmailConfirmed = true
+            };
+
+            var createResult = await userManager.CreateAsync(user);
+            if (!createResult.Succeeded)
+            {
+                return BadRequest(new { message = string.Join("; ", createResult.Errors.Select(e => e.Description)) });
+            }
+
+            await storyService.SeedExampleStoriesAsync(user.Id);
+            await behavioralStoryService.SeedExampleStoriesAsync(user.Id);
+        }
+
+        var roles = await userManager.GetRolesAsync(user);
+        return await GenerateAuthResponse(user, roles, rememberMe: true);
+    }
+
+    /// <summary>
     /// Refreshes expired access tokens using a valid HTTP-only refresh token cookie.
     /// Includes reuse detection, lineage verification, and atomic token rotation.
     /// </summary>
@@ -134,21 +261,21 @@ public class AuthController(
 
         if (storedToken.IsRevoked)
         {
-            var activeSessions = await refreshTokenService.GetActiveSessionsAsync(storedToken.UserId);
-            var activeToken = activeSessions.FirstOrDefault();
-
-            var isDirectParent = activeToken != null &&
-                                 storedToken.ReplacedByToken != null &&
-                                 storedToken.ReplacedByToken == refreshTokenService.HashToken(activeToken.Id);
-
+            // Grace window: Allow concurrent requests / tabs within 10 seconds of rotation
             var withinGrace = storedToken.RevokedAt.HasValue &&
                               (DateTime.UtcNow - storedToken.RevokedAt.Value).TotalSeconds <= 10;
 
-            if (isDirectParent && withinGrace)
+            if (withinGrace && !string.IsNullOrEmpty(storedToken.ReplacedByToken))
             {
-                return Unauthorized(new { message = "Token just refreshed" });
+                var replacementToken = await refreshTokenService.FindByTokenHashAsync(storedToken.ReplacedByToken);
+                if (replacementToken != null && replacementToken.UserId == storedToken.UserId && replacementToken.IsActive)
+                {
+                    logger.ConcurrentRefreshHandled(storedToken.UserId);
+                    return Unauthorized(new { message = "Token just refreshed" });
+                }
             }
 
+            logger.TokenReuseDetected(storedToken.UserId);
             await refreshTokenService.RevokeAllForUserAsync(storedToken.UserId);
             ClearRefreshCookie();
             ClearAccessTokenCookie();
@@ -509,4 +636,7 @@ public static partial class AuthControllerLoggerExtensions
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Account deletion failed for user {UserId}")]
     public static partial void AccountDeletionFailed(this ILogger logger, string? userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Graceful concurrent refresh handled for user {UserId}")]
+    public static partial void ConcurrentRefreshHandled(this ILogger logger, string? userId);
 }

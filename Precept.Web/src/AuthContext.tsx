@@ -33,7 +33,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             headers: { 'Content-Type': 'application/json' },
           });
 
-          if (refreshRes.ok) {
+          let isRefreshOk = refreshRes.ok;
+          if (!isRefreshOk) {
+            try {
+              const errData = await refreshRes.json();
+              if (errData?.message === 'Token just refreshed') {
+                isRefreshOk = true;
+              }
+            } catch {}
+          }
+
+          if (isRefreshOk) {
             const retryRes = await fetch('/api/auth/me', { credentials: 'include' });
             if (retryRes.ok) {
               const profile = await retryRes.json();
@@ -114,6 +124,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const demoLogin = async () => {
+    try {
+      await api.post('/api/auth/demo-login', {}, { skipAuth: true });
+      setIsAuthenticated(true);
+      const profile = await api.get<User>('/api/auth/me');
+      setUser(profile);
+    } catch (err) {
+      setIsAuthenticated(false);
+      setUser(null);
+      throw err;
+    }
+  };
+
+  const googleLogin = async (email: string, firstName?: string, lastName?: string, idToken?: string) => {
+    try {
+      await api.post('/api/auth/google', {
+        email,
+        firstName,
+        lastName,
+        idToken
+      }, { skipAuth: true });
+      setIsAuthenticated(true);
+      const profile = await api.get<User>('/api/auth/me');
+      setUser(profile);
+    } catch (err) {
+      setIsAuthenticated(false);
+      setUser(null);
+      throw err;
+    }
+  };
+
   const updateProfile = async (firstName: string, lastName: string, emailDigestEnabled?: boolean, digestIncludeFollowUps?: boolean, digestIncludeReviews?: boolean, digestHourUtc?: number) => {
     const payload: any = { firstName, lastName };
     if (emailDigestEnabled !== undefined) {
@@ -164,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, register, updateProfile, logout, deleteAccount }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, register, demoLogin, googleLogin, updateProfile, logout, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

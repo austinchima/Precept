@@ -1,4 +1,4 @@
-# Precept — Web
+# Precept: Web
 
 The React frontend for Precept, the career command center for software engineers.
 

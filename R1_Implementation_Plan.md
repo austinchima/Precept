@@ -6,19 +6,19 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 
 ---
 
-## Phase 1 — Production Readiness
+## Phase 1: Production Readiness
 
 ### Task 1: Harden auth for production
 
 **Why:** The current frontend stores the JWT access token in `localStorage`, which is vulnerable to XSS. Before any public launch, auth must be production-safe.
 
 **Files to change:**
-- `Precept.Web/src/api.ts` — remove localStorage token storage; read access token from HTTP-only cookie or use a secure in-memory strategy.
-- `Precept.Web/src/AuthContext.tsx` — update login/register/logout/refresh flows to match the new token transport.
-- `Precept.Api/Controllers/AuthController.cs` — return the access token in a secure cookie alongside the refresh cookie, or return both tokens via cookies.
-- `Precept.Api/Services/CookieOptionsFactory.cs` — ensure cookie options are correct for production (`Secure`, `SameSite=Strict`, `HttpOnly`).
-- `Precept.Api/Program.cs` — confirm HTTPS redirection, CORS, and security headers are active in production.
-- `Precept.Api/appsettings.Production.json` and `.env.example` — document required production secrets (`JWT_SECRET_KEY`, `AllowedHosts`, `CORS_ORIGINS`).
+- `Precept.Web/src/api.ts`: remove localStorage token storage; read access token from HTTP-only cookie or use a secure in-memory strategy.
+- `Precept.Web/src/AuthContext.tsx`: update login/register/logout/refresh flows to match the new token transport.
+- `Precept.Api/Controllers/AuthController.cs`: return the access token in a secure cookie alongside the refresh cookie, or return both tokens via cookies.
+- `Precept.Api/Services/CookieOptionsFactory.cs`: ensure cookie options are correct for production (`Secure`, `SameSite=Strict`, `HttpOnly`).
+- `Precept.Api/Program.cs`: confirm HTTPS redirection, CORS, and security headers are active in production.
+- `Precept.Api/appsettings.Production.json` and `.env.example`: document required production secrets (`JWT_SECRET_KEY`, `AllowedHosts`, `CORS_ORIGINS`).
 
 **Acceptance criteria:**
 - [ ] Access token is no longer stored in `localStorage` after login/refresh.
@@ -48,17 +48,17 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 
 ---
 
-## Phase 2 — Core Value Loop
+## Phase 2: Core Value Loop
 
 ### Task 3: Replace manual JD keyword entry with auto-extraction
 
 **Why:** Typing comma-separated keywords is friction. Auto-extraction makes the JD matcher useful and differentiates Precept from a spreadsheet.
 
 **Files to change:**
-- `Precept.Api/Services/JobDescriptionService.cs` — add keyword extraction before match-score computation.
-- `Precept.Api/DTOs/CreateJobDescriptionRequest.cs` / `UpdateJobDescriptionRequest.cs` — make `ExtractedKeyWords` optional or computed; keep `Description` required.
-- `Precept.Web/src/pages/JDMatcher.tsx` — remove the manual keyword input; show auto-extracted keywords and missing keywords.
-- `Precept.Web/src/types.ts` — update types if needed.
+- `Precept.Api/Services/JobDescriptionService.cs`: add keyword extraction before match-score computation.
+- `Precept.Api/DTOs/CreateJobDescriptionRequest.cs` / `UpdateJobDescriptionRequest.cs`: make `ExtractedKeyWords` optional or computed; keep `Description` required.
+- `Precept.Web/src/pages/JDMatcher.tsx`: remove the manual keyword input; show auto-extracted keywords and missing keywords.
+- `Precept.Web/src/types.ts`: update types if needed.
 
 **Implementation notes:**
 - Start with a cheap, deterministic extractor: a curated tech-skills dictionary + simple text matching against the JD description.
@@ -78,10 +78,10 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 **Why:** The biggest reason job-tracker apps die is manual data entry. A bookmarklet or Chrome extension that creates an application from the current job posting removes that friction.
 
 **Files to change / create:**
-- `Precept.Api/Controllers/ApplicationController.cs` — add `POST /api/application/capture`.
-- `Precept.Api/Services/ApplicationService.cs` or new `JobCaptureService.cs` — fetch the URL, extract company, role, location, remote flag, salary, and description.
-- `Precept.Api/DTOs/CaptureApplicationRequest.cs` — accept URL + optional notes.
-- New folder: `Precept.Capture/` or `Precept.Web/public/capture/` — Chrome extension or bookmarklet.
+- `Precept.Api/Controllers/ApplicationController.cs`: add `POST /api/application/capture`.
+- `Precept.Api/Services/ApplicationService.cs` or new `JobCaptureService.cs`: fetch the URL, extract company, role, location, remote flag, salary, and description.
+- `Precept.Api/DTOs/CaptureApplicationRequest.cs`: accept URL + optional notes.
+- New folder: `Precept.Capture/` or `Precept.Web/public/capture/`: Chrome extension or bookmarklet.
 
 **Implementation notes:**
 - Reuse the JD extraction from Task 3.
@@ -101,7 +101,7 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 **Why:** The backend already computes `FollowUpDate`, but users will forget to return unless they are reminded.
 
 **Files to change / create:**
-- New service: `Precept.Api/Services/ReminderService.cs` — queries applications whose `FollowUpDate` is today or past and whose status is not `Offer`/`Rejected`.
+- New service: `Precept.Api/Services/ReminderService.cs`: queries applications whose `FollowUpDate` is today or past and whose status is not `Offer`/`Rejected`.
 - New hosted service or scheduled trigger in `Program.cs`.
 - New email abstraction: `Precept.Api/Services/EmailService.cs` (Resend/Mailgun/SendGrid).
 - New template: plain-text/HTML reminder email.
@@ -124,11 +124,11 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 **Why:** First-time users have no stories and no applications. Empty screens feel dead. Example content proves value immediately.
 
 **Files to change:**
-- `Precept.Api/Controllers/AuthController.cs` — after successful registration, seed example stories for the new user.
-- `Precept.Api/Services/StoryService.cs` / `BehavioralStoryService.cs` — add seeding helpers.
-- `Precept.Web/src/pages/StoryBank.tsx` — improve empty states.
-- `Precept.Web/src/pages/Dashboard.tsx` — show a “get started” checklist for new users.
-- `Precept.Web/src/pages/Landing.tsx` — add a live demo or screenshot of the story/quiz flow.
+- `Precept.Api/Controllers/AuthController.cs`: after successful registration, seed example stories for the new user.
+- `Precept.Api/Services/StoryService.cs` / `BehavioralStoryService.cs`: add seeding helpers.
+- `Precept.Web/src/pages/StoryBank.tsx`: improve empty states.
+- `Precept.Web/src/pages/Dashboard.tsx`: show a “get started” checklist for new users.
+- `Precept.Web/src/pages/Landing.tsx`: add a live demo or screenshot of the story/quiz flow.
 
 **Acceptance criteria:**
 - [ ] New accounts start with 3–5 example technical stories and 2 example STAR stories.
@@ -137,18 +137,18 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 
 ---
 
-## Phase 3 — Monetization Foundation
+## Phase 3: Monetization Foundation
 
 ### Task 7: Design the AI mock interview paywall
 
 **Why:** AI mock interviews will use paid LLM inference. They must be behind a hard paywall/credit gate from day one, or free users will drain your budget.
 
 **Files to change / create:**
-- `Precept.Api/Models/CreditBalance.cs` (or extend `ApplicationUser`) — track available credits.
-- `Precept.Api/Models/Transaction.cs` — record credit purchases and consumption.
-- `Precept.Api/Services/PaymentService.cs` — Stripe (or Paddle/Lemon Squeezy) webhook handler to grant credits.
+- `Precept.Api/Models/CreditBalance.cs` (or extend `ApplicationUser`): track available credits.
+- `Precept.Api/Models/Transaction.cs`: record credit purchases and consumption.
+- `Precept.Api/Services/PaymentService.cs`: Stripe (or Paddle/Lemon Squeezy) webhook handler to grant credits.
 - `Precept.Api/Controllers/PaymentController.cs` or webhook endpoint.
-- `Precept.Web/src/pages/Settings.tsx` — show credit balance and purchase options.
+- `Precept.Web/src/pages/Settings.tsx`: show credit balance and purchase options.
 - Environment variables: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`.
 
 **Implementation notes:**
@@ -170,11 +170,11 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 **Why:** This is the planned paid feature. It should only exist after the paywall in Task 7 is solid.
 
 **Files to change / create:**
-- `Precept.Api/Services/AiInterviewService.cs` — build the prompt, call the LLM, parse feedback.
-- `Precept.Api/Controllers/MockInterviewController.cs` — single endpoint, credit-guarded.
-- `Precept.Api/Models/AiInterviewSession.cs` — store prompts, responses, feedback.
-- `Precept.Web/src/pages/MockInterview.tsx` — UI for selecting a story/JD and running the interview.
-- `Precept.Web/src/api.ts` — add the new endpoint client.
+- `Precept.Api/Services/AiInterviewService.cs`: build the prompt, call the LLM, parse feedback.
+- `Precept.Api/Controllers/MockInterviewController.cs`: single endpoint, credit-guarded.
+- `Precept.Api/Models/AiInterviewSession.cs`: store prompts, responses, feedback.
+- `Precept.Web/src/pages/MockInterview.tsx`: UI for selecting a story/JD and running the interview.
+- `Precept.Web/src/api.ts`: add the new endpoint client.
 
 **Implementation notes:**
 - Use a cheap model first: GPT-4o-mini, Gemini Flash, or Claude Haiku.
@@ -191,14 +191,14 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 
 ---
 
-## Phase 4 — Launch
+## Phase 4: Launch
 
 ### Task 9: Launch the free tier publicly
 
 **Why:** Everything before this was preparation. Now you validate whether real users stick around.
 
 **Files / tasks:**
-- `docker-compose.yml` / `Precept.Api/Dockerfile` / `Precept.Web/Dockerfile` — confirm production builds.
+- `docker-compose.yml` / `Precept.Api/Dockerfile` / `Precept.Web/Dockerfile`: confirm production builds.
 - Hosting: deploy API + DB + web (Render, Railway, Fly.io, Azure Container Apps, etc.).
 - Add basic analytics: sign-ups, applications created, 7-day retention, story quiz completions.
 - Set up error monitoring (e.g., Sentry free tier).
@@ -248,20 +248,20 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 
 ---
 
-## Implementation Session Notes — 2026-07-07
+## Implementation Session Notes: 2026-07-07
 
 ### Completed
 
-- **Task 1 — Harden auth for production**
+- **Task 1: Harden auth for production**
   - Backend: `accessToken` is now transported as an HttpOnly cookie with `Path=/api`; refresh cookie stays scoped to `/api/auth`.
   - Frontend: `api.ts` and `AuthContext.tsx` no longer store or read the access token from `localStorage`; all API calls use `credentials: 'include'`.
   - JWT middleware falls back to the `accessToken` cookie when no `Authorization` header is present, preserving test compatibility.
   - Production cookie options and `.env.example` documented.
 
-- **Task 2 — Fix `PUT /api/application` status-change bug**
+- **Task 2: Fix `PUT /api/application` status-change bug**
   - `ApplicationService.UpdateApplicationAsync` now captures `originalStatus` before applying request changes and only creates an `ApplicationEvent` when the status actually changes.
 
-- **Task 3 — Replace manual JD keyword entry with auto-extraction**
+- **Task 3: Replace manual JD keyword entry with auto-extraction**
   - `Precept.Api/Services/Interfaces/IJobDescriptionKeywordExtractor.cs`: new extractor contract.
   - `Precept.Api/Services/JobDescriptionKeywordExtractor.cs`: deterministic, server-side extractor using a curated dictionary of languages, frameworks, databases, cloud tools, security/AI concepts, etc. Handles multi-word phrases, case-insensitive matching, punctuation, and slash-separated terms (e.g., `CI/CD`).
   - `Precept.Api/Services/JobDescriptionService.cs`: injects the extractor; keywords are auto-extracted from `Description` when the client does not supply an override.
@@ -272,27 +272,27 @@ Work through them in order; do not skip ahead unless a task is explicitly marked
 
 ### Completed
 
-- **Task 4 — One-click job capture**
+- **Task 4: One-click job capture**
   - `POST /api/application/capture` endpoint, `JobPostingContentExtractor`, URL validation, private/loopback rejection, and a bookmarklet at `/capture/index.html` are all implemented.
 
-- **Task 5 (Part 1) — Follow-Ups Due Dashboard widget**
+- **Task 5 (Part 1): Follow-Ups Due Dashboard widget**
   - Added `GetFollowUpsDueAsync` to `ApplicationService` and `GET /api/application/followups-due` to `ApplicationController`.
   - Added a "Follow-Ups Due" section to `Dashboard.tsx` with a `Mark Contacted` button.
   - Added `GetFollowUpsDue_ReturnsOnlyOverdueNonTerminalApplications` integration test.
 
 ### Completed (Recent)
 
-- **Task 5 (Part 2) — Follow-up email reminders**
+- **Task 5 (Part 2): Follow-up email reminders**
   - Added `EmailReminderService.cs` as a hosted service.
   - Generates a single digest for all follow-ups and due reviews via `DigestQueryService`.
 
-- **Task 6 — Onboarding empty states and templates**
+- **Task 6: Onboarding empty states and templates**
   - Updated `AuthController` and `StoryService` / `BehavioralStoryService` to auto-seed starter stories for new users.
   - Added a "Getting Started Checklist" in `Dashboard.tsx` that replaces the previous API-based `OnboardingWizard`.
   - Verified `StoryBank` and `Landing` pages feature detailed empty states and mockups.
 
 ### Pending / Deferred
 
-- **Task 7 — AI mock interview paywall** (deferred to R2)
-- **Task 8 — Build AI mock interview feature** (deferred to R2)
-- **Task 9 — Launch publicly and measure retention** (deferred to user)
+- **Task 7: AI mock interview paywall** (deferred to R2)
+- **Task 8: Build AI mock interview feature** (deferred to R2)
+- **Task 9: Launch publicly and measure retention** (deferred to user)

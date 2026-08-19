@@ -1,6 +1,6 @@
 # Precept
 
-**A career command center for software engineers — story bank, drill engine, and job pipeline tracker.**
+**A career command center for software engineers. Story bank, drill engine, and job pipeline tracker.**
 
 Precept is a self-hostable web application that helps software engineers prepare for interviews and run their job hunt as a structured project rather than a graveyard of browser tabs. It is developer-first: dark-mode, monospace-leaning, keyboard-shoppable, with a real security posture and no telemetry.
 
@@ -15,8 +15,8 @@ Interview prep for engineers is usually fragmented across a Google Doc of STAR s
 ### 1. Bank Your Stories
 Capture both technical and behavioral interview material so you walk into every round with a written corpus to draw from.
 
-- **Technical Story Bank** — Code snippets + written explanations, tagged across 12 engineering domains: `Auth`, `Database`, `AI`, `ML`, `DevOps`, `Frontend`, `Backend`, `SystemDesign`, `Security`, `Testing`, `Cloud`, `Architecture`. Each story carries a `ConfidenceLevel`.
-- **Behavioral Story Bank** — STAR-method (Situation / Task / Action / Result) narratives with free-text tags.
+- **Technical Story Bank**: Code snippets + written explanations, tagged across 12 engineering domains: `Auth`, `Database`, `AI`, `ML`, `DevOps`, `Frontend`, `Backend`, `SystemDesign`, `Security`, `Testing`, `Cloud`, `Architecture`. Each story carries a `ConfidenceLevel`.
+- **Behavioral Story Bank**: STAR-method (Situation / Task / Action / Result) narratives with free-text tags.
 
 ### 2. Drill Until Recall Is Automatic
 A Quiz Mode resurfaces the right story next using a spaced-repetition-style priority:
@@ -91,15 +91,15 @@ Precept.Api  →  ASP.NET Core 10 + EF Core 10 + PostgreSQL 18
 
 Precept handles personal career data, so the security model is intentionally overbuilt:
 
-- **Passwords** — PBKDF2 via ASP.NET Core Identity (≥8 chars, upper/lower/digit/symbol)
-- **Lockout** — 5 failed attempts → 15-minute lockout
-- **Access tokens** — JWT bearer, HMAC-SHA256, 15-minute expiry, zero clock skew
-- **Refresh tokens** — 64-byte CSPRNG, only SHA-256 hashes persisted, stored in `HttpOnly` + `Secure` + `SameSite=Strict` cookies
-- **Refresh-token rotation (RTR)** — every refresh invalidates the spent token and issues a new one atomically
-- **Replay detection** — benign concurrent retries get a soft 401; confirmed replays cascade-revoke every active session for the identity
-- **Rate limiting** — `auth` policy 10 req/min, `general` policy 100 req/min
-- **Tenant isolation** — global EF Core query filters ensure users can only see their own data
-- **CORS & security headers** — environment-gated strict policies in production
+- **Passwords**: PBKDF2 via ASP.NET Core Identity (≥8 chars, upper/lower/digit/symbol)
+- **Lockout**: 5 failed attempts → 15-minute lockout
+- **Access tokens**: JWT bearer, HMAC-SHA256, 15-minute expiry, zero clock skew
+- **Refresh tokens**: 64-byte CSPRNG, only SHA-256 hashes persisted, stored in `HttpOnly` + `Secure` + `SameSite=Strict` cookies
+- **Refresh-token rotation (RTR)**: every refresh invalidates the spent token and issues a new one atomically
+- **Replay detection**: benign concurrent retries get a soft 401; confirmed replays cascade-revoke every active session for the identity
+- **Rate limiting**: `auth` policy 10 req/min, `general` policy 100 req/min
+- **Tenant isolation**: global EF Core query filters ensure users can only see their own data
+- **CORS & security headers**: environment-gated strict policies in production
 
 A full OWASP Top 10 audit is documented in `OWASP-SECURITY-AUDIT.md`, and the auth architecture is detailed in `auth_reuse_detection_cascade_revocation.md`.
 
@@ -107,7 +107,7 @@ A full OWASP Top 10 audit is documented in `OWASP-SECURITY-AUDIT.md`, and the au
 
 ## Roadmap
 
-### R2 — AI-Assisted Interview Intelligence
+### R2: AI-Assisted Interview Intelligence
 
 The goal is not to ship an LLM wrapper, but to ship LLM features that are **cheap, observable, and abuse-resistant** under a freemium model. The hard constraint is unit economics:
 
@@ -122,19 +122,19 @@ The goal is not to ship an LLM wrapper, but to ship LLM features that are **chea
 
 **Planned R2 features:**
 
-- **AI Mock Interviewer** — Small-model question generation (Gemini Flash / Claude Haiku tier) tailored to the user's resume + a job description, with prompt caching for static context and a per-session server-side token budget.
-- **Voice mock rounds** — Browser-native STT/TTS for free tier; optional `whisper-1` for paid users.
-- **Scored feedback** — Structured rubric (Structure / Specificity / Conciseness) returned per response and persisted against the relevant Story for the spaced-repetition loop.
-- **Resume parser** — Server-side PDF/DOCX → Skills inventory + JD match auto-fill.
-- **Operational tooling** — Per-user spend ledger (`{user_id, session_id, input_tokens, output_tokens, model, cost_usd}`), admin `/spend` page, and a CI budget-regression check.
+- **AI Mock Interviewer**: Small-model question generation (Gemini Flash / Claude Haiku tier) tailored to the user's resume + a job description, with prompt caching for static context and a per-session server-side token budget.
+- **Voice mock rounds**: Browser-native STT/TTS for free tier; optional `whisper-1` for paid users.
+- **Scored feedback**: Structured rubric (Structure / Specificity / Conciseness) returned per response and persisted against the relevant Story for the spaced-repetition loop.
+- **Resume parser**: Server-side PDF/DOCX → Skills inventory + JD match auto-fill.
+- **Operational tooling**: Per-user spend ledger (`{user_id, session_id, input_tokens, output_tokens, model, cost_usd}`), admin `/spend` page, and a CI budget-regression check.
 
-### R3 — Platform Expansion
+### R3: Platform Expansion
 
 Aspirational; not in active development.
 
 - Native desktop client (Tauri)
 - Companion mobile client
-- **Team Mode** — shared story banks and peer mocks for engineering teams
+- **Team Mode**: shared story banks and peer mocks for engineering teams
 
 ---
 
@@ -165,4 +165,4 @@ For local development with hot reload, see `README.md`.
 
 ## License
 
-MIT — fork it, run it, adapt it for your own job hunt.
+MIT: fork it, run it, adapt it for your own job hunt.

@@ -490,4 +490,80 @@ public class AuthEndpointTests : IAsyncLifetime
         allTokens.Should().AllSatisfy(t =>
             t.RevokedAt.Should().NotBeNull("all sessions must be revoked on replay after grace window"));
     }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Demo Login & Google OAuth
+    // ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DemoLogin_Returns200_AndSeedsApplicationsAndStories()
+    {
+        var client = _factory.CreateCookieClient();
+
+        // 1. Initial Demo Login
+        var response = await client.PostAsync("/api/auth/demo-login", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var refreshCookie = ExtractRefreshCookieHeader(response);
+        refreshCookie.Should().NotBeNull("refreshToken cookie must be set on demo login");
+
+        var accessCookie = ExtractAccessCookieHeader(response);
+        accessCookie.Should().NotBeNull("accessToken cookie must be set on demo login");
+
+        // 2. Verify seeded data in DB
+        await using var db = _factory.CreateDbContext();
+        var demoUser = await db.Users.FirstOrDefaultAsync(u => u.Email == "demo@precept.app");
+        demoUser.Should().NotBeNull();
+
+        var demoApps = await db.Applications.IgnoreQueryFilters().Where(a => a.UserId == demoUser!.Id).ToListAsync();
+        demoApps.Should().NotBeEmpty("demo applications must be seeded");
+        demoApps.Should().Contain(a => a.CompanyName == "Stripe");
+        demoApps.Should().Contain(a => a.CompanyName == "Vercel");
+
+        var demoStories = await db.Stories.IgnoreQueryFilters().Where(s => s.UserId == demoUser!.Id).ToListAsync();
+        demoStories.Should().NotBeEmpty("demo stories must be seeded");
+
+        // 3. Subsequent Demo Login succeeds seamlessly
+        var client2 = _factory.CreateCookieClient();
+        var response2 = await client2.PostAsync("/api/auth/demo-login", null);
+        response2.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GoogleLogin_Returns200_AndRegistersUser()
+    {
+        var client = _factory.CreateCookieClient();
+        var email = UniqueEmail();
+
+        var response = await client.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest
+        {
+            Email = email,
+            FirstName = "Google",
+            LastName = "Dev",
+            IdToken = "mock-id-token"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var refreshCookie = ExtractRefreshCookieHeader(response);
+        refreshCookie.Should().NotBeNull("refreshToken cookie must be set on Google login");
+
+        // Verify user created in DB
+        await using var db = _factory.CreateDbContext();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        user.Should().NotBeNull();
+        user!.FirstName.Should().Be("Google");
+
+        // Repeat login with same email returns OK
+        var client2 = _factory.CreateCookieClient();
+        var response2 = await client2.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest
+        {
+            Email = email,
+            FirstName = "Google",
+            LastName = "Dev"
+        });
+
+        response2.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 }
+

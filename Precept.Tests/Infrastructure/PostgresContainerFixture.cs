@@ -29,8 +29,7 @@ public class PostgresContainerFixture : IAsyncLifetime
         _useExternal = !string.IsNullOrWhiteSpace(_externalConnectionString);
         if (!_useExternal)
         {
-            _container = new PostgreSqlBuilder()
-                .WithImage("postgres:16-alpine")
+            _container = new PostgreSqlBuilder("postgres:16-alpine")
                 .WithDatabase("precept_test_root")
                 .WithUsername("precept_test")
                 .WithPassword("precept_test_password")

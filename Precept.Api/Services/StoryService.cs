@@ -31,7 +31,10 @@ public class StoryService(
         CreatedAt = story.CreatedAt,
         UpdatedAt = story.UpdatedAt,
         LastReviewedAt = story.LastReviewedAt,
-        NextReviewAt = story.NextReviewAt
+        NextReviewAt = story.NextReviewAt,
+        Repetitions = story.Repetitions,
+        EaseFactor = story.EaseFactor,
+        IntervalDays = story.IntervalDays
     };
 
     public async Task<StoryResponse> CreateStoryAsync(string userId, CreateStoryRequest request)
@@ -45,6 +48,9 @@ public class StoryService(
             SourceProject = request.SourceProject,
             Category = request.Category,
             ConfidenceLevel = request.ConfidenceLevel,
+            Repetitions = (int)request.ConfidenceLevel,
+            IntervalDays = reviewScheduler.GetBaseIntervalDays(request.ConfidenceLevel),
+            EaseFactor = 2.5,
             UserId = userId,
             CreatedAt = UtcNow,
             UpdatedAt = UtcNow
@@ -181,10 +187,22 @@ public class StoryService(
             return null;
         }
 
-        var outcome = reviewScheduler.Apply(story.ConfidenceLevel, rating, UtcNow);
+        var item = new SpacedRepetitionItem(
+            Repetitions: story.Repetitions,
+            EaseFactor: story.EaseFactor,
+            IntervalDays: story.IntervalDays,
+            ConfidenceLevel: story.ConfidenceLevel,
+            LastReviewedAtUtc: story.LastReviewedAt,
+            NextReviewAtUtc: story.NextReviewAt
+        );
+
+        var schedule = reviewScheduler.Apply(item, rating, UtcNow);
         
-        story.ConfidenceLevel = outcome.NewLevel;
-        story.NextReviewAt = outcome.NextReviewAtUtc;
+        story.Repetitions = schedule.NewRepetitions;
+        story.EaseFactor = schedule.NewEaseFactor;
+        story.IntervalDays = schedule.NewIntervalDays;
+        story.ConfidenceLevel = schedule.NewConfidenceLevel;
+        story.NextReviewAt = schedule.NextReviewAtUtc;
         story.LastReviewedAt = UtcNow;
         story.UpdatedAt = UtcNow;
 

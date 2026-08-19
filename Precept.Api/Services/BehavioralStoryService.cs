@@ -22,7 +22,11 @@ namespace Precept.Api.Services
                 Task = request.Task,
                 Action = request.Action,
                 Result = request.Result,
-                Tags = request.Tags
+                Tags = request.Tags,
+                ConfidenceLevel = ConfidenceLevel.Okay,
+                Repetitions = 2,
+                IntervalDays = reviewScheduler.GetBaseIntervalDays(ConfidenceLevel.Okay),
+                EaseFactor = 2.5
             };
 
             context.BehavioralStories.Add(story);
@@ -141,10 +145,22 @@ namespace Precept.Api.Services
             if (story == null)
                 return null;
 
-            var outcome = reviewScheduler.Apply(story.ConfidenceLevel, rating, UtcNow);
+            var item = new SpacedRepetitionItem(
+                Repetitions: story.Repetitions,
+                EaseFactor: story.EaseFactor,
+                IntervalDays: story.IntervalDays,
+                ConfidenceLevel: story.ConfidenceLevel,
+                LastReviewedAtUtc: story.LastReviewedAt,
+                NextReviewAtUtc: story.NextReviewAt
+            );
+
+            var schedule = reviewScheduler.Apply(item, rating, UtcNow);
             
-            story.ConfidenceLevel = outcome.NewLevel;
-            story.NextReviewAt = outcome.NextReviewAtUtc;
+            story.Repetitions = schedule.NewRepetitions;
+            story.EaseFactor = schedule.NewEaseFactor;
+            story.IntervalDays = schedule.NewIntervalDays;
+            story.ConfidenceLevel = schedule.NewConfidenceLevel;
+            story.NextReviewAt = schedule.NextReviewAtUtc;
             story.LastReviewedAt = UtcNow;
             story.UpdatedAt = UtcNow;
 
@@ -244,7 +260,10 @@ namespace Precept.Api.Services
                 UpdatedAt = story.UpdatedAt,
                 ConfidenceLevel = story.ConfidenceLevel,
                 LastReviewedAt = story.LastReviewedAt,
-                NextReviewAt = story.NextReviewAt
+                NextReviewAt = story.NextReviewAt,
+                Repetitions = story.Repetitions,
+                EaseFactor = story.EaseFactor,
+                IntervalDays = story.IntervalDays
             };
         }
     }
