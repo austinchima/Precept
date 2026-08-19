@@ -20,6 +20,7 @@ const QuizMode = lazy(() => import('./pages/QuizMode'));
 const JDMatcher = lazy(() => import('./pages/JDMatcher'));
 const Readiness = lazy(() => import('./pages/Readiness'));
 const AppTracker = lazy(() => import('./pages/AppTracker'));
+const MockInterview = lazy(() => import('./pages/MockInterview'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Capture = lazy(() => import('./pages/Capture'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
               <Route path="story-bank" element={<PageTransition><StoryBank /></PageTransition>} />
               <Route path="jd-matcher" element={<PageTransition><JDMatcher /></PageTransition>} />
+              <Route path="mock-interview" element={<PageTransition><MockInterview /></PageTransition>} />
               <Route path="readiness" element={<PageTransition><Readiness /></PageTransition>} />
               <Route path="applications" element={<PageTransition><AppTracker /></PageTransition>} />
               <Route path="settings" element={<PageTransition><Settings /></PageTransition>} />

@@ -7,18 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **Spaced Repetition Scheduler**: Integrated a custom scheduling algorithm replacing the simple priority queue, managing optimal review intervals for technical and behavioral stories.
-- **Email Digest Service**: Added a unified daily digest via Resend for surfacing spaced repetition tasks and follow-up reminders.
-- **Random Drill ("Practice anyway")**: Users can now pull random stories from their bank when no stories are currently due.
-- **Terms of Service**: Implemented a public Terms of Service page with acceptance enforced during the registration flow.
-- **GCP Deployment Config**: Added an isolated `docker-compose.gcp.yml` configuration for deploying the backend and database to Google Cloud.
+## [1.2.0] - 2026-08-19
 
-### Fixed
-- **Quiz Story Rating Bug**: Addressed a payload mismatch where the UI sent `result` instead of `rating`, resulting in all story assessments falling back to `NailedIt`. Included a migration (`FixConfidenceLevelBackfill`) to retroactively normalize missing confidence scores.
+_R1.5 / AI Intelligence & Active Recall Milestone._
+
+### Added
+- **AI-Agnostic Mock Interview Engine**: Provider-agnostic LLM architecture (`ILlmClient`, `ILlmClientFactory`) supporting OpenAI (GPT-4o/mini), Anthropic (Claude 3.5 Haiku/Sonnet), Google Gemini (1.5/2.0 Flash), DeepSeek, Groq, OpenRouter, and local Ollama/vLLM with heuristic offline fallback.
+- **AI Mock Interview Studio (`/mock-interview`)**: Real-time browser Speech-to-Text (STT), dynamic STAR evaluation across Situation, Task, Action, and Quantified Result, delivery coaching, and model answer generation.
+- **SuperMemo-2 (SM-2) Spaced Repetition Engine**: Mathematical cognitive decay model computing per-story Ease Factors ($EF$), compounding review intervals ($I_{n+1} = I_n \times EF$), streak tracking, and anti-clumping jitter to eliminate review bunching.
+- **Pluggable Spaced Repetition Architecture**: Abstracted `ISpacedRepetitionAlgorithm` with `Sm2Algorithm` active default and `FsrsAlgorithm` machine learning architecture stub deferred to subsequent release.
+- **1-Click Hosted Live Demo**: Passwordless instant interactive sandbox (`POST /api/auth/demo-login`) with pre-seeded technical stories, behavioral STAR narratives, tracked jobs, and metrics.
+- **Google OAuth / Social Sign-In**: Added Google sign-in support in authentication pipelines and UI.
+- **Interactive Visual Analytics**: Added confidence trajectory over time, application velocity conversion funnel, and domain readiness progress.
+- **Transaction Follow-Up & Digest Engine**: Resend and SMTP email dispatch with automated follow-up reminders.
+
+### Security & Infrastructure
+- **Dependency Hardening**: Upgraded `Testcontainers.PostgreSql` to 4.14.0, resolving transitive `SSH.NET` advisory (`GHSA-q939-rpr3-3284`) with 0 vulnerabilities across all dependencies.
+- **Authentication UX**: Extended JWT access token lifetime to 120 minutes and hardened Refresh Token Rotation (RTR) to gracefully handle multi-tab concurrent refreshes.
+- **CI/CD Hardening**: Added frontend TypeScript lint gate (`npm run lint`) and automated dependency vulnerability scanning in GitHub Actions.
+- **Test Suite**: Expanded test coverage to 154 unit and integration tests covering SM-2 mathematics, mock interview services, LLM factory resolution, and social auth.
 
 ### Changed
-- **Story Service Logic**: `GetQuizStoryAsync` properly serves due stories based on `NextReviewAt` instead of just an empty priority queue.
+- **Database Schema**: Added EF Core migration `20260819185208_AddSm2SpacedRepetitionFields` backfilling `Repetitions`, `EaseFactor`, and `IntervalDays` on technical and behavioral stories.
+- **Landing Page**: Added Module 03 (AI Mock Interview Studio), highlighted SM-2 algorithms and live demo access, and tightened primary hero CTA layout.
 
 ## [1.1.0] - 2026-07-31
 

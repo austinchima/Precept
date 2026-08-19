@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Precept.Api.Data;
+using Precept.Api.DTOs;
 using Precept.Api.Models;
 using Precept.Api.Services;
 using Precept.Api.Services.Interfaces;
+using Precept.Api.Services.SpacedRepetition;
 using Scalar.AspNetCore;
 using Serilog;
 using Microsoft.AspNetCore.RateLimiting;
@@ -37,6 +39,61 @@ if (!builder.Environment.IsEnvironment("Testing"))
     if (!string.IsNullOrWhiteSpace(envSecretKey))
     {
         builder.Configuration["JwtSettings:SecretKey"] = envSecretKey;
+    }
+
+    var resendKey = Environment.GetEnvironmentVariable("RESEND_API_KEY");
+    if (!string.IsNullOrWhiteSpace(resendKey))
+    {
+        builder.Configuration["Resend:ApiKey"] = resendKey;
+    }
+
+    var resendFrom = Environment.GetEnvironmentVariable("RESEND_FROM_EMAIL");
+    if (!string.IsNullOrWhiteSpace(resendFrom))
+    {
+        builder.Configuration["Resend:FromEmail"] = resendFrom;
+    }
+
+    var geminiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+    if (!string.IsNullOrWhiteSpace(geminiKey))
+    {
+        builder.Configuration["Gemini:ApiKey"] = geminiKey;
+        builder.Configuration["AiSettings:GeminiApiKey"] = geminiKey;
+    }
+
+    var openAiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+    if (!string.IsNullOrWhiteSpace(openAiKey))
+    {
+        builder.Configuration["AiSettings:OpenAiApiKey"] = openAiKey;
+    }
+
+    var anthropicKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+    if (!string.IsNullOrWhiteSpace(anthropicKey))
+    {
+        builder.Configuration["AiSettings:AnthropicApiKey"] = anthropicKey;
+    }
+
+    var aiKey = Environment.GetEnvironmentVariable("AI_API_KEY");
+    if (!string.IsNullOrWhiteSpace(aiKey))
+    {
+        builder.Configuration["AiSettings:ApiKey"] = aiKey;
+    }
+
+    var aiProvider = Environment.GetEnvironmentVariable("AI_PROVIDER");
+    if (!string.IsNullOrWhiteSpace(aiProvider))
+    {
+        builder.Configuration["AiSettings:Provider"] = aiProvider;
+    }
+
+    var aiModel = Environment.GetEnvironmentVariable("AI_MODEL");
+    if (!string.IsNullOrWhiteSpace(aiModel))
+    {
+        builder.Configuration["AiSettings:Model"] = aiModel;
+    }
+
+    var aiBaseUrl = Environment.GetEnvironmentVariable("AI_BASE_URL");
+    if (!string.IsNullOrWhiteSpace(aiBaseUrl))
+    {
+        builder.Configuration["AiSettings:BaseUrl"] = aiBaseUrl;
     }
 }
 
@@ -195,6 +252,7 @@ builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddHostedService<RefreshTokenCleanupService>();
 builder.Services.AddScoped<IDigestQueryService, DigestQueryService>();
 builder.Services.AddHostedService<DailyDigestService>();
+builder.Services.AddSingleton<ISpacedRepetitionAlgorithm, Sm2Algorithm>();
 builder.Services.AddSingleton<IReviewScheduler, ReviewScheduler>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<IBehavioralStoryService, BehavioralStoryService>();
@@ -206,8 +264,15 @@ builder.Services.AddScoped<IJobDescriptionService, JobDescriptionService>();
 builder.Services.AddSingleton<IJobDescriptionKeywordExtractor, JobDescriptionKeywordExtractor>();
 builder.Services.AddSingleton<IJobPostingContentExtractor, JobPostingContentExtractor>();
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("AiClient", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
+builder.Services.Configure<AiSettings>(builder.Configuration.GetSection(AiSettings.SectionName));
+builder.Services.AddSingleton<ILlmClientFactory, LlmClientFactory>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<ICookieOptionsFactory, CookieOptionsFactory>();
+builder.Services.AddScoped<IMockInterviewService, MockInterviewService>();
 
 // ─────────────────────────────────────────────────────────────
 //  8. Rate Limiting (prevents brute-force and abuse)

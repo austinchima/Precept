@@ -65,12 +65,13 @@ export default function Layout() {
   };
 
   const navItems = [
-    { name: 'Dashboard',    path: '/dashboard',       icon: 'fa-solid fa-border-all' },
-    { name: 'Applications', path: '/applications',    icon: 'fa-regular fa-file-lines' },
-    { name: 'STAR Bank',    path: '/story-bank',      icon: 'fa-regular fa-star' },
-    { name: 'JD Matcher',   path: '/jd-matcher',      icon: 'fa-solid fa-wand-magic-sparkles' },
-    { name: 'Readiness',    path: '/readiness',       icon: 'fa-solid fa-bullseye' },
-    { name: 'Quiz Mode',    path: '/story-bank/quiz', icon: 'fa-solid fa-brain' },
+    { name: 'Dashboard',      path: '/dashboard',       icon: 'fa-solid fa-border-all' },
+    { name: 'Applications',   path: '/applications',    icon: 'fa-regular fa-file-lines' },
+    { name: 'STAR Bank',      path: '/story-bank',      icon: 'fa-regular fa-star' },
+    { name: 'Mock Interview', path: '/mock-interview',  icon: 'fa-solid fa-microphone-lines' },
+    { name: 'JD Matcher',     path: '/jd-matcher',      icon: 'fa-solid fa-wand-magic-sparkles' },
+    { name: 'Readiness',      path: '/readiness',       icon: 'fa-solid fa-bullseye' },
+    { name: 'Quiz Mode',      path: '/story-bank/quiz', icon: 'fa-solid fa-brain' },
   ];
 
   return (

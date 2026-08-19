@@ -65,6 +65,9 @@ public class StoryResponse
     public DateTime CreatedAt { get; set; }
     public DateTime? LastReviewedAt { get; set; }
     public DateTime? NextReviewAt { get; set; }
+    public int Repetitions { get; set; }
+    public double EaseFactor { get; set; }
+    public double IntervalDays { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
 

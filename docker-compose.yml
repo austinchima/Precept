@@ -1,16 +1,16 @@
 services:
   db:
-    image: postgres:18-alpine
+    image: postgres:16-alpine
     container_name: precept_db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-precept_db}
     # Database is only reachable internally by the API. Do not expose to the host.
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-precept_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,10 +29,19 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://0.0.0.0:8080
-      - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB:-precept_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-only-not-for-production-must-be-at-least-32-bytes-long-for-hmac-sha256}
       - AllowedHosts=${ALLOWED_HOSTS:-*}
       - RunMigrationsOnStartup=true
+      - AI_PROVIDER=${AI_PROVIDER:-Auto}
+      - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - AI_BASE_URL=${AI_BASE_URL:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-coach@precept.app}
 
   web:
     build:

@@ -17,6 +17,9 @@ namespace Precept.Api.DTOs
         public ConfidenceLevel ConfidenceLevel { get; set; }
         public DateTime? LastReviewedAt { get; set; }
         public DateTime? NextReviewAt { get; set; }
+        public int Repetitions { get; set; }
+        public double EaseFactor { get; set; }
+        public double IntervalDays { get; set; }
     }
 
     public class CreateBehavioralStoryRequest

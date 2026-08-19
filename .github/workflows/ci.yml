@@ -54,7 +54,7 @@ jobs:
       - name: Scan for vulnerable NuGet packages
         run: dotnet list package --vulnerable --include-transitive
 
-  # OWASP A06: Scan npm dependencies for the web frontend
+  # OWASP A06: Scan npm dependencies and verify build for the web frontend
   npm-audit:
     runs-on: ubuntu-latest
     steps:
@@ -73,6 +73,10 @@ jobs:
       - name: Run npm audit
         working-directory: ./Precept.Web
         run: npm audit --audit-level=critical
+
+      - name: Type check frontend
+        working-directory: ./Precept.Web
+        run: npm run lint
 
       - name: Build frontend
         working-directory: ./Precept.Web

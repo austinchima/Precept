@@ -8,7 +8,7 @@
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=.net&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?logo=postgresql&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
 ![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)
 
 </div>
@@ -19,7 +19,7 @@ and run their job hunt as a structured project rather than a graveyard of browse
 posture and no telemetry. It is also a deliberate engineering artifact. The auth, testing, and
 operational pieces are built to a higher bar than the feature surface strictly requires.
 
-> **Status:** R1 core loop is implemented and shipping-ready (full-stack, secure, containerized, local tests green). Recent additions include one-click job capture and authenticated-app UI redesign. R2 (AI-powered interview intelligence) is in design. See [Roadmap](#-roadmap) for honest scope and the cost-engineering constraints we are committing to.
+> **Status:** Production-ready with SuperMemo-2 (SM-2) active recall memory modeling, vendor-agnostic AI mock interview simulations, 1-click live demo sandbox, full-stack containerization, and 154 green unit/integration tests.
 
 ---
 
@@ -32,9 +32,9 @@ collapses that into one application with three explicit jobs:
 1. **Bank your stories**: technical (snippets and explanations, tagged across 12 engineering
    domains) and behavioral (STAR-structured). You walk into every round with a written corpus
    to draw from.
-2. **Drill them until recall is automatic**: a Quiz Mode that rates each story on a 5-rung
-   *Confidence Ladder* (`Panic → Shaky → Okay → Solid → Can Teach`) and resurfaces the right
-   story next. Unreviewed first, then weakest, then oldest reviewed.
+2. **Drill them until recall is automatic**: a Quiz Mode powered by the **SuperMemo-2 (SM-2)**
+   spaced-repetition algorithm that computes per-story Ease Factors ($EF$), compounding intervals,
+   and rates each story on a 5-rung *Confidence Ladder* (`Panic → Shaky → Okay → Solid → Can Teach`).
 3. **Run the pipeline like a project**: every application moves through a five-stage status
    machine with automatic event history. Nothing goes stale and you always know what to chase.
 
@@ -43,26 +43,26 @@ applications; Precept also makes you interview-ready.
 
 ---
 
-## ✦ What's in R1 (live)
+## ✦ What's in Precept (live)
 
 | Module | What it does |
 |---|---|
-| **Technical Story Bank** | Catalog snippets + written explanations, tagged across 12 domains: `Auth`, `Database`, `Ai`, `Ml`, `DevOps`, `Frontend`, `Backend`, `SystemDesign`, `Security`, `Testing`, `Cloud`, `Architecture`. Each story carries a `ConfidenceLevel`. |
-| **Behavioral Story Bank** | STAR-method (Situation / Task / Action / Result) narratives with free-text tags. |
-| **Quiz Mode** | Spaced-repetition resurfacing: never-reviewed first → low-confidence (`Panic`/`Shaky`) → oldest-reviewed. Rating a story updates `ConfidenceLevel` and `LastReviewedAt` atomically. |
-| **JD Skill Mapper** | Paste a job description. Precept auto-extracts a curated tech-skills keyword list server-side and computes a match score by case-insensitive set-intersection against the user's `Skills` inventory, surfacing missing keywords. Users can supply an override list. (No LLM/NLP yet; that is an R2 candidate.) |
+| **AI Mock Interview Studio** | Real-time speech-to-text (STT) voice drill studio. The multi-provider AI judge scores answers against the STAR method (Situation, Task, Action, Result), provides coaching, and generates model responses. |
+| **SuperMemo-2 (SM-2) Drill Engine** | Cognitive decay scheduling algorithm computing dynamic Ease Factors ($EF$), compounding review intervals ($I_{n+1} = I_n \times EF$), streak tracking, and anti-clumping jitter. Prepared for deferred FSRS ML models. |
+| **Technical Story Bank** | Catalog snippets + written explanations, tagged across 12 domains: `Auth`, `Database`, `Ai`, `Ml`, `DevOps`, `Frontend`, `Backend`, `SystemDesign`, `Security`, `Testing`, `Cloud`, `Architecture`. Each story carries a `ConfidenceLevel` and SM-2 metadata. |
+| **Behavioral Story Bank** | STAR-method (Situation / Task / Action / Result) narratives with free-text tags and AI evaluation hooks. |
+| **Instant Live Demo Mode** | One-click passwordless trial (`POST /api/auth/demo-login`) with pre-seeded technical stories, behavioral narratives, applications, and analytics. |
+| **Google OAuth & Social Auth** | Streamlined authentication with Google OAuth integration alongside native JWT and Refresh Token Rotation (RTR). |
+| **JD Skill Mapper** | Paste a job description. Precept auto-extracts a curated tech-skills keyword list server-side and computes a match score by case-insensitive set-intersection against the user's `Skills` inventory, surfacing missing keywords. |
 | **Pipeline Tracker** | Five-stage status machine: `Applied → PhoneScreen → Interviewing → Offer / Rejected / Ghosted`. Every status change writes an `ApplicationEvent` for an auditable trajectory. |
 | **Job Posting Capture** | One-click capture from any job posting page via a bookmarklet. The server fetches the URL, extracts company/role/location/salary/remote/description, creates a `JobDescription`, and seeds a draft `Application`. |
 | **Skills Matrix** | Inventory with `Name`, `Category`, `ProficiencyLevel` (`Beginner / Intermediate / Advanced / Expert`), and notes. Feeds the JD match and the Technical Readiness radar. |
-| **Analytics Dashboard** | Story confidence + category breakdowns, applications by status, response/rejection rates, average JD match score. Powered by `Recharts`. |
+| **Analytics Dashboard** | Confidence trajectory curve, application velocity conversion funnel, story category breakdowns, response/rejection rates. Powered by `Recharts`. |
 | **Technical Readiness** | Radar visualization of proficiency per skill category against an interview-ready threshold, plus JD-derived gap analysis. |
 | **Search** | Cross-entity search over the user's stories, applications, JDs, and skills. |
 | **Data Export** | `GET /api/dashboard/export` returns the user's entire data set as a JSON payload. No lock-in. |
-| **Testimonials (landing page)** | Authenticated users can submit a public testimonial; the landing page reads from `GET /api/testimonial/public`. |
+| **Email Digests & Reminders** | Daily background service generating unified reminders for follow-ups and story reviews due via Resend and SMTP. |
 | **Settings & Recovery** | Manage active sessions (with remote revocation) and recover soft-deleted items (Stories, Applications, Skills) from a 30-day trash view. |
-
-| **Email Digests** | Daily background service generating unified reminders for follow-ups and story reviews due. |
-| **Onboarding** | Automatic starter-story seeding for new users and an inline 'Getting Started' dashboard checklist. |
 
 All endpoints are user-scoped (`[Authorize]` + `WHERE UserId = current_user` at the query
 layer) and rate-limited. The capture endpoint additionally validates the URL scheme,
@@ -93,11 +93,11 @@ graph TD
         SEC["Security middleware<br/>(headers · CORS · rate limiter)"]:::backend
         AUTH["JWT bearer + RTR<br/>(httpOnly refresh cookie)"]:::backend
         CTRL["Controllers (10)"]:::backend
-        SVC["Services (12)"]:::backend
+        SVC["Services (15+)<br/>(SM-2, Mock Interview, LLM Factory)"]:::backend
         EF["EF Core 10<br/>(global tenant query filters)"]:::backend
     end
 
-    DB[("PostgreSQL 18")]:::database
+    DB[("PostgreSQL 16")]:::database
 
     UI <--> Ctx
     Ctx --> HTTP
@@ -114,11 +114,11 @@ graph TD
 
 | Layer | What's in the repo |
 |---|---|
-| **Backend (`Precept.Api/`)** | ASP.NET Core Web API on **.NET 10**, C# 13, EF Core 10, Npgsql, ASP.NET Core Identity, JWT bearer, `System.Threading.RateLimiting`, **Serilog** (console + rolling file sink), **Scalar** for OpenAPI UI, `DotNetEnv` for local env loading, `IHttpClientFactory` for job-posting fetch. |
+| **Backend (`Precept.Api/`)** | ASP.NET Core Web API on **.NET 10**, C# 13, EF Core 10, Npgsql, ASP.NET Core Identity, JWT bearer, `System.Threading.RateLimiting`, **Serilog** (console + rolling file sink), **Scalar** for OpenAPI UI, `DotNetEnv` for local env loading, `IHttpClientFactory` for job-posting fetch. Universal AI client adapters for OpenAI, Anthropic, Gemini, Groq, DeepSeek, and local Ollama. |
 | **Frontend (`Precept.Web/`)** | **React 19** + TypeScript on **Vite 6**, **Tailwind v4** (`@tailwindcss/vite`), **GSAP 3** + `@gsap/react`, **Framer Motion** / **motion**, **Recharts**, **lucide-react**, **lenis** (smooth scroll), `@paper-design/shaders-react`, native `fetch` (no axios), React Router 7. |
-| **Database** | PostgreSQL 18 (Alpine in compose), schema versioned via EF Core migrations (committed to git). |
-| **Tests (`Precept.Tests/`)** | **xUnit** + **Testcontainers for .NET** (Postgres per-class isolation in local runs; CI uses an action-provisioned Postgres service); 100+ DB-backed integration + unit tests. |
-| **CI** | GitHub Actions (`.github/workflows/ci.yml`): build + test + `dotnet list package --vulnerable` + `npm audit --audit-level=moderate` on the web project. |
+| **Database** | PostgreSQL 16 (Alpine in compose), schema versioned via EF Core migrations (committed to git). |
+| **Tests (`Precept.Tests/`)** | **xUnit** + **Testcontainers for .NET 4.14.0** (Postgres per-class isolation in local runs; CI uses an action-provisioned Postgres service); **154 DB-backed integration + unit tests**. |
+| **CI** | GitHub Actions (`.github/workflows/ci.yml`): build + test + `dotnet list package --vulnerable` + `npm run lint` + `npm audit --audit-level=moderate` on the web project. |
 | **Containerization** | Multi-stage Dockerfiles for both projects; `docker-compose.yml` wires `db` → `api` → `web` with healthchecks. |
 
 ---

@@ -26,6 +26,8 @@ import {
   Circle
 } from 'lucide-react';
 import PageShell from '../components/PageShell';
+import { ConfidenceTrendChart } from '../components/analytics/ConfidenceTrendChart';
+import { ApplicationVelocityFunnel } from '../components/analytics/ApplicationVelocityFunnel';
 
 /* ─────── DESIGN TOKENS (Matching Landing.tsx) ─────── */
 const C = {
@@ -292,6 +294,12 @@ export default function Dashboard() {
             <div className="font-mono text-[10.5px] mt-1.5 truncate" style={{ color: C.inkDim }}>{m.sub}</div>
           </div>
         ))}
+      </div>
+
+      {/* VISUAL ANALYTICS: CONFIDENCE TRAJECTORY & PIPELINE VELOCITY */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0 animate-fade-in-up delay-150">
+        <ConfidenceTrendChart stories={stories} behavioralStories={behavioralStories} />
+        <ApplicationVelocityFunnel applications={applications} />
       </div>
 
       {/* Functional 3-Column Control Workspace Grid */}

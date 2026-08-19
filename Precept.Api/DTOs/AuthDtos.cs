@@ -129,3 +129,19 @@ public class VerifyEmailRequest
     [Required]
     public string Token { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Request body for POST /api/auth/google.
+/// </summary>
+public class GoogleAuthRequest
+{
+    public string? IdToken { get; set; }
+
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+}
+

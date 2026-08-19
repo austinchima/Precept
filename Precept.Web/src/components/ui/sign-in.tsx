@@ -56,6 +56,7 @@ interface SignInPageProps {
   onToggleMode: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onGoogleSignIn?: () => void;
+  onDemoLogin?: () => void;
   onResetPassword?: () => void;
   onBack?: () => void;
 }
@@ -107,6 +108,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   error,
   onToggleMode,
   onSubmit,
+  onGoogleSignIn,
+  onDemoLogin,
   onResetPassword,
   onBack,
 }) => {
@@ -332,31 +335,65 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           </form>
 
           {/* divider */}
-          <div className="animate-element animate-delay-800 relative flex items-center my-7">
+          <div className="animate-element animate-delay-800 relative flex items-center my-6">
             <span className="flex-1 border-t" style={{ borderColor: C.hair }} />
             <span className="px-3 font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: C.inkMute }}>or</span>
             <span className="flex-1 border-t" style={{ borderColor: C.hair }} />
           </div>
 
-          {/* social (disabled — coming soon) */}
-          <div className="animate-element animate-delay-900 flex items-center justify-center gap-3">
-            {[
-              { id: 'google', icon: <GoogleIcon />, label: 'Google' },
-              { id: 'github', icon: <GithubIcon />, label: 'GitHub' },
-            ].map((p) => (
+          {/* social & 1-click demo actions */}
+          <div className="animate-element animate-delay-900 space-y-3">
+            <button
+              type="button"
+              onClick={onGoogleSignIn}
+              disabled={isLoading}
+              data-testid="signin-social-google"
+              className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl font-mono text-[12px] uppercase tracking-[0.14em] transition-all cursor-pointer disabled:opacity-60"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${C.hair2}`,
+                color: C.ink,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                e.currentTarget.style.borderColor = C.hair2;
+              }}
+            >
+              <GoogleIcon />
+              <span>Continue with Google</span>
+            </button>
+
+            {onDemoLogin && (
               <button
-                key={p.id}
                 type="button"
-                disabled
-                data-testid={`signin-social-${p.id}`}
-                title={`${p.label} — coming soon`}
-                className="group relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-mono text-[11.5px] uppercase tracking-[0.16em] cursor-not-allowed opacity-60"
-                style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair2}`, color: C.ink }}
+                onClick={onDemoLogin}
+                disabled={isLoading}
+                data-testid="signin-demo-login"
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-mono text-[12px] font-semibold uppercase tracking-[0.14em] transition-all cursor-pointer disabled:opacity-60"
+                style={{
+                  background: 'rgba(45,212,191,0.10)',
+                  border: '1px solid rgba(45,212,191,0.35)',
+                  color: C.teal,
+                  boxShadow: '0 0 20px rgba(45,212,191,0.08)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(45,212,191,0.18)';
+                  e.currentTarget.style.borderColor = 'rgba(45,212,191,0.55)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(45,212,191,0.10)';
+                  e.currentTarget.style.borderColor = 'rgba(45,212,191,0.35)';
+                }}
               >
-                {p.icon} <span>{p.label}</span>
-                <span className="ml-1 font-mono text-[9px] tracking-widest" style={{ color: C.inkMute }}>soon</span>
+                <span>⚡</span>
+                <span>Try Live Interactive Demo</span>
+                <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono">Instant</span>
               </button>
-            ))}
+            )}
           </div>
 
           {/* swap mode */}

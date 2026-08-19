@@ -103,6 +103,8 @@ export interface UserContextType {
   user: User | null;
   login: (email: string, passcode: string, rememberMe?: boolean) => Promise<void>;
   register: (firstName: string, lastName: string, email: string, passcode: string, agreedToTerms: boolean) => Promise<void>;
+  demoLogin: () => Promise<void>;
+  googleLogin: (email: string, firstName?: string, lastName?: string, idToken?: string) => Promise<void>;
   updateProfile: (firstName: string, lastName: string, emailDigestEnabled?: boolean, digestIncludeFollowUps?: boolean, digestIncludeReviews?: boolean, digestHourUtc?: number) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -208,3 +210,27 @@ export interface SessionInfo {
   expiresAt: string;
   isCurrent: boolean;
 }
+
+export interface MockQuestionResponse {
+  question: string;
+  category: string;
+  focusArea: string;
+  contextTips: string;
+}
+
+export interface StarBreakdown {
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+}
+
+export interface MockInterviewEvaluation {
+  score: number;
+  starBreakdown: StarBreakdown;
+  strengths: string[];
+  areasForImprovement: string[];
+  modelAnswer: string;
+  deliveryFeedback: string;
+}
+
