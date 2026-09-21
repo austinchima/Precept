@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-21
+
+_M1 / Authentication Simplification Milestone._
+
+### Changed
+- **Authentication**: Replaced the hand-rolled JWT access-token + refresh-token-rotation (RTR) system with standard **ASP.NET Core Identity cookie authentication**. Sessions now live in an `HttpOnly` + `Secure` + `SameSite=Strict` `precept_auth` cookie with a 14-day sliding expiration.
+- **Global sign-out**: Added `POST /api/auth/sign-out-everywhere`, powered by Identity security-stamp rotation (replaces the per-session refresh-token revocation UI; the Settings page now has a single "Sign out of all other devices" button).
+
+### Security
+- **CSRF defense-in-depth**: All mutating `/api/*` requests must include the `X-Requested-With: XMLHttpRequest` header; requests without it are rejected with 403. `SameSite=Strict` remains the primary CSRF control.
+- **No more signing secret**: `JWT_SECRET_KEY` is no longer required — cookie payloads are protected by ASP.NET Core Data Protection keys.
+- Lockout (5 failed attempts → 15 minutes) and rate limiting are unchanged and now enforced through `SignInManager.PasswordSignInAsync`.
+
+### Removed
+- `TokenService`, `RefreshTokenService`, `RefreshTokenCleanupService`, `CookieOptionsFactory` and their interfaces; `JwtSettings` and `RefreshToken` models; the `RefreshTokens` table (migration `DropRefreshTokens`); the `POST /api/auth/refresh` and `GET/DELETE /api/auth/sessions` endpoints.
+
 ## [1.2.0] - 2026-08-19
 
 _R1.5 / AI Intelligence & Active Recall Milestone._
