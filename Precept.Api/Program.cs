@@ -1,8 +1,5 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Precept.Api.Data;
 using Precept.Api.DTOs;
 using Precept.Api.Models;
@@ -34,12 +31,8 @@ if (!builder.Environment.IsEnvironment("Testing"))
         DotNetEnv.Env.Load(envPath);
     }
 
-    // Override JWT secret from environment variable if present
-    var envSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
-    if (!string.IsNullOrWhiteSpace(envSecretKey))
-    {
-        builder.Configuration["JwtSettings:SecretKey"] = envSecretKey;
-    }
+    // JWT_SECRET_KEY is no longer required — cookie auth uses ASP.NET Core
+    // Data Protection keys instead of a shared HMAC signing secret.
 
     var resendKey = Environment.GetEnvironmentVariable("RESEND_API_KEY");
     if (!string.IsNullOrWhiteSpace(resendKey))
@@ -137,99 +130,45 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<PreceptDbContext>()
 .AddDefaultTokenProviders();
 
-// Override Identity's default cookie-based authentication scheme
-// with JwtBearer — must come AFTER AddIdentity to take precedence.
-builder.Services.Configure<Microsoft.AspNetCore.Authentication.AuthenticationOptions>(options =>
+// ─────────────────────────────────────────────────────────────
+//  4. Identity application cookie (session authentication)
+// ─────────────────────────────────────────────────────────────
+// AddIdentity registers the cookie scheme as the default. Configure it here:
+// HttpOnly + Secure + SameSite=Strict cookie with a 14-day sliding expiration.
+// Security-stamp validation (built into the cookie scheme) revokes existing
+// cookies server-side whenever the user's security stamp changes.
+builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.Cookie.Name = "precept_auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = builder.Environment.IsProduction()
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SameSite = builder.Environment.IsProduction()
+        ? SameSiteMode.Strict
+        : SameSiteMode.Lax;
+    options.SlidingExpiration = true;
+    options.ExpireTimeSpan = TimeSpan.FromDays(14);
+
+    // API: return 401/403 JSON status codes instead of redirecting to a login page.
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
 });
 
-// ─────────────────────────────────────────────────────────────
-//  3. JWT Settings (strongly typed)
-// ─────────────────────────────────────────────────────────────
-builder.Services.Configure<JwtSettings>(
-    builder.Configuration.GetSection(JwtSettings.SectionName));
-
-var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
-    ?? throw new InvalidOperationException("JwtSettings configuration section is missing.");
-
-// Fail fast at startup if the signing key is missing or too weak, instead of
-// surfacing an obscure error on the first token-signing request. HMAC-SHA256
-// requires a key of at least 256 bits (32 bytes).
-if (string.IsNullOrWhiteSpace(jwtSettings.SecretKey))
+// Validate the security stamp on every request so that password resets,
+// account deletion, and "sign out everywhere" invalidate other sessions
+// immediately rather than after the default 30-minute interval.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
-    throw new InvalidOperationException(
-        "JwtSettings:SecretKey is not configured. Set it via the JWT_SECRET_KEY " +
-        "environment variable (or JwtSettings:SecretKey in configuration).");
-}
-
-var secretKey = Encoding.UTF8.GetBytes(jwtSettings.SecretKey);
-
-if (secretKey.Length < 32)
-{
-    throw new InvalidOperationException(
-        $"JwtSettings:SecretKey must be at least 32 bytes (256 bits) for HMAC-SHA256, " +
-        $"but the configured value is {secretKey.Length} bytes. Provide a stronger " +
-        "JWT_SECRET_KEY (e.g. `openssl rand -hex 32`).");
-}
-
-// ─────────────────────────────────────────────────────────────
-//  4. JWT Authentication
-// ─────────────────────────────────────────────────────────────
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    // Require HTTPS in production only
-    options.RequireHttpsMetadata = builder.Environment.IsProduction();
-
-    options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings.Issuer,
-        ValidAudience = jwtSettings.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(secretKey),
-        // Zero clock skew — access tokens expire exactly when they say they do
-        ClockSkew = TimeSpan.Zero
-    };
-
-    // Return structured error info in WWW-Authenticate header (useful for debugging)
-    options.Events = new JwtBearerEvents
-    {
-        // Production: access token is transported in an HttpOnly cookie.
-        // Fall back to the cookie when no Authorization header is present so
-        // tests that use Bearer headers continue to work during transition.
-        OnMessageReceived = context =>
-        {
-            var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
-            if (string.IsNullOrEmpty(authHeader) &&
-                context.Request.Cookies.TryGetValue("accessToken", out var accessToken))
-            {
-                context.Token = accessToken;
-            }
-            return Task.CompletedTask;
-        },
-        OnChallenge = context =>
-        {
-            if (context.AuthenticateFailure is SecurityTokenExpiredException)
-            {
-                // Take over the response to ensure X-Token-Expired is included
-                context.HandleResponse();
-                context.Response.StatusCode = 401;
-                context.Response.Headers.Append("WWW-Authenticate", "Bearer error=\"invalid_token\", error_description=\"The token is expired\"");
-                context.Response.Headers.Append("X-Token-Expired", "true");
-            }
-            return Task.CompletedTask;
-        }
-    };
+    options.ValidationInterval = TimeSpan.Zero;
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -247,9 +186,6 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 // ─────────────────────────────────────────────────────────────
 //  7. Application Services
 // ─────────────────────────────────────────────────────────────
-builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-builder.Services.AddHostedService<RefreshTokenCleanupService>();
 builder.Services.AddScoped<IDigestQueryService, DigestQueryService>();
 builder.Services.AddHostedService<DailyDigestService>();
 builder.Services.AddSingleton<ISpacedRepetitionAlgorithm, Sm2Algorithm>();
@@ -271,7 +207,6 @@ builder.Services.AddHttpClient("AiClient", client =>
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection(AiSettings.SectionName));
 builder.Services.AddSingleton<ILlmClientFactory, LlmClientFactory>();
 builder.Services.AddScoped<ISearchService, SearchService>();
-builder.Services.AddScoped<ICookieOptionsFactory, CookieOptionsFactory>();
 builder.Services.AddScoped<IMockInterviewService, MockInterviewService>();
 
 // ─────────────────────────────────────────────────────────────
@@ -382,9 +317,10 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("RunMigr
 //  3. Security headers   — applied before any response body is written
 //  4. Rate limiting      — reject DoS before auth work starts
 //  5. CORS               — must precede auth so pre-flight OPTIONS succeeds
-//  6. Authentication     — establishes identity
-//  7. Authorization      — enforces policy using established identity
-//  8. Endpoints          — actual business logic
+//  6. CSRF header check  — mutating API calls must opt in with a custom header
+//  7. Authentication     — establishes identity
+//  8. Authorization      — enforces policy using established identity
+//  9. Endpoints          — actual business logic
 // ─────────────────────────────────────────────────────────────
 
 app.Use(async (context, next) =>
@@ -444,6 +380,26 @@ else
     app.UseCors("Production");
 
 app.UseRateLimiter(); // MUST be after CORS, before auth
+
+// CSRF defense-in-depth: SameSite=Strict on the auth cookie is the primary
+// control; additionally require the X-Requested-With header on all mutating
+// API requests (cross-site forms cannot set custom headers). This protects
+// self-hosters running SameSite=Lax (non-production) or behind odd proxies.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api") &&
+        !HttpMethods.IsGet(context.Request.Method) &&
+        !HttpMethods.IsHead(context.Request.Method) &&
+        !HttpMethods.IsOptions(context.Request.Method) &&
+        context.Request.Headers["X-Requested-With"] != "XMLHttpRequest")
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await context.Response.WriteAsJsonAsync(new { message = "Missing X-Requested-With header." });
+        return;
+    }
+    await next();
+});
+
 app.UseAuthentication(); // MUST be before UseAuthorization
 app.UseAuthorization();
 app.MapControllers();
