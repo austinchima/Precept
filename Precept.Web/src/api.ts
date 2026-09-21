@@ -3,65 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// OWASP NOTE: The access token is stored in an HttpOnly cookie set by the API.
-// The browser sends it automatically with same-site / cross-origin credentials.
-// The frontend never reads or persists the token, eliminating localStorage XSS risk.
+// OWASP NOTE: Authentication uses an HttpOnly session cookie set by the API
+// (ASP.NET Core Identity cookie auth). The browser sends it automatically with
+// same-site / cross-origin credentials. The frontend never reads or persists
+// the credential, eliminating localStorage XSS risk.
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
-let isRefreshing = false;
-let refreshSubscribers: (() => void)[] = [];
-
-function subscribeTokenRefresh(cb: () => void) {
-  refreshSubscribers.push(cb);
-}
-
-function onRefreshed() {
-  refreshSubscribers.map((cb) => cb());
-  refreshSubscribers = [];
-}
-
 function isNetworkError(err: unknown): boolean {
   return err instanceof TypeError || (err instanceof Error && /fetch|network|failed/i.test(err.message));
-}
-
-async function refreshAccessToken(): Promise<void> {
-  let response: Response;
-  try {
-    response = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-  } catch (err) {
-    if (isNetworkError(err)) {
-      throw new Error('Unable to reach the server. Please check your connection and try again.');
-    }
-    throw err;
-  }
-
-  if (!response.ok) {
-    let isConcurrentRetry = false;
-    try {
-      const errorData = await response.json();
-      // [Benign Retry Interceptor]: Another concurrent browser tab or overlapping request
-      // just successfully rotated the refresh token within the grace window.
-      // The new access token cookie is already set; we just need to retry the original request.
-      if (errorData?.message === 'Token just refreshed') {
-        isConcurrentRetry = true;
-      }
-    } catch {
-      // Body parsing failed or unrelated 401 — fall through to error
-    }
-
-    if (!isConcurrentRetry) {
-      throw new Error('Refresh token expired or invalid');
-    }
-  }
 }
 
 export async function apiFetch(url: string, options: RequestOptions = {}): Promise<Response> {
@@ -71,6 +23,9 @@ export async function apiFetch(url: string, options: RequestOptions = {}): Promi
   if (options.body && !headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
+
+  // Required by the API's CSRF defense middleware for mutating requests.
+  headers.set('X-Requested-With', 'XMLHttpRequest');
 
   const config: RequestInit = {
     ...options,
@@ -89,31 +44,9 @@ export async function apiFetch(url: string, options: RequestOptions = {}): Promi
   }
 
   if (response.status === 401 && !options.skipAuth) {
-    // If already refreshing, wait for it to finish
-    if (isRefreshing) {
-      return new Promise((resolve) => {
-        subscribeTokenRefresh(() => {
-          resolve(fetch(url, { ...options, headers, credentials: 'include' }));
-        });
-      });
-    }
-
-    isRefreshing = true;
-
-    try {
-      await refreshAccessToken();
-      isRefreshing = false;
-      onRefreshed();
-
-      // Retry original request — the browser will send the new access token cookie
-      return await fetch(url, { ...options, headers, credentials: 'include' });
-    } catch (err) {
-      isRefreshing = false;
-      refreshSubscribers = [];
-      // Trigger a window event to let AuthContext know it should log out
-      window.dispatchEvent(new Event('auth-expired'));
-      throw err;
-    }
+    // Session cookie missing/expired — notify AuthContext to log out.
+    window.dispatchEvent(new Event('auth-expired'));
+    throw new Error('Your session has expired. Please sign in again.');
   }
 
   return response;
