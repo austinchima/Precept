@@ -97,3 +97,44 @@ namespace Precept.Api.Data
                     .HasForeignKey(s => s.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+            builder.Entity<BehavioralStory>(entity =>
+            {
+                entity.HasIndex(bs => new { bs.UserId, bs.NextReviewAt });
+                // Cascade delete: when a user is deleted, remove all their behavioral stories
+                entity.HasOne(bs => bs.User)
+                    .WithMany(u => u.BehavioralStories)
+                    .HasForeignKey(bs => bs.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Testimonial>(entity =>
+            {
+                // Cascade delete: when a user is deleted, remove all their testimonials
+                entity.HasOne(t => t.User)
+                    .WithMany() // Assuming ApplicationUser doesn't have an explicit ICollection<Testimonial> for now
+                    .HasForeignKey(t => t.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Application>(entity =>
+            {
+                // SetNull: when a JobDescription is deleted, null out the FK on Application
+                // rather than deleting the application itself (it may still be relevant)
+                entity.HasOne(a => a.JobDescription)
+                    .WithMany(jd => jd.Applications)
+                    .HasForeignKey(a => a.JobDescriptionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            builder.Entity<ApplicationEvent>(entity =>
+            {
+                // Cascade delete: when an application is deleted, delete its events
+                entity.HasOne(ae => ae.Application)
+                    .WithMany(a => a.Events)
+                    .HasForeignKey(ae => ae.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+        }
+    }
+}
