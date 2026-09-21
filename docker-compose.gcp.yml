@@ -30,7 +30,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://0.0.0.0:8080
       - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      # JWT_SECRET_KEY no longer required (cookie auth replaces JWT).
       - AllowedHosts=${ALLOWED_HOSTS:-*}
       - RunMigrationsOnStartup=true
       - RESEND_API_KEY=${RESEND_API_KEY}

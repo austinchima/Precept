@@ -30,7 +30,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://0.0.0.0:8080
       - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB:-precept_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-only-not-for-production-must-be-at-least-32-bytes-long-for-hmac-sha256}
+      # JWT_SECRET_KEY no longer required (cookie auth replaces JWT).
       - AllowedHosts=${ALLOWED_HOSTS:-*}
       - RunMigrationsOnStartup=true
       - AI_PROVIDER=${AI_PROVIDER:-Auto}
