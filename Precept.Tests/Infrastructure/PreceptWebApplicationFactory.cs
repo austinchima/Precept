@@ -24,11 +24,6 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
 {
     private readonly string _databaseName = $"precept_test_{Guid.NewGuid():N}";
 
-    // Deterministic test JWT settings — known issuer/audience so token assertions are exact.
-    public const string TestJwtSecret = "precept-test-jwt-secret-key-must-be-at-least-32-chars";
-    public const string TestIssuer = "precept-test-issuer";
-    public const string TestAudience = "precept-test-audience";
-
     private string ConnectionString => containerFixture.GetConnectionString(_databaseName);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -40,14 +35,6 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-
-        // Inject test JWT settings before the app reads configuration
-        builder.UseSetting("JWT_SECRET_KEY", TestJwtSecret);
-        builder.UseSetting("JwtSettings:SecretKey", TestJwtSecret);
-        builder.UseSetting("JwtSettings:Issuer", TestIssuer);
-        builder.UseSetting("JwtSettings:Audience", TestAudience);
-        builder.UseSetting("JwtSettings:AccessTokenExpiryMinutes", "15");
-        builder.UseSetting("JwtSettings:RefreshTokenExpiryDays", "7");
 
         builder.ConfigureServices(services =>
         {
@@ -85,8 +72,8 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Registers a user and returns an HttpClient with the JWT pre-set and
-    /// a CookieContainer tracking the refresh token cookie.
+    /// Registers a user and returns an HttpClient with a CookieContainer
+    /// tracking the `precept_auth` session cookie.
     /// </summary>
     public async Task<(HttpClient Client, AuthResponse Auth)> CreateAuthenticatedClientAsync(
         string email = "testuser@example.com",
@@ -114,19 +101,24 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
         var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize AuthResponse");
 
-        // The access token is now transported in an HttpOnly cookie. The CookieContainer
-        // handler will send it automatically on subsequent requests.
+        // The session is now transported in the HttpOnly `precept_auth` cookie.
+        // The CookieContainer handler sends it automatically on subsequent requests.
         return (client, auth);
     }
 
     /// <summary>
-    /// Returns a raw unauthenticated HttpClient.
+    /// Returns a raw unauthenticated HttpClient (with the CSRF header pre-set).
     /// </summary>
-    public HttpClient CreateAnonymousClient() => CreateClient();
+    public HttpClient CreateAnonymousClient()
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
+        return client;
+    }
 
     /// <summary>
     /// Returns an unauthenticated HttpClient with a CookieContainer wired to the
-    /// in-process test server.  Use this for raw auth flows (register/login/refresh)
+    /// in-process test server.  Use this for raw auth flows (register/login/logout)
     /// that depend on cookie tracking.
     /// </summary>
     public HttpClient CreateCookieClient()
@@ -138,7 +130,7 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
 
     /// <summary>
     /// Opens a scoped DbContext connected to this test class's database.
-    /// Useful for direct DB assertions (e.g. inspecting token hashes after registration).
+    /// Useful for direct DB assertions (e.g. inspecting seeded demo data).
     /// </summary>
     public PreceptDbContext CreateDbContext()
     {
@@ -180,7 +172,7 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
 
         await using (var drop = conn.CreateCommand())
         {
-            drop.CommandText = $"""DROP DATABASE IF EXISTS "{_databaseName}" """;
+            drop.CommandText = $"""DROP DATABASE IF EXISTS \"{_databaseName}\" """;
             await drop.ExecuteNonQueryAsync();
         }
     }
@@ -197,6 +189,10 @@ internal sealed class CookieContainerHandler(System.Net.CookieContainer cookies,
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        // The API's CSRF defense middleware requires this header on mutating requests.
+        if (!request.Headers.Contains("X-Requested-With"))
+            request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+
         // Inject stored cookies into the outgoing request
         var cookieHeader = cookies.GetCookieHeader(request.RequestUri!);
         if (!string.IsNullOrEmpty(cookieHeader))
