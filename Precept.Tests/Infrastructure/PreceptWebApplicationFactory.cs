@@ -172,7 +172,7 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
 
         await using (var drop = conn.CreateCommand())
         {
-            drop.CommandText = $"""DROP DATABASE IF EXISTS \"{_databaseName}\" """;
+            drop.CommandText = $"""DROP DATABASE IF EXISTS "{_databaseName}" """;
             await drop.ExecuteNonQueryAsync();
         }
     }
