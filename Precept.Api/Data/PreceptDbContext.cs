@@ -8,14 +8,19 @@ namespace Precept.Api.Data
     public class PreceptDbContext(DbContextOptions<PreceptDbContext> options, ICurrentUser currentUser)
         : IdentityDbContext<ApplicationUser>(options)
     {
-        // Captured at construction time from the scoped ICurrentUser.
-        // EF Core detects a reference to a context-instance field in a query filter lambda
-        // and turns it into a per-query parameter — so the compiled model stays cached and
-        // shared while each query gets the correct user's value.
-        // IMPORTANT: do NOT copy _currentUserId to a local and close over that local;
+        // Resolved lazily per query from the scoped ICurrentUser — NOT captured in a
+        // constructor field initializer. With Identity cookie auth, the security-stamp
+        // validator constructs this DbContext inside the authentication handler (via
+        // UserManager's EF store) BEFORE HttpContext.User is populated, so a
+        // constructor-captured value would be permanently null for the whole request
+        // and every tenant filter would compile to WHERE FALSE.
+        // EF Core detects a reference to a context-instance member in a query filter
+        // lambda and turns it into a per-query parameter — so the compiled model stays
+        // cached and shared while each query evaluates the current user's value.
+        // IMPORTANT: do NOT copy CurrentUserId to a local and close over that local;
         // doing so bakes the value into the cached model and every user gets the first
         // caller's filter.
-        private readonly string? _currentUserId = currentUser.UserId;
+        private string? CurrentUserId => currentUser.UserId;
 
         public DbSet<Story> Stories { get; set; } = null!;
         public DbSet<BehavioralStory> BehavioralStories { get; set; } = null!;
@@ -23,7 +28,6 @@ namespace Precept.Api.Data
         public DbSet<Application> Applications { get; set; } = null!;
         public DbSet<ApplicationEvent> ApplicationEvents { get; set; } = null!;
         public DbSet<Skill> Skills { get; set; } = null!;
-        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
         public DbSet<Testimonial> Testimonials { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -43,29 +47,29 @@ namespace Precept.Api.Data
             // login run before any principal exists, so filtering those tables breaks auth.
 
             builder.Entity<Application>()
-                .HasQueryFilter(a => !a.IsDeleted && a.UserId == _currentUserId);
+                .HasQueryFilter(a => !a.IsDeleted && a.UserId == CurrentUserId);
 
             // ApplicationEvent has a required FK to Application (which is filtered).
             // Filtering the dependent through the navigation silences EF's
             // RequiredNavigationWithQueryFilterInteractionWarning and keeps events
             // correctly scoped when queried directly.
             builder.Entity<ApplicationEvent>()
-                .HasQueryFilter(e => !e.Application!.IsDeleted && e.Application!.UserId == _currentUserId);
+                .HasQueryFilter(e => !e.Application!.IsDeleted && e.Application!.UserId == CurrentUserId);
 
             builder.Entity<Story>()
-                .HasQueryFilter(s => !s.IsDeleted && s.UserId == _currentUserId);
+                .HasQueryFilter(s => !s.IsDeleted && s.UserId == CurrentUserId);
 
             builder.Entity<BehavioralStory>()
-                .HasQueryFilter(b => b.UserId == _currentUserId);
+                .HasQueryFilter(b => b.UserId == CurrentUserId);
 
             builder.Entity<JobDescription>()
-                .HasQueryFilter(j => j.UserId == _currentUserId);
+                .HasQueryFilter(j => j.UserId == CurrentUserId);
 
             builder.Entity<Skill>()
-                .HasQueryFilter(s => s.UserId == _currentUserId);
+                .HasQueryFilter(s => s.UserId == CurrentUserId);
 
             builder.Entity<Testimonial>()
-                .HasQueryFilter(t => t.UserId == _currentUserId);
+                .HasQueryFilter(t => t.UserId == CurrentUserId);
 
             // ─────────────────────────────────────────────────────────
             //  Default SQL values
@@ -84,21 +88,6 @@ namespace Precept.Api.Data
             // ─────────────────────────────────────────────────────────
             //  Relationship configuration (unchanged)
             // ─────────────────────────────────────────────────────────
-
-            builder.Entity<RefreshToken>(entity =>
-            {
-                // Index on the hashed token for fast lookups during refresh
-                entity.HasIndex(rt => rt.Token);
-
-                // Index on UserId for bulk revocation queries
-                entity.HasIndex(rt => rt.UserId);
-
-                // Cascade delete: when a user is deleted, remove all their refresh tokens
-                entity.HasOne(rt => rt.User)
-                    .WithMany()
-                    .HasForeignKey(rt => rt.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
 
             builder.Entity<Skill>(entity =>
             {

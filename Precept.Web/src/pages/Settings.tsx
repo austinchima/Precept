@@ -116,18 +116,17 @@ export default function Settings() {
     return () => clearInterval(interval);
   }, []);
 
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isSigningOutEverywhere, setIsSigningOutEverywhere] = useState(false);
 
-  const loadSessions = async () => {
-    setIsLoadingSessions(true);
+  const handleSignOutEverywhere = async () => {
+    setIsSigningOutEverywhere(true);
     try {
-      const data = await api.get<any[]>('/api/auth/sessions');
-      setSessions(data);
+      await api.post('/api/auth/sign-out-everywhere', {});
+      toast.success('All other devices have been signed out.');
     } catch (err) {
-      console.error('Failed to load active sessions:', err);
+      toast.error('Failed to sign out everywhere.');
     } finally {
-      setIsLoadingSessions(false);
+      setIsSigningOutEverywhere(false);
     }
   };
 
@@ -141,18 +140,7 @@ export default function Settings() {
       finally { setIsLoading(false); }
     }
     loadSkills();
-    loadSessions();
   }, []);
-
-  const handleRevokeSession = async (sessionId: string) => {
-    try {
-      await api.delete(`/api/auth/sessions/${sessionId}`);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      toast.success('Session revoked.');
-    } catch (err) {
-      toast.error('Failed to revoke session.');
-    }
-  };
 
   const resetSkillForm = () => {
     setEditingId(null); setName(''); setCategory(''); setProficiency('Intermediate'); setNotes('');
@@ -383,41 +371,18 @@ export default function Settings() {
             </form>
           </section>
 
-          {/* Active Sessions */}
+          {/* Sessions */}
           <section className="opacity-0 animate-fade-in-up delay-150 p-6" style={cardStyle()}>
-            <SectionHeader icon={<Database size={16} />} title="Active Sessions & Devices" sub="Manage signed-in devices." color={C.sky} />
-            {isLoadingSessions ? (
-              <div className="flex items-center gap-2 font-mono text-xs text-brand-primary/60 py-2">
-                <Loader2 size={14} className="animate-spin" /> Loading sessions…
-              </div>
-            ) : sessions.length === 0 ? (
-              <p className="font-mono text-xs" style={{ color: C.inkMute }}>No active sessions found.</p>
-            ) : (
-              <div className="space-y-3">
-                {sessions.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.hair}` }}>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-semibold" style={{ color: C.ink }}>{s.deviceInfo || 'Unknown Device'}</span>
-                        {s.isCurrent && (
-                          <span className="px-2 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-wider font-bold" style={{ background: `${C.emerald}20`, color: C.emerald }}>
-                            Current Session
-                          </span>
-                        )}
-                      </div>
-                      <p className="font-mono text-[11px] mt-0.5" style={{ color: C.inkDim }}>
-                        Signed in: {new Date(s.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {!s.isCurrent && (
-                      <button onClick={() => handleRevokeSession(s.id)} className="px-3 py-1.5 rounded-lg font-mono text-xs text-rose-400 hover:bg-rose-500/10 transition-colors">
-                        Revoke
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <SectionHeader icon={<Database size={16} />} title="Sessions & Devices" sub="Sign out of every other device." color={C.sky} />
+            <p className="font-mono text-xs mb-4" style={{ color: C.inkDim }}>
+              This immediately invalidates the session cookie on all other devices where you're signed in.
+            </p>
+            <button onClick={handleSignOutEverywhere} disabled={isSigningOutEverywhere}
+              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60 text-rose-400"
+              style={{ boxShadow: `0 0 0 1px currentColor` }}>
+              {isSigningOutEverywhere ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+              {isSigningOutEverywhere ? 'Signing out…' : 'Sign out of all other devices'}
+            </button>
           </section>
 
           {/* Skills */}

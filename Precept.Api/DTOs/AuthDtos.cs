@@ -36,7 +36,7 @@ public class RegisterRequest
     public string Password { get; set; } = string.Empty;
 
     [Required]
-    [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
+    [Compare("Password", ErrorMessage = "Passwords do not match.")]
     public string ConfirmPassword { get; set; } = string.Empty;
 
     [Required]
@@ -76,15 +76,16 @@ public class LoginRequest
 }
 
 /// <summary>
-/// Response body for login, register, and refresh endpoints.
-/// The refresh token is delivered via an HTTP-only secure cookie, not in this response.
+/// Response body for login, register, demo-login, and google endpoints.
+/// Authentication is delivered via the HttpOnly `precept_auth` session cookie,
+/// not in this response body.
 /// </summary>
 public class AuthResponse
 {
-    public string AccessToken { get; set; } = string.Empty;
-    public DateTime ExpiresAt { get; set; }
     public string Email { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -144,4 +145,3 @@ public class GoogleAuthRequest
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
 }
-

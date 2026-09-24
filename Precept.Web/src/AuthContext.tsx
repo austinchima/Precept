@@ -9,54 +9,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Attempt to restore session on mount (silent refresh)
+  // Attempt to restore session on mount.
+  // The Identity session cookie (precept_auth) is sent automatically; if it is
+  // still valid the profile endpoint returns 200, otherwise 401 → unauthenticated.
   useEffect(() => {
     async function restoreSession() {
       try {
-        // The access token is sent automatically in the HttpOnly cookie.
-        // Try the lightweight profile endpoint first.
         const meRes = await fetch('/api/auth/me', { credentials: 'include' });
 
         if (meRes.ok) {
           const profile = await meRes.json();
           setIsAuthenticated(true);
           setUser(profile);
-          setIsLoading(false);
-          return;
-        }
-
-        if (meRes.status === 401) {
-          // Access token missing/expired — try rotating the refresh token.
-          const refreshRes = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-          });
-
-          let isRefreshOk = refreshRes.ok;
-          if (!isRefreshOk) {
-            try {
-              const errData = await refreshRes.json();
-              if (errData?.message === 'Token just refreshed') {
-                isRefreshOk = true;
-              }
-            } catch {}
-          }
-
-          if (isRefreshOk) {
-            const retryRes = await fetch('/api/auth/me', { credentials: 'include' });
-            if (retryRes.ok) {
-              const profile = await retryRes.json();
-              setIsAuthenticated(true);
-              setUser(profile);
-            } else {
-              setIsAuthenticated(false);
-              setUser(null);
-            }
-          } else {
-            setIsAuthenticated(false);
-            setUser(null);
-          }
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } catch (err) {
         console.error('Session restoration failed:', err);
@@ -85,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, passcode: string, rememberMe: boolean = true) => {
     try {
-      await api.post<{ accessToken: string; userId: string; email: string }>('/api/auth/login', {
+      await api.post<{ userId: string; email: string }>('/api/auth/login', {
         email,
         password: passcode,
         rememberMe,
@@ -104,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (firstName: string, lastName: string, email: string, passcode: string, agreedToTerms: boolean) => {
     try {
-      await api.post<{ accessToken: string; userId: string; email: string }>('/api/auth/register', {
+      await api.post<{ userId: string; email: string }>('/api/auth/register', {
         firstName,
         lastName,
         email,
@@ -189,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.post('/api/auth/revoke', {});
     } catch (err) {
-      console.error('Failed to revoke token on logout:', err);
+      console.error('Failed to sign out on logout:', err);
     } finally {
       setIsAuthenticated(false);
       setUser(null);

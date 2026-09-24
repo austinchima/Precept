@@ -1,3 +1,9 @@
+> **Status: superseded (M1).** The refresh-token-rotation (RTR) system described in this
+> document — JWT access tokens, hashed refresh tokens, lineage tracking, reuse detection,
+> and cascade revocation — was replaced in milestone M1 by standard ASP.NET Core Identity
+> cookie authentication (14-day sliding sessions with security-stamp revocation). This
+> document is retained as a design-history artifact.
+
 # Authentication Security Handbook: Refresh Token Rotation & Reuse-Detection Cascade Revocation
 
 > [!IMPORTANT]
