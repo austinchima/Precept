@@ -60,7 +60,7 @@ async function extractErrorMessage(res: Response): Promise<string> {
   const STATUS_MESSAGES: Record<number, string> = {
     400: 'The request was invalid. Please check your input.',
     401: 'Your session has expired. Please sign in again.',
-    402: 'This feature requires credits. Please purchase credits to continue.',
+    402: 'You have reached the limit for this feature for now.',
     403: 'You don\'t have permission to perform this action.',
     404: 'The requested resource was not found.',
     405: 'This action is not supported.',
@@ -93,6 +93,13 @@ async function extractErrorMessage(res: Response): Promise<string> {
     // Try parsing as JSON to extract a message field
     try {
       const json = JSON.parse(text);
+      // AI usage refusals (M1-F3) carry a machine-readable code and a reset time.
+      if ((json?.code === 'limit_reached' || json?.code === 'ai_unavailable') && typeof json?.resetsAt === 'string') {
+        const when = new Date(json.resetsAt).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+        return json.code === 'limit_reached'
+          ? `You have used this AI feature's allowance. It resets ${when}.`
+          : `AI features are paused until ${when}. Everything else keeps working.`;
+      }
       const msg = json?.message ?? json?.error ?? json?.title ?? json?.detail;
       
       if (typeof msg === 'string' && msg.trim()) {

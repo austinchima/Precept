@@ -205,6 +205,21 @@ AI_MODEL=gpt-4o-mini
 AI_API_KEY= / OPENAI_API_KEY= / ANTHROPIC_API_KEY= / GEMINI_API_KEY=
 AI_BASE_URL=                # e.g. http://localhost:11434/v1 for Ollama
 
+# AI usage limits (API settings, defaults shown). Every AI call is checked against these
+# and recorded in the UsageLedger table. Over a user limit the API returns 402; over a
+# global cap it returns 503 and logs a critical alert.
+AiSettings__MaxOutputTokens=1500
+Usage__Features__mock_question__PerDay=20
+Usage__Features__mock_question__PerMonth=200
+Usage__Features__mock_evaluate__PerDay=20
+Usage__Features__mock_evaluate__PerMonth=200
+Usage__GlobalDailyCallLimit=500
+Usage__GlobalDailyBudgetUsd=10
+# Prices are not built in. Copy them from your provider's current price page, per model
+# (USD per million tokens). Unpriced models are limited by the daily call cap only.
+Usage__ModelPrices__<model-name>__InputPerMillionUsd=
+Usage__ModelPrices__<model-name>__OutputPerMillionUsd=
+
 # Demo accounts (optional API settings, defaults shown). docker-compose.yml does not
 # forward these; set them on the API process or container if you need to change them.
 Demo__LifetimeHours=24

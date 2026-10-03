@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New opt-in setting `ForwardedHeaders:TrustAllProxies`: when the API runs behind a reverse proxy that appends `X-Forwarded-For` (such as Cloud Run), it takes the client IP from the right-most entry so per-IP limits see real visitors. Off by default, because enabling it where clients can reach the API directly would let them spoof their address.
 
 ### Added
+- **AI usage guard (M1-F3)**: every LLM call now goes through a metered client that refuses demo accounts, checks per-user daily and monthly limits per feature plus a global daily call cap and USD budget, and writes a `UsageLedger` row (tokens, estimated cost, provider, model, prompt version) for every attempt, including failed ones. Over a user limit the API returns 402 with `{ code: "limit_reached", feature, remaining, resetsAt }`; over a global cap it returns 503 and logs a critical alert. All providers now send a configurable output-token cap (`AiSettings:MaxOutputTokens`), report token usage, and the Gemini key moved from the URL query string to the `x-goog-api-key` header. Limits and model prices are configuration (`Usage:*`); no prices are built in. Migration `M1F3_UsageLedger`.
 - `docs/plan/` (implementation plan, status tracker, agent orchestrator prompt) and `docs/research/` (market and product strategy research).
 
 ### Changed

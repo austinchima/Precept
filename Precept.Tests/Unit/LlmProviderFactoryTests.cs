@@ -8,11 +8,11 @@ using Precept.Api.Services.AiProviders;
 
 namespace Precept.Tests.Unit;
 
-public class LlmClientFactoryTests
+public class LlmProviderFactoryTests
 {
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public LlmClientFactoryTests()
+    public LlmProviderFactoryTests()
     {
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
         _httpClientFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient());
@@ -28,8 +28,8 @@ public class LlmClientFactoryTests
             OpenAiApiKey = "sk-test-openai"
         });
 
-        var factory = new LlmClientFactory(_httpClientFactory, settings, NullLogger<LlmClientFactory>.Instance);
-        var client = factory.GetClient();
+        var factory = new LlmProviderFactory(_httpClientFactory, settings, NullLogger<LlmProviderFactory>.Instance);
+        var client = factory.CreateClient();
 
         client.Should().BeOfType<OpenAiLlmClient>();
         client.ProviderName.Should().Be("OpenAI-Compatible");
@@ -44,8 +44,8 @@ public class LlmClientFactoryTests
             AnthropicApiKey = "sk-ant-test"
         });
 
-        var factory = new LlmClientFactory(_httpClientFactory, settings, NullLogger<LlmClientFactory>.Instance);
-        var client = factory.GetClient();
+        var factory = new LlmProviderFactory(_httpClientFactory, settings, NullLogger<LlmProviderFactory>.Instance);
+        var client = factory.CreateClient();
 
         client.Should().BeOfType<AnthropicLlmClient>();
         client.ProviderName.Should().Be("Anthropic");
@@ -60,8 +60,8 @@ public class LlmClientFactoryTests
             GeminiApiKey = "AIzaSyTest"
         });
 
-        var factory = new LlmClientFactory(_httpClientFactory, settings, NullLogger<LlmClientFactory>.Instance);
-        var client = factory.GetClient();
+        var factory = new LlmProviderFactory(_httpClientFactory, settings, NullLogger<LlmProviderFactory>.Instance);
+        var client = factory.CreateClient();
 
         client.Should().BeOfType<GeminiLlmClient>();
         client.ProviderName.Should().Be("Gemini");
@@ -78,8 +78,8 @@ public class LlmClientFactoryTests
             Model = "llama-3.3-70b-versatile"
         });
 
-        var factory = new LlmClientFactory(_httpClientFactory, settings, NullLogger<LlmClientFactory>.Instance);
-        var client = factory.GetClient();
+        var factory = new LlmProviderFactory(_httpClientFactory, settings, NullLogger<LlmProviderFactory>.Instance);
+        var client = factory.CreateClient();
 
         client.Should().BeOfType<OpenAiLlmClient>();
     }
@@ -93,8 +93,8 @@ public class LlmClientFactoryTests
             AnthropicApiKey = "sk-ant-123"
         });
 
-        var factory = new LlmClientFactory(_httpClientFactory, settings, NullLogger<LlmClientFactory>.Instance);
-        var client = factory.GetClient();
+        var factory = new LlmProviderFactory(_httpClientFactory, settings, NullLogger<LlmProviderFactory>.Instance);
+        var client = factory.CreateClient();
 
         client.Should().BeOfType<AnthropicLlmClient>();
     }
@@ -108,8 +108,8 @@ public class LlmClientFactoryTests
             GeminiApiKey = "AIzaSy-123"
         });
 
-        var factory = new LlmClientFactory(_httpClientFactory, settings, NullLogger<LlmClientFactory>.Instance);
-        var client = factory.GetClient();
+        var factory = new LlmProviderFactory(_httpClientFactory, settings, NullLogger<LlmProviderFactory>.Instance);
+        var client = factory.CreateClient();
 
         client.Should().BeOfType<GeminiLlmClient>();
     }

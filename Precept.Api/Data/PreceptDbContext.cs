@@ -29,6 +29,7 @@ namespace Precept.Api.Data
         public DbSet<ApplicationEvent> ApplicationEvents { get; set; } = null!;
         public DbSet<Skill> Skills { get; set; } = null!;
         public DbSet<Testimonial> Testimonials { get; set; } = null!;
+        public DbSet<UsageLedgerEntry> UsageLedger { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -70,6 +71,18 @@ namespace Precept.Api.Data
 
             builder.Entity<Testimonial>()
                 .HasQueryFilter(t => t.UserId == CurrentUserId);
+
+            builder.Entity<UsageLedgerEntry>(entity =>
+            {
+                entity.HasQueryFilter(u => u.UserId == CurrentUserId);
+                // Limit checks filter by user, feature and time; the global cap filters by time.
+                entity.HasIndex(u => new { u.UserId, u.Feature, u.CreatedAt });
+                entity.HasIndex(u => u.CreatedAt);
+                entity.HasOne(u => u.User)
+                    .WithMany()
+                    .HasForeignKey(u => u.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
             // ─────────────────────────────────────────────────────────
             //  Default SQL values

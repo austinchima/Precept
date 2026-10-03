@@ -31,4 +31,9 @@ public class AiSettings
     public string? OpenAiApiKey { get; set; }
     public string? GeminiApiKey { get; set; }
     public string? AnthropicApiKey { get; set; }
+
+    /// <summary>
+    /// Maximum output tokens requested from every provider on every call.
+    /// </summary>
+    public int MaxOutputTokens { get; set; } = 1500;
 }

@@ -70,7 +70,7 @@ public class MockInterviewServiceTests : IAsyncLifetime
 
         var llmClient = Substitute.For<ILlmClient>();
         llmClient.ProviderName.Returns("OpenAI-Compatible");
-        llmClient.GenerateCompletionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        llmClient.GenerateCompletionAsync(Arg.Any<LlmUsageContext>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("```json\n{\n  \"question\": \"Tell me about how you handled a zero-day vulnerability.\",\n  \"category\": \"Security & Reliability\",\n  \"focusArea\": \"Threat response\",\n  \"contextTips\": \"Emphasize containment and patching SLA.\"\n}\n```");
 
         var llmFactory = Substitute.For<ILlmClientFactory>();
@@ -97,7 +97,7 @@ public class MockInterviewServiceTests : IAsyncLifetime
 
         var llmClient = Substitute.For<ILlmClient>();
         llmClient.ProviderName.Returns("Anthropic");
-        llmClient.GenerateCompletionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        llmClient.GenerateCompletionAsync(Arg.Any<LlmUsageContext>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("API Key Invalid"));
 
         var llmFactory = Substitute.For<ILlmClientFactory>();
@@ -123,7 +123,7 @@ public class MockInterviewServiceTests : IAsyncLifetime
 
         var llmClient = Substitute.For<ILlmClient>();
         llmClient.ProviderName.Returns("Gemini");
-        llmClient.GenerateCompletionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        llmClient.GenerateCompletionAsync(Arg.Any<LlmUsageContext>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("{\n  \"score\": 88,\n  \"starBreakdown\": {\n    \"situation\": \"Clear microservice context.\",\n    \"task\": \"Defined SLA requirement.\",\n    \"action\": \"Implemented circuit breaker.\",\n    \"result\": \"Reduced failure rate by 90%.\"\n  },\n  \"strengths\": [\"Action-oriented\", \"Metrics included\"],\n  \"areasForImprovement\": [\"Elaborate on edge cases\"],\n  \"modelAnswer\": \"In my role, I...\",\n  \"deliveryFeedback\": \"Crisp delivery.\"\n}");
 
         var llmFactory = Substitute.For<ILlmClientFactory>();

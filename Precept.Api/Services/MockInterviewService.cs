@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Precept.Api.Data;
 using Precept.Api.DTOs;
 using Precept.Api.Services.Interfaces;
+using Precept.Api.Services.Usage;
 
 namespace Precept.Api.Services;
 
@@ -17,6 +18,10 @@ public class MockInterviewService(
     ILogger<MockInterviewService> logger)
     : IMockInterviewService
 {
+    // Bump when a prompt's wording or output schema changes, so ledger rows can be compared by version.
+    internal const string QuestionPromptVersion = "mock_question.v1";
+    internal const string EvaluatePromptVersion = "mock_evaluate.v1";
+
     public async Task<MockQuestionResponse> GenerateQuestionAsync(GenerateMockQuestionRequest request, string userId)
     {
         // Demo visitors never reach an LLM provider, so they cannot spend AI budget.
@@ -57,14 +62,18 @@ Return strictly valid JSON with this schema (no markdown, no other text):
 }}
 ";
 
-            var responseText = await llm.GenerateCompletionAsync(prompt, "You are a senior tech lead conducting an interview. Always output pure valid JSON.");
+            var responseText = await llm.GenerateCompletionAsync(
+                new LlmUsageContext(userId, UsageFeatures.MockQuestion, QuestionPromptVersion),
+                prompt,
+                "You are a senior tech lead conducting an interview. Always output pure valid JSON.");
             var parsed = ParseQuestionJson(responseText);
             if (parsed != null)
             {
                 return parsed;
             }
         }
-        catch (Exception ex)
+        // Refusals (limits, budget, demo) reach the caller as 402/503/403; only provider failures fall back.
+        catch (Exception ex) when (ex is not AiCallRefusedException)
         {
             logger.LogWarning(ex, "Provider {Provider} failed to generate question. Falling back to built-in generator.", llm.ProviderName);
         }
@@ -124,14 +133,18 @@ Return strictly valid JSON with this exact schema:
 }}
 ";
 
-            var responseText = await llm.GenerateCompletionAsync(prompt, "You are an expert executive interview coach. Always respond in valid JSON format.");
+            var responseText = await llm.GenerateCompletionAsync(
+                new LlmUsageContext(userId, UsageFeatures.MockEvaluate, EvaluatePromptVersion),
+                prompt,
+                "You are an expert executive interview coach. Always respond in valid JSON format.");
             var parsed = ParseEvaluationJson(responseText);
             if (parsed != null)
             {
                 return parsed;
             }
         }
-        catch (Exception ex)
+        // Refusals (limits, budget, demo) reach the caller as 402/503/403; only provider failures fall back.
+        catch (Exception ex) when (ex is not AiCallRefusedException)
         {
             logger.LogWarning(ex, "Provider {Provider} failed to evaluate answer. Falling back to built-in evaluation engine.", llm.ProviderName);
         }
