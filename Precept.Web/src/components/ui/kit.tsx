@@ -160,25 +160,6 @@ export function Kbd({ children }: { children: React.ReactNode }) {
   return <kbd className="kbd">{children}</kbd>;
 }
 
-/** Neutral initial tile for companies and people (no third-party logos). */
-export function Monogram({ name, size = 36, className }: { name: string; size?: number; className?: string }) {
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('') || '?';
-  return (
-    <span
-      aria-hidden="true"
-      className={cn('inline-grid shrink-0 place-items-center rounded-lg border border-line bg-surface-2 font-medium text-fg-2', className)}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
-    >
-      {initials}
-    </span>
-  );
-}
-
 export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return <div className={cn('skeleton', className)} style={style} aria-hidden="true" />;
 }

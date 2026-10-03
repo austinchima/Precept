@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/plan/` (implementation plan, status tracker, agent orchestrator prompt) and `docs/research/` (market and product strategy research).
 
 ### Changed
+- **Fictional demo companies with their own logos**: the demo's sample applications no longer use real companies (Stripe, Vercel, Datadog); they are now Kestrel Pay, Orbitform and Brightlane Analytics. Company initial tiles are replaced by `CompanyLogo`: designed marks for the fictional companies used in the demo and product screenshots, and for any other company a geometric mark generated from its name (stable per name, no letters, no third-party logos). Landing screenshots and the social preview image were retaken.
+- **Terms of Service corrected**: sign-in is described as the HttpOnly session cookie it is (not JWT with refresh-token rotation), the export section lists what the export contains, new sections cover AI features and demo accounts, and account deletion notes that server logs are not included.
 - **Frontend redesign**: new design system and every screen rebuilt on it (landing, sign-in, terms, 404, app shell and all app pages).
   - Dark and light themes with a system default, set before first paint and switchable from the top bar, Settings and the landing page. One lime accent, Geist and Geist Mono self-hosted through Fontsource, so no font or icon CDN calls remain.
   - Shared UI kit (`src/components/ui/kit.tsx`) and domain components (`src/components/domain.tsx`) replace per-page styling; collapsible sidebar, mobile drawer and a command palette that also jumps between pages.
