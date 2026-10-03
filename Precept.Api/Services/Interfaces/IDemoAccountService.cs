@@ -15,8 +15,8 @@ public interface IDemoAccountService
     Task<bool> IsDemoUserAsync(string userId);
 
     /// <summary>
-    /// Deletes demo accounts whose expiry is at or before <paramref name="utcNow"/>, with all their data.
-    /// Returns the number of accounts deleted.
+    /// Deletes up to <paramref name="maxAccounts"/> demo accounts whose expiry is at or before
+    /// <paramref name="utcNow"/>, with all their data. Returns the number of accounts deleted.
     /// </summary>
-    Task<int> DeleteExpiredAsync(DateTime utcNow, CancellationToken cancellationToken = default);
+    Task<int> DeleteExpiredAsync(DateTime utcNow, int maxAccounts = 500, CancellationToken cancellationToken = default);
 }

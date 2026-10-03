@@ -427,9 +427,16 @@ export default function MockInterview() {
               <span className="font-mono text-[11px] uppercase tracking-[0.18em]" style={{ color: C.violet }}>
                 Step 2 · Candidate Answer
               </span>
-              <span className="px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-wider" style={{ background: `${C.violet}14`, color: C.violet, border: `1px solid ${C.violet}33` }}>
-                {questionData.category}
-              </span>
+              <div className="flex items-center gap-2">
+                {questionData.isDemoSample && (
+                  <span className="px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-wider" style={{ background: `${C.amber}14`, color: C.amber, border: `1px solid ${C.amber}33` }}>
+                    Demo sample
+                  </span>
+                )}
+                <span className="px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-wider" style={{ background: `${C.violet}14`, color: C.violet, border: `1px solid ${C.violet}33` }}>
+                  {questionData.category}
+                </span>
+              </div>
             </div>
 
             {/* The Question Banner */}
@@ -532,11 +539,11 @@ export default function MockInterview() {
               >
                 {isEvaluating ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Evaluating STAR Methodology with Gemini...
+                    <Loader2 size={16} className="animate-spin" /> Evaluating your answer...
                   </>
                 ) : (
                   <>
-                    <Award size={16} /> Evaluate My Answer with AI (STAR Analysis)
+                    <Award size={16} /> {questionData.isDemoSample ? 'Show sample feedback (demo)' : 'Evaluate My Answer with AI (STAR Analysis)'}
                   </>
                 )}
               </button>

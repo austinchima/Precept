@@ -210,6 +210,9 @@ AI_BASE_URL=                # e.g. http://localhost:11434/v1 for Ollama
 Demo__LifetimeHours=24
 Demo__MaxCreationsPerIpPerHour=5
 Demo__CleanupIntervalMinutes=60
+# Behind a reverse proxy that appends X-Forwarded-For (for example Cloud Run), set this so
+# per-IP rate limits see real client IPs. Leave unset if clients can reach the API directly.
+ForwardedHeaders__TrustAllProxies=false
 ```
 
 ---

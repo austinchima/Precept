@@ -22,7 +22,7 @@ public class DemoCleanupService(
             {
                 using var scope = serviceProvider.CreateScope();
                 var demoAccounts = scope.ServiceProvider.GetRequiredService<IDemoAccountService>();
-                var deleted = await demoAccounts.DeleteExpiredAsync(DateTime.UtcNow, stoppingToken);
+                var deleted = await demoAccounts.DeleteExpiredAsync(DateTime.UtcNow, cancellationToken: stoppingToken);
                 if (deleted > 0)
                 {
                     logger.LogInformation("Deleted {Count} expired demo accounts.", deleted);

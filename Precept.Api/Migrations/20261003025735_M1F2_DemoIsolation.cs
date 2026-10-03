@@ -25,11 +25,15 @@ namespace Precept.Api.Migrations
                 defaultValue: false);
 
             // Retire the old shared demo account (its password was committed to source):
-            // mark it as an expired demo so password login is refused and DemoCleanupService deletes it.
+            // mark it as an expired demo, drop its password, and rotate its security stamp so
+            // existing shared sessions end immediately. DemoCleanupService then deletes it.
             migrationBuilder.Sql(
                 """
                 UPDATE "AspNetUsers"
-                SET "IsDemo" = TRUE, "DemoExpiresAt" = NOW()
+                SET "IsDemo" = TRUE,
+                    "DemoExpiresAt" = NOW(),
+                    "PasswordHash" = NULL,
+                    "SecurityStamp" = md5(random()::text || clock_timestamp()::text)
                 WHERE "NormalizedEmail" = 'DEMO@PRECEPT.APP';
                 """);
         }

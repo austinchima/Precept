@@ -127,6 +127,9 @@ public class AuthController(
     [EnableRateLimiting("demo")]
     public async Task<IActionResult> DemoLogin()
     {
+        // Opportunistic cleanup: hosts that pause background work (such as Cloud Run) may rarely run DemoCleanupService.
+        await demoAccountService.DeleteExpiredAsync(DateTime.UtcNow, maxAccounts: 10);
+
         var user = await demoAccountService.CreateDemoUserAsync();
 
         // SignInAsync establishes the session cookie without a password;
@@ -168,6 +171,8 @@ public class AuthController(
             user.DigestIncludeFollowUps,
             user.DigestIncludeReviews,
             user.DigestHourUtc,
+            user.IsDemo,
+            user.DemoExpiresAt,
             Roles = roles
         });
     }

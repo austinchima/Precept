@@ -11,6 +11,7 @@ using Serilog;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -341,6 +342,22 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("RunMigr
 //  8. Authorization      — enforces policy using established identity
 //  9. Endpoints          — actual business logic
 // ─────────────────────────────────────────────────────────────
+
+// 0. Forwarded headers (opt-in): behind a trusted reverse proxy, take the client IP from the
+//    right-most X-Forwarded-For entry so per-IP rate limits see real visitors.
+//    Only enable when every request reaches the API through a proxy that appends this header;
+//    otherwise a client could spoof its own address.
+if (app.Configuration.GetValue<bool>("ForwardedHeaders:TrustAllProxies"))
+{
+    var forwardedOptions = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+        ForwardLimit = 1
+    };
+    forwardedOptions.KnownIPNetworks.Clear();
+    forwardedOptions.KnownProxies.Clear();
+    app.UseForwardedHeaders(forwardedOptions);
+}
 
 app.Use(async (context, next) =>
 {

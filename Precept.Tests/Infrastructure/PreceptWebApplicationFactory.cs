@@ -32,6 +32,11 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
     /// </summary>
     public Action<IServiceCollection>? ConfigureTestServices { get; init; }
 
+    /// <summary>
+    /// Optional configuration values for this test host (for example, feature switches).
+    /// </summary>
+    public IDictionary<string, string?> Settings { get; init; } = new Dictionary<string, string?>();
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -41,6 +46,9 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        foreach (var (key, value) in Settings)
+            builder.UseSetting(key, value);
 
         builder.ConfigureServices(services =>
         {

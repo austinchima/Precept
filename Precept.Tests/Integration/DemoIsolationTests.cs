@@ -20,6 +20,7 @@ namespace Precept.Tests.Integration;
 [Collection("Integration")]
 public class DemoIsolationTests : IAsyncLifetime
 {
+    private readonly PostgresContainerFixture _fixture;
     private readonly PreceptWebApplicationFactory _factory;
     private readonly ILlmClientFactory _llmFactory = Substitute.For<ILlmClientFactory>();
 
@@ -31,6 +32,7 @@ public class DemoIsolationTests : IAsyncLifetime
 
     public DemoIsolationTests(PostgresContainerFixture fixture)
     {
+        _fixture = fixture;
         _factory = new PreceptWebApplicationFactory(fixture)
         {
             ConfigureTestServices = services =>
@@ -77,6 +79,11 @@ public class DemoIsolationTests : IAsyncLifetime
         // Each session sees only its own account.
         (await clientA.GetFromJsonAsync<AuthResponse>("/api/auth/me", JsonOptions))!.UserId.Should().Be(authA.UserId);
         (await clientB.GetFromJsonAsync<AuthResponse>("/api/auth/me", JsonOptions))!.UserId.Should().Be(authB.UserId);
+
+        // The UI uses these to show the demo banner.
+        using var me = JsonDocument.Parse(await clientA.GetStringAsync("/api/auth/me"));
+        me.RootElement.GetProperty("isDemo").GetBoolean().Should().BeTrue();
+        me.RootElement.GetProperty("demoExpiresAt").GetDateTime().Should().BeAfter(DateTime.UtcNow.AddHours(23));
     }
 
     [Fact]
@@ -100,7 +107,7 @@ public class DemoIsolationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DeleteExpired_RemovesOnlyExpiredDemoAccountsAndTheirData()
+    public async Task DeleteExpired_RemovesOnlyExpiredDemoAccountsAndAllTheirData()
     {
         var (_, expired) = await DemoLoginAsync();
         var (_, active) = await DemoLoginAsync();
@@ -110,6 +117,15 @@ public class DemoIsolationTests : IAsyncLifetime
         {
             var user = await db.Users.SingleAsync(u => u.Id == expired.UserId);
             user.DemoExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+
+            // Give the expired account one row in every user-owned table, including a soft-deleted application.
+            var app = await db.Applications.IgnoreQueryFilters().FirstAsync(a => a.UserId == expired.UserId);
+            app.IsDeleted = true;
+            app.DeletedAt = DateTime.UtcNow;
+            db.ApplicationEvents.Add(new ApplicationEvent { ApplicationId = app.Id, Status = ApplicationStatus.Applied });
+            db.Skills.Add(new Skill { UserId = expired.UserId, Name = "Go" });
+            db.JobDescriptions.Add(new JobDescription { UserId = expired.UserId, CompanyName = "Acme", RoleTitle = "Engineer", Description = "Go services" });
+            db.Testimonials.Add(new Testimonial { UserId = expired.UserId, Name = "Demo", Handle = "demo", Text = "Sample" });
             await db.SaveChangesAsync();
         }
 
@@ -120,24 +136,64 @@ public class DemoIsolationTests : IAsyncLifetime
         }
 
         await using var verify = _factory.CreateDbContext();
-        (await verify.Users.AnyAsync(u => u.Id == expired.UserId)).Should().BeFalse();
-        (await verify.Applications.IgnoreQueryFilters().AnyAsync(a => a.UserId == expired.UserId)).Should().BeFalse();
-        (await verify.Stories.IgnoreQueryFilters().AnyAsync(s => s.UserId == expired.UserId)).Should().BeFalse();
+        var id = expired.UserId;
+        (await verify.Users.AnyAsync(u => u.Id == id)).Should().BeFalse();
+        (await verify.Applications.IgnoreQueryFilters().AnyAsync(a => a.UserId == id)).Should().BeFalse();
+        (await verify.ApplicationEvents.IgnoreQueryFilters().AnyAsync(e => e.Application!.UserId == id)).Should().BeFalse();
+        (await verify.Stories.IgnoreQueryFilters().AnyAsync(x => x.UserId == id)).Should().BeFalse();
+        (await verify.BehavioralStories.IgnoreQueryFilters().AnyAsync(x => x.UserId == id)).Should().BeFalse();
+        (await verify.Skills.IgnoreQueryFilters().AnyAsync(x => x.UserId == id)).Should().BeFalse();
+        (await verify.JobDescriptions.IgnoreQueryFilters().AnyAsync(x => x.UserId == id)).Should().BeFalse();
+        (await verify.Testimonials.IgnoreQueryFilters().AnyAsync(x => x.UserId == id)).Should().BeFalse();
         (await verify.Users.AnyAsync(u => u.Id == active.UserId)).Should().BeTrue();
         (await verify.Users.AnyAsync(u => u.Id == regular.UserId)).Should().BeTrue();
     }
 
-    [Fact]
-    public async Task DemoLogin_IsRateLimitedPerClient()
+    private static async Task<HttpStatusCode> DemoLoginFromAsync(PreceptWebApplicationFactory factory, string clientIp)
     {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/demo-login");
+        request.Headers.Add("X-Forwarded-For", clientIp);
+        var response = await factory.CreateCookieClient().SendAsync(request);
+        return response.StatusCode;
+    }
+
+    [Fact]
+    public async Task DemoLogin_BehindTrustedProxy_IsLimitedPerClientIp()
+    {
+        var factory = new PreceptWebApplicationFactory(_fixture)
+        {
+            Settings = { ["ForwardedHeaders:TrustAllProxies"] = "true" }
+        };
+        await factory.InitializeAsync();
+        try
+        {
+            var limit = new DemoSettings().MaxCreationsPerIpPerHour;
+            for (var i = 0; i < limit; i++)
+            {
+                (await DemoLoginFromAsync(factory, "203.0.113.10")).Should().Be(HttpStatusCode.OK);
+            }
+
+            (await DemoLoginFromAsync(factory, "203.0.113.10")).Should().Be(HttpStatusCode.TooManyRequests);
+            (await DemoLoginFromAsync(factory, "203.0.113.20")).Should().Be(HttpStatusCode.OK,
+                "a different visitor has its own limit");
+        }
+        finally
+        {
+            await factory.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task DemoLogin_WithoutTrustedProxy_IgnoresForwardedFor()
+    {
+        // Forwarded headers are off by default, so a client cannot pick a fresh address per request.
         var limit = new DemoSettings().MaxCreationsPerIpPerHour;
         for (var i = 0; i < limit; i++)
         {
-            await DemoLoginAsync();
+            (await DemoLoginFromAsync(_factory, $"198.51.100.{i + 1}")).Should().Be(HttpStatusCode.OK);
         }
 
-        var response = await _factory.CreateCookieClient().PostAsync("/api/auth/demo-login", null);
-        response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        (await DemoLoginFromAsync(_factory, "198.51.100.200")).Should().Be(HttpStatusCode.TooManyRequests);
     }
 
     [Fact]
@@ -145,7 +201,7 @@ public class DemoIsolationTests : IAsyncLifetime
     {
         // Simulates the retired shared demo account, whose password was public.
         const string email = "demo@precept.app";
-        const string password = "DemoSessionPass2026!";
+        var password = $"Aa1!{Guid.NewGuid():N}";
         using (var scope = _factory.Services.CreateScope())
         {
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -174,5 +230,17 @@ public class DemoIsolationTests : IAsyncLifetime
         using var scope = _factory.Services.CreateScope();
         var digests = scope.ServiceProvider.GetRequiredService<IDigestQueryService>();
         (await digests.GetDigestAsync(demo.UserId, DateTime.UtcNow)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DemoAccounts_CannotSubmitTestimonials()
+    {
+        var (client, demo) = await DemoLoginAsync();
+
+        var response = await client.PostAsJsonAsync("/api/testimonial", new { Name = "Demo", Handle = "demo", Text = "Great app" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        await using var db = _factory.CreateDbContext();
+        (await db.Testimonials.IgnoreQueryFilters().AnyAsync(t => t.UserId == demo.UserId)).Should().BeFalse();
     }
 }

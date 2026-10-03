@@ -56,10 +56,12 @@ public class DemoAccountService(
     public Task<bool> IsDemoUserAsync(string userId) =>
         dbContext.Users.AsNoTracking().AnyAsync(u => u.Id == userId && u.IsDemo);
 
-    public async Task<int> DeleteExpiredAsync(DateTime utcNow, CancellationToken cancellationToken = default)
+    public async Task<int> DeleteExpiredAsync(DateTime utcNow, int maxAccounts = 500, CancellationToken cancellationToken = default)
     {
         var expired = await dbContext.Users
             .Where(u => u.IsDemo && u.DemoExpiresAt != null && u.DemoExpiresAt <= utcNow)
+            .OrderBy(u => u.DemoExpiresAt)
+            .Take(maxAccounts)
             .ToListAsync(cancellationToken);
 
         var deleted = 0;
@@ -135,6 +137,7 @@ public class DemoAccountService(
 
 public static partial class DemoAccountServiceLoggerExtensions
 {
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete expired demo account {UserId}")]
+    // Warning, not Error: another instance may already have deleted the same account.
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to delete expired demo account {UserId}")]
     public static partial void DemoAccountDeletionFailed(this ILogger logger, string userId);
 }

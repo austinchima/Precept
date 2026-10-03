@@ -307,6 +307,17 @@ export default function Layout() {
 
           {/* CONTENT */}
           <div id="main-scroller" className="flex-1 overflow-y-auto relative z-10 scroll-smooth custom-scrollbar">
+            {user?.isDemo && (
+              <div
+                className="mx-4 md:mx-8 mt-4 px-4 py-2.5 rounded-xl font-body text-[13px]"
+                style={{ background: C.tealDim, border: `1px solid ${C.teal}44`, color: C.ink }}
+                data-testid="demo-banner"
+              >
+                Demo account with sample data. It is deleted
+                {user.demoExpiresAt ? ` on ${new Date(user.demoExpiresAt).toLocaleString()}` : ' after 24 hours'}.
+                AI features show fixed samples.
+              </div>
+            )}
             <Outlet />
           </div>
         </main>
