@@ -20,26 +20,26 @@ Status values: `todo`, `in progress`, `review`, `blocked`, `done`, `skipped`.
 
 | ID | Decision | Founder answer | Date |
 |---|---|---|---|
-| D1 | Google sign-in: remove or implement | | |
-| D2 | Hosting: VPS with Compose or Cloud Run | | |
-| D3 | Payments: Stripe Managed Payments, Paddle, Lemon Squeezy | | |
-| D4 | Price points | | |
-| D5 | Repo visibility and license | | |
-| D6 | Production LLM provider and model | | |
-| D7 | Demo approach | | |
-| D8 | Email provider | | |
-| D9 | AI may read stories (per-user opt-in) | | |
-| D10 | Mock rubric format | | |
-| D11 | Closed beta size and source | | |
-| D12 | Annual keep-ready plan | | |
+| D1 | Google sign-in: remove or implement | Default: remove Google sign-in for launch; revisit after M8 | 2026-10-03 |
+| D2 | Hosting: VPS with Compose or Cloud Run | GCP (founder). Existing `deploy-api.yml` targets Cloud Run; Cloud Run vs a Compute Engine VM running Compose still to confirm. If Cloud Run, M1-F4 DB key storage is mandatory and the digest job must move to a scheduled trigger (plan M2-F1) | 2026-10-03 |
+| D3 | Payments: Stripe Managed Payments, Paddle, Lemon Squeezy | Default: Stripe Managed Payments with hosted Checkout (verify one-time payment support first) | 2026-10-03 |
+| D4 | Price points | Default: test about US$19 to $29 per 30 days, $39 to $49 per 90 days; credit packs $10 or more | 2026-10-03 |
+| D5 | Repo visibility and license | Default: stay private until after M8 | 2026-10-03 |
+| D6 | Production LLM provider and model | Default: mid-tier model with prompt caching, kept in config only | 2026-10-03 |
+| D7 | Demo approach | Default: ephemeral per-visitor demo account with canned AI responses | 2026-10-03 |
+| D8 | Email provider | Default: keep Resend | 2026-10-03 |
+| D9 | AI may read stories (per-user opt-in) | Default: per-user opt-in toggle, off by default | 2026-10-03 |
+| D10 | Mock rubric format | Default: per-dimension levels (Missing, Weak, Adequate, Strong) with quotes; no overall percentage | 2026-10-03 |
+| D11 | Closed beta size and source | Default: 15 to 30 engineers with interviews scheduled, from personal network and communities | 2026-10-03 |
+| D12 | Annual keep-ready plan | Default: decide after beta interviews | 2026-10-03 |
 
 ## Features
 
 | ID | Feature | Status | Branch | Commit | Tests added | Notes |
 |---|---|---|---|---|---|---|
-| M0-F1 | Git state reconciliation | blocked | | | | Remote `master` already has `Precept.Web/package.json`, and the auth files listed for deletion are gone (PR #15). CI (`ci.yml`) runs on `master`. Open: `deploy-api.yml` triggers on `main`, so it never runs; changing it to `master` would turn on automatic Cloud Run deploys, which touches gate D2. Waiting on founder. Founder's local clone was behind remote; run `git pull origin master` locally |
+| M0-F1 | Git state reconciliation | blocked | claude/docs-folder-review-9ghmg4 | | 0 | Remote `master` already has `Precept.Web/package.json`, and the auth files listed for deletion are gone (PR #15). CI (`ci.yml`) runs on `master`. Founder chose to point `deploy-api.yml` at `master` (2026-10-03); the agent was not permitted to make that change because it turns on automatic production deploys, so the founder makes the one-line edit (`main` to `master`). Founder's local clone was behind remote; run `git pull origin master` locally |
 | M0-F2 | Baseline build and test record | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Baseline recorded above. Nothing blocked the build, so no fixes made |
-| M0-F3 | Repository hygiene | todo | | | | |
+| M0-F3 | Repository hygiene | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Moved 4 superseded docs to `docs/archive/`, deleted unrouted `HomePage.tsx`, removed unused `express`, `dotenv`, `tsx`, `@types/express`. Other files the plan listed (`precept.md`, `graphify-out/`, etc.) are not in the repository. Follow-ups: stray root `package.json` and `package-lock.json` (only `canvas-confetti`, already in `Precept.Web`); `.gitignore` still lists `precept_testing_strategy.md`; `clean` script still removes `server.js` |
 | M0-F4 | Documentation truth pass | todo | | | | |
 | M1-F1 | Google sign-in (D1) | todo | | | | Critical |
 | M1-F2 | Demo isolation (D7) | todo | | | | Critical |
@@ -130,4 +130,5 @@ M9 items get a row here when the founder picks them.
 
 Newest first. One line per orchestrator run: date, target, result, next step.
 
+- 2026-10-03, target `next`: gates D1 to D12 recorded (defaults, D2 = GCP). M0-F3 done; build, 136/136 backend tests, frontend type check and build pass. M0-F1 waits on the founder's `deploy-api.yml` edit. Next: M0-F4 documentation truth pass.
 - 2026-10-03, target `next`: M0-F2 done (baseline green: build, 136/136 backend tests, frontend type check and build). M0-F1 blocked on the founder decision about the `deploy-api.yml` trigger. Next: M0-F3 repository hygiene (needs founder answers on which root files to delete or ignore).

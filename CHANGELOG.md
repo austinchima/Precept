@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `docs/plan/` (implementation plan, status tracker, agent orchestrator prompt) and `docs/research/` (market and product strategy research).
+
+### Changed
+- Moved superseded planning and design docs (`R1_Implementation_Plan.md`, `precept_testing_strategy.md`, `auth_reuse_detection_cascade_revocation.md`, `Precept_Technical_Report.docx`) to `docs/archive/`.
+
+### Removed
+- Unrouted `Precept.Web/src/pages/HomePage.tsx`.
+- Unused frontend packages `express`, `dotenv`, `tsx` and `@types/express`.
+
 ## [1.3.0] - 2026-09-21
 
 _M1 / Authentication Simplification Milestone._

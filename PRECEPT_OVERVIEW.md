@@ -101,7 +101,7 @@ Precept handles personal career data, so the security model is intentionally ove
 - **Tenant isolation**: global EF Core query filters ensure users can only see their own data
 - **CORS & security headers**: environment-gated strict policies in production
 
-A full OWASP Top 10 audit is documented in `OWASP-SECURITY-AUDIT.md`, and the auth architecture is detailed in `auth_reuse_detection_cascade_revocation.md`.
+A full OWASP Top 10 audit is documented in `OWASP-SECURITY-AUDIT.md`, and the auth architecture is detailed in `docs/archive/auth_reuse_detection_cascade_revocation.md`.
 
 ---
 

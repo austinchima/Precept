@@ -127,7 +127,10 @@ erDiagram
 ├── docker-compose.yml          db + api + web, zero-config boot
 ├── docker-compose.gcp.yml      GCP-flavoured variant
 ├── design-system/              Design tokens and reference styles
-├── auth_reuse_detection_cascade_revocation.md   Auth design-history artifact (superseded in M1)
+├── docs/
+│   ├── plan/                   Implementation plan, status tracker, agent prompt
+│   ├── research/               Market and product strategy research
+│   └── archive/                Superseded planning and design docs
 ├── OWASP-SECURITY-AUDIT.md     Full OWASP Top-10 audit
 ├── CHANGELOG.md
 └── README.md
@@ -205,7 +208,7 @@ AI_BASE_URL=                # e.g. http://localhost:11434/v1 for Ollama
 
 Precept handles personal career data; the security model is overbuilt on purpose.
 (The earlier refresh-token design is preserved in
-[auth_reuse_detection_cascade_revocation.md](./auth_reuse_detection_cascade_revocation.md)
+[docs/archive/auth_reuse_detection_cascade_revocation.md](./docs/archive/auth_reuse_detection_cascade_revocation.md)
 as a superseded design-history artifact.) Highlights:
 
 - **Session cookies**: ASP.NET Core Identity cookie authentication. The `precept_auth` cookie is `HttpOnly` + `Secure` + `SameSite=Strict` (Lax outside production), with a 14-day expiration and sliding renewal — no client-side token handling at all.
