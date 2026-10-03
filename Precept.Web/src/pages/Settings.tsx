@@ -1,67 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Skill, SkillProficiency, SKILL_CATEGORIES, PagedResponse } from '../types';
-import { getSkillIcon } from '../lib/utils';
+import { Bookmark, Check, Download, Monitor, Moon, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
+import { PagedResponse, Skill, SKILL_CATEGORIES, SkillProficiency } from '../types';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
-import { AnimatedSection } from '../components/animation/AnimatedSection';
-import { Check, Plus, Pencil, X, Loader2, Database, Stethoscope, Download, Radiation, Megaphone, Terminal as TerminalIcon, User2, Bookmark } from 'lucide-react';
 import PageShell from '../components/PageShell';
+import { Button, Chip, EmptyState, Field, Input, Select, Skeleton, Textarea } from '../components/ui/kit';
+import { useTheme, type ThemePreference } from '../lib/theme';
+import { cn } from '../lib/utils';
 
-const C = {
-  bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
-  ink: '#E6EBF2', inkDim: '#9CA8B8', inkMute: '#5A6678',
-  hair: 'rgba(255,255,255,0.07)', hair2: 'rgba(255,255,255,0.12)',
-  teal: '#2dd4bf', tealDim: 'rgba(45,212,191,0.14)',
-  violet: '#8b5cf6', rose: '#f43f5e', amber: '#f59e0b', sky: '#38bdf8', emerald: '#10b981',
-} as const;
+const PROFICIENCIES: SkillProficiency[] = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
-const cardStyle = (): React.CSSProperties => ({
-  background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
-  border: `1px solid ${C.hair}`,
-  borderRadius: 18,
-  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
-});
+const SECTIONS = [
+  { id: 'profile', label: 'Profile' },
+  { id: 'appearance', label: 'Appearance' },
+  { id: 'notifications', label: 'Email digest' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'capture', label: 'Job capture' },
+  { id: 'data', label: 'Your data' },
+  { id: 'security', label: 'Sessions' },
+  { id: 'testimonial', label: 'Testimonial' },
+  { id: 'danger', label: 'Delete account' },
+] as const;
 
-const inputStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.025)',
-  border: `1px solid ${C.hair}`,
-  borderRadius: 10,
-  color: C.ink,
-  padding: '10px 12px',
-  fontFamily: 'JetBrains Mono, monospace',
-  fontSize: 13,
-  width: '100%',
-  outline: 'none',
-};
+function Section({ id, title, description, children, tone }: { id: string; title: string; description?: string; children: React.ReactNode; tone?: 'danger' }) {
+  return (
+    <section id={id} className="scroll-mt-6 border-t border-line py-8 first:border-t-0 first:pt-0" aria-labelledby={`${id}-title`}>
+      <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+        <div>
+          <h2 id={`${id}-title`} className={cn('text-[15px] font-medium', tone === 'danger' ? 'text-danger' : 'text-fg')}>{title}</h2>
+          {description && <p className="mt-1 text-[13px] leading-relaxed text-fg-3">{description}</p>}
+        </div>
+        <div className="min-w-0">{children}</div>
+      </div>
+    </section>
+  );
+}
 
-const PROF_COLOR: Record<SkillProficiency, string> = {
-  Beginner: C.sky, Intermediate: C.amber, Advanced: C.violet, Expert: C.emerald,
-};
-
-const SectionHeader = ({ icon, title, sub, color = C.teal }: { icon: React.ReactNode; title: string; sub: string; color?: string }) => (
-  <div className="flex items-start gap-3 mb-4">
-    <div className="w-9 h-9 rounded-lg grid place-items-center shrink-0" style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}>
-      {icon}
-    </div>
-    <div>
-      <h2 className="font-display text-[17px] font-semibold leading-tight" style={{ color: C.ink }}>{title}</h2>
-      <p className="font-body text-[12.5px] mt-0.5" style={{ color: C.inkDim }}>{sub}</p>
-    </div>
-  </div>
-);
+function Toggle({ id, checked, onChange, label, description, testId }: { id: string; checked: boolean; onChange: (v: boolean) => void; label: string; description?: string; testId?: string }) {
+  return (
+    <label htmlFor={id} className="flex cursor-pointer items-start justify-between gap-4 py-2">
+      <span>
+        <span className="block text-[13.5px] font-medium text-fg">{label}</span>
+        {description && <span className="mt-0.5 block text-[12.5px] text-fg-3">{description}</span>}
+      </span>
+      <span className="relative mt-0.5 inline-flex shrink-0">
+        <input id={id} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" data-testid={testId} />
+        <span className="h-5 w-9 rounded-full border border-line-strong bg-surface-3 transition-colors peer-checked:border-transparent peer-checked:bg-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--ring)]" />
+        <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-fg shadow transition-transform peer-checked:translate-x-4 peer-checked:bg-accent-ink" />
+      </span>
+    </label>
+  );
+}
 
 export default function Settings() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user, updateProfile, deleteAccount } = useAuth();
+  const { preference, setPreference } = useTheme();
   const toast = useToast();
 
-  const [confirmConfig, setConfirmConfig] = useState({
-    isOpen: false, title: '', message: '', confirmText: '', danger: false, onConfirm: () => {},
-  });
+  const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, title: '', message: '', confirmText: '', danger: false, onConfirm: () => {} });
 
   const [profileFirstName, setProfileFirstName] = useState(user?.firstName || '');
   const [profileLastName, setProfileLastName] = useState(user?.lastName || '');
@@ -71,9 +72,9 @@ export default function Settings() {
   const [profileDigestHour, setProfileDigestHour] = useState(user?.digestHourUtc ?? 13);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
-  const [isSystemOnline, setIsSystemOnline] = useState<boolean | null>(null);
-  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+  const [isApiReachable, setIsApiReachable] = useState<boolean | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSigningOutEverywhere, setIsSigningOutEverywhere] = useState(false);
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
@@ -81,7 +82,6 @@ export default function Settings() {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const skillFormRef = useRef<HTMLDivElement>(null);
 
   const [testimonyHandle, setTestimonyHandle] = useState('');
   const [testimonyText, setTestimonyText] = useState('');
@@ -89,81 +89,77 @@ export default function Settings() {
   const [isSubmittingTestimony, setIsSubmittingTestimony] = useState(false);
 
   useEffect(() => {
-    if (user) { 
-      setProfileFirstName(user.firstName); 
-      setProfileLastName(user.lastName); 
-      setProfileEmailDigest(user.emailDigestEnabled ?? true);
-      setProfileDigestFollowUps(user.digestIncludeFollowUps ?? true);
-      setProfileDigestReviews(user.digestIncludeReviews ?? true);
-      setProfileDigestHour(user.digestHourUtc ?? 13);
-    }
+    if (!user) return;
+    setProfileFirstName(user.firstName);
+    setProfileLastName(user.lastName);
+    setProfileEmailDigest(user.emailDigestEnabled ?? true);
+    setProfileDigestFollowUps(user.digestIncludeFollowUps ?? true);
+    setProfileDigestReviews(user.digestIncludeReviews ?? true);
+    setProfileDigestHour(user.digestHourUtc ?? 13);
   }, [user]);
 
   useEffect(() => {
-    async function checkSystemHealth() {
-      setIsCheckingStatus(true);
-      try {
-        await api.get('/api/system/ping', { skipAuth: true });
-        setIsSystemOnline(true);
-      } catch {
-        setIsSystemOnline(false);
-      } finally {
-        setIsCheckingStatus(false);
-      }
-    }
-    checkSystemHealth();
-    const interval = setInterval(checkSystemHealth, 30000);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    const check = () =>
+      api
+        .get('/api/system/ping', { skipAuth: true })
+        .then(() => !cancelled && setIsApiReachable(true))
+        .catch(() => !cancelled && setIsApiReachable(false));
+    check();
+    const interval = setInterval(check, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
-  const [isSigningOutEverywhere, setIsSigningOutEverywhere] = useState(false);
+  useEffect(() => {
+    api
+      .get<PagedResponse<Skill>>('/api/skill')
+      .then((data) => setSkills(data.items ?? []))
+      .catch((err) => console.error('Failed to load skills:', err))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const handleSignOutEverywhere = async () => {
     setIsSigningOutEverywhere(true);
     try {
       await api.post('/api/auth/sign-out-everywhere', {});
-      toast.success('All other devices have been signed out.');
-    } catch (err) {
-      toast.error('Failed to sign out everywhere.');
+      toast.success('Every other device is signed out.');
+    } catch {
+      toast.error('Could not sign out other devices.');
     } finally {
       setIsSigningOutEverywhere(false);
     }
   };
 
-  useEffect(() => {
-    async function loadSkills() {
-      try {
-        const data = await api.get<PagedResponse<Skill>>('/api/skill');
-        setSkills(data.items ?? []);
-      }
-      catch (err) { console.error('Failed to load skills:', err); }
-      finally { setIsLoading(false); }
-    }
-    loadSkills();
-  }, []);
-
   const resetSkillForm = () => {
-    setEditingId(null); setName(''); setCategory(''); setProficiency('Intermediate'); setNotes('');
+    setEditingId(null);
+    setName('');
+    setCategory('');
+    setProficiency('Intermediate');
+    setNotes('');
   };
+
   const startEditSkill = (skill: Skill) => {
-    setEditingId(skill.id); setName(skill.name); setCategory(skill.category || '');
-    setProficiency(skill.proficiencyLevel); setNotes(skill.notes || '');
-    skillFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setEditingId(skill.id);
+    setName(skill.name);
+    setCategory(skill.category || '');
+    setProficiency(skill.proficiencyLevel);
+    setNotes(skill.notes || '');
+    document.getElementById('skill-name')?.focus();
   };
+
   const handleSubmitSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     setIsSubmitting(true);
     try {
-      const payload = {
-        name: name.trim(),
-        category: category.trim() || undefined,
-        proficiencyLevel: proficiency,
-        notes: notes.trim() || undefined,
-      };
+      const payload = { name: name.trim(), category: category.trim() || undefined, proficiencyLevel: proficiency, notes: notes.trim() || undefined };
       if (editingId) {
         const updated = await api.put<Skill>(`/api/skill/${editingId}`, payload);
         setSkills((prev) => prev.map((s) => (s.id === editingId ? updated : s)).sort((a, b) => a.name.localeCompare(b.name)));
+        toast.success('Skill updated.');
       } else {
         const added = await api.post<Skill>('/api/skill', payload);
         setSkills((prev) => [...prev, added].sort((a, b) => a.name.localeCompare(b.name)));
@@ -171,10 +167,30 @@ export default function Settings() {
       resetSkillForm();
     } catch (err) {
       console.error('Failed to save skill:', err);
-      toast.error((err as Error).message || 'Failed to save skill.');
+      toast.error((err as Error).message || 'The skill could not be saved.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const removeSkill = (skill: Skill) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: `Delete ${skill.name}?`,
+      message: 'It is removed from your skills list and JD Matcher stops counting it.',
+      confirmText: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmConfig((p) => ({ ...p, isOpen: false }));
+        try {
+          await api.delete(`/api/skill/${skill.id}`);
+          setSkills((prev) => prev.filter((s) => s.id !== skill.id));
+        } catch (err) {
+          console.error('Failed to delete skill:', err);
+          toast.error((err as Error).message || 'Could not delete the skill.');
+        }
+      },
+    });
   };
 
   const handleSubmitTestimonial = async (e: React.FormEvent) => {
@@ -182,56 +198,33 @@ export default function Settings() {
     if (!testimonyHandle.trim() || !testimonyText.trim() || !isPublicConfirmed) return;
     setIsSubmittingTestimony(true);
     try {
-      await api.post('/api/testimonial', {
-        name: `${user?.firstName} ${user?.lastName}`,
-        handle: testimonyHandle.trim(),
-        text: testimonyText.trim(),
-      });
-      toast.success('Story published! Thanks for sharing.');
-      setTestimonyHandle(''); setTestimonyText(''); setIsPublicConfirmed(false);
+      await api.post('/api/testimonial', { name: `${user?.firstName} ${user?.lastName}`, handle: testimonyHandle.trim(), text: testimonyText.trim() });
+      toast.success('Thanks. It appears on the site after review.');
+      setTestimonyHandle('');
+      setTestimonyText('');
+      setIsPublicConfirmed(false);
     } catch (err) {
       console.error('Failed to submit testimonial:', err);
-      toast.error('Failed to publish story.');
+      toast.error('The testimonial could not be sent.');
     } finally {
       setIsSubmittingTestimony(false);
     }
   };
 
-  const removeSkill = (id: string) => {
-    setConfirmConfig({
-      isOpen: true,
-      title: 'Delete skill',
-      message: 'Are you sure? This affects your JD Matcher scores.',
-      confirmText: 'Delete',
-      danger: true,
-      onConfirm: async () => {
-        try {
-          await api.delete(`/api/skill/${id}`);
-          setSkills((prev) => prev.filter((s) => s.id !== id));
-          setConfirmConfig((p) => ({ ...p, isOpen: false }));
-        } catch (err) {
-          console.error('Failed to delete skill:', err);
-          toast.error((err as Error).message || 'Failed to remove skill.');
-          setConfirmConfig((p) => ({ ...p, isOpen: false }));
-        }
-      },
-    });
-  };
-
   const handlePurge = () => {
     setConfirmConfig({
       isOpen: true,
-      title: 'Delete account',
-      message: 'This permanently deletes your account and all your data. This cannot be undone. Continue?',
+      title: 'Delete your account?',
+      message: 'This permanently deletes your account, stories, applications and skills. It cannot be undone.',
       confirmText: 'Delete account',
       danger: true,
       onConfirm: async () => {
         try {
           await deleteAccount();
           localStorage.clear();
-          toast.success('Your account and all data have been permanently deleted.');
+          toast.success('Your account and data are deleted.');
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : 'Failed to delete account. Please try again.');
+          toast.error(err instanceof Error ? err.message : 'The account could not be deleted. Try again.');
         }
       },
     });
@@ -241,9 +234,14 @@ export default function Settings() {
     e.preventDefault();
     if (!profileFirstName.trim() || !profileLastName.trim()) return;
     setIsUpdatingProfile(true);
-    try { await updateProfile(profileFirstName, profileLastName, profileEmailDigest, profileDigestFollowUps, profileDigestReviews, profileDigestHour); toast.success('Profile updated.'); }
-    catch { toast.error('Failed to update profile.'); }
-    finally { setIsUpdatingProfile(false); }
+    try {
+      await updateProfile(profileFirstName, profileLastName, profileEmailDigest, profileDigestFollowUps, profileDigestReviews, profileDigestHour);
+      toast.success('Saved.');
+    } catch {
+      toast.error('Could not save your changes.');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const handleExportData = async () => {
@@ -255,360 +253,224 @@ export default function Settings() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `precept-data-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to export:', err);
-      toast.error('Export failed.');
+      toast.error('The export failed.');
     } finally {
       setIsExporting(false);
     }
   };
 
-  const proficiencyPct: Record<SkillProficiency, number> = { Beginner: 30, Intermediate: 60, Advanced: 80, Expert: 95 };
+  const themeOptions: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
+    { value: 'system', label: 'System', icon: Monitor },
+    { value: 'light', label: 'Light', icon: Sun },
+    { value: 'dark', label: 'Dark', icon: Moon },
+  ];
 
   return (
-    <PageShell
-      dataTestId="settings-page"
-      badge="Configuration"
-      badgeColor={C.violet}
-      title={
-        <>
-          System <span className="font-editorial" style={{ color: C.violet, fontWeight: 400 }}>configuration.</span>
-        </>
-      }
-      subtitle="Profile, capabilities, diagnostics, exports."
-    >
-      <AnimatedSection animation="staggerFadeUp" stagger={0.12} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Profile */}
-          <section className="opacity-0 animate-fade-in-up delay-100 p-6" style={cardStyle()}>
-            <SectionHeader icon={<User2 size={16} />} title="Operator details" sub="Update your name and preferences." color={C.teal} />
-            <form onSubmit={handleUpdateProfile} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="First name">
-                  <input title="First Name" type="text" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} style={inputStyle} required data-testid="settings-firstname" />
+    <PageShell dataTestId="settings-page" title="Settings" subtitle="Your profile, preferences and data." width="wide">
+      <div className="grid gap-10 lg:grid-cols-[180px_minmax(0,1fr)]">
+        <nav aria-label="Settings sections" className="hidden lg:block">
+          <ul className="sticky top-6 flex flex-col gap-0.5 text-[13.5px]">
+            {SECTIONS.filter((s) => !(s.id === 'testimonial' && user?.isDemo)).map((s) => (
+              <li key={s.id}>
+                <a href={`#${s.id}`} className={cn('block rounded-md px-2.5 py-1.5 transition-colors hover:bg-surface-2 hover:text-fg', s.id === 'danger' ? 'text-danger' : 'text-fg-2')}>
+                  {s.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="min-w-0 max-w-3xl">
+          <form onSubmit={handleUpdateProfile}>
+            <Section id="profile" title="Profile" description="Shown on your dashboard and in emails.">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="First name" htmlFor="settings-first">
+                  <Input id="settings-first" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} required data-testid="settings-firstname" />
                 </Field>
-                <Field label="Last name">
-                  <input title="Last Name" type="text" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} style={inputStyle} required data-testid="settings-lastname" />
+                <Field label="Last name" htmlFor="settings-last">
+                  <Input id="settings-last" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} required data-testid="settings-lastname" />
                 </Field>
               </div>
+              <p className="mt-4 text-[13px] text-fg-3">Signed in as <span className="text-fg-2">{user?.email}</span></p>
+            </Section>
 
-              <div className="flex items-center gap-3">
-                <input 
-                  type="checkbox" 
-                  id="emailDigestEnabled" 
-                  checked={profileEmailDigest} 
-                  onChange={(e) => setProfileEmailDigest(e.target.checked)} 
-                  style={{ accentColor: C.teal, width: 16, height: 16 }} 
-                  data-testid="pref-digest-enabled"
-                />
-                <div>
-                  <label htmlFor="emailDigestEnabled" className="font-display text-[14px] font-medium block" style={{ color: C.ink }}>
-                    Daily Digest Email
-                  </label>
-                  <p className="font-body text-[12px] mt-0.5" style={{ color: C.inkDim }}>
-                    Receive a unified daily email for follow-ups and reviews.
-                  </p>
-                </div>
+            <Section id="appearance" title="Appearance" description="System follows your device setting.">
+              <div role="radiogroup" aria-label="Theme" className="grid max-w-md grid-cols-3 gap-2">
+                {themeOptions.map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={preference === value}
+                    onClick={() => setPreference(value)}
+                    className={cn(
+                      'flex flex-col items-start gap-3 rounded-xl border p-3 text-left transition-colors',
+                      preference === value ? 'border-fg bg-surface-1' : 'border-line bg-surface-2 hover:border-line-strong'
+                    )}
+                  >
+                    <Icon size={16} className="text-fg-2" />
+                    <span className="text-[13.5px] font-medium text-fg">{label}</span>
+                  </button>
+                ))}
               </div>
+            </Section>
 
-              {profileEmailDigest && (
-                <div className="ml-8 space-y-4 pt-2" style={{ borderLeft: `1px solid ${C.hair}`, paddingLeft: 16 }}>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      id="digestIncludeFollowUps" 
-                      checked={profileDigestFollowUps} 
-                      onChange={(e) => setProfileDigestFollowUps(e.target.checked)} 
-                      style={{ accentColor: C.teal, width: 14, height: 14 }} 
-                      data-testid="pref-digest-followups"
-                    />
-                    <label htmlFor="digestIncludeFollowUps" className="font-body text-[13px]" style={{ color: C.inkDim }}>
-                      Include application follow-ups
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      id="digestIncludeReviews" 
-                      checked={profileDigestReviews} 
-                      onChange={(e) => setProfileDigestReviews(e.target.checked)} 
-                      style={{ accentColor: C.teal, width: 14, height: 14 }} 
-                      data-testid="pref-digest-reviews"
-                    />
-                    <label htmlFor="digestIncludeReviews" className="font-body text-[13px]" style={{ color: C.inkDim }}>
-                      Include spaced-repetition reviews
-                    </label>
-                  </div>
-                  <div className="pt-2">
-                    <Field label="Delivery Hour (UTC)">
-                      <select 
-                        title="Digest Hour UTC" 
-                        value={profileDigestHour} 
-                        onChange={(e) => setProfileDigestHour(Number(e.target.value))} 
-                        style={{ ...inputStyle, width: 'auto', minWidth: 120 }} 
-                        data-testid="pref-digest-hour"
-                      >
-                        {Array.from({ length: 24 }).map((_, i) => (
-                          <option key={i} value={i} style={{ background: C.bg1 }}>
-                            {i.toString().padStart(2, '0')}:00 UTC
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
+            <Section id="notifications" title="Email digest" description="One email a day with what needs attention.">
+              {user?.isDemo ? (
+                <p className="text-[13.5px] text-fg-3">Demo accounts do not receive email.</p>
+              ) : (
+                <div className="flex flex-col divide-y divide-line">
+                  <Toggle id="digest-enabled" checked={profileEmailDigest} onChange={setProfileEmailDigest} label="Daily digest" description="Follow-ups and reviews due, in one email." testId="pref-digest-enabled" />
+                  {profileEmailDigest && (
+                    <>
+                      <Toggle id="digest-followups" checked={profileDigestFollowUps} onChange={setProfileDigestFollowUps} label="Include application follow-ups" testId="pref-digest-followups" />
+                      <Toggle id="digest-reviews" checked={profileDigestReviews} onChange={setProfileDigestReviews} label="Include stories due for review" testId="pref-digest-reviews" />
+                      <div className="py-3">
+                        <Field label="Send at" htmlFor="digest-hour" help="Time is in UTC.">
+                          <Select id="digest-hour" value={profileDigestHour} onChange={(e) => setProfileDigestHour(Number(e.target.value))} className="w-40" data-testid="pref-digest-hour">
+                            {Array.from({ length: 24 }).map((_, i) => (
+                              <option key={i} value={i}>{String(i).padStart(2, '0')}:00 UTC</option>
+                            ))}
+                          </Select>
+                        </Field>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
+              <div className="mt-6">
+                <Button type="submit" variant="primary" icon={<Check size={16} />} loading={isUpdatingProfile} data-testid="settings-save-profile">
+                  Save profile and email settings
+                </Button>
+              </div>
+            </Section>
+          </form>
 
-              <button type="submit" disabled={isUpdatingProfile} data-testid="settings-save-profile"
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
-                style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
-                {isUpdatingProfile ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                {isUpdatingProfile ? 'Updating…' : 'Save changes'}
-              </button>
+          <Section id="skills" title="Skills" description="JD Matcher and Readiness compare postings against this list.">
+            <form onSubmit={handleSubmitSkill} className="grid gap-4 rounded-xl border border-line bg-surface-1 p-4 sm:grid-cols-[1.4fr_1fr_1fr]">
+              <Field label="Skill" htmlFor="skill-name">
+                <Input id="skill-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="React" required data-testid="skill-name" />
+              </Field>
+              <Field label="Category" htmlFor="skill-category">
+                <Select id="skill-category" value={category} onChange={(e) => setCategory(e.target.value)} data-testid="skill-category">
+                  <option value="">None</option>
+                  {SKILL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </Select>
+              </Field>
+              <Field label="Level" htmlFor="skill-proficiency">
+                <Select id="skill-proficiency" value={proficiency} onChange={(e) => setProficiency(e.target.value as SkillProficiency)} data-testid="skill-proficiency">
+                  {PROFICIENCIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                </Select>
+              </Field>
+              <Field label="Notes" htmlFor="skill-notes" optional className="sm:col-span-3">
+                <Input id="skill-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Hooks, server components, testing library" data-testid="skill-notes" />
+              </Field>
+              <div className="flex justify-end gap-2 sm:col-span-3">
+                {editingId && <Button variant="ghost" onClick={resetSkillForm} disabled={isSubmitting}>Cancel</Button>}
+                <Button type="submit" variant="secondary" icon={editingId ? <Check size={16} /> : <Plus size={16} />} loading={isSubmitting} disabled={!name.trim()} data-testid="skill-submit">
+                  {editingId ? 'Update skill' : 'Add skill'}
+                </Button>
+              </div>
             </form>
-          </section>
 
-          {/* Sessions */}
-          <section className="opacity-0 animate-fade-in-up delay-150 p-6" style={cardStyle()}>
-            <SectionHeader icon={<Database size={16} />} title="Sessions & Devices" sub="Sign out of every other device." color={C.sky} />
-            <p className="font-mono text-xs mb-4" style={{ color: C.inkDim }}>
-              This immediately invalidates the session cookie on all other devices where you're signed in.
-            </p>
-            <button onClick={handleSignOutEverywhere} disabled={isSigningOutEverywhere}
-              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60 text-rose-400"
-              style={{ boxShadow: `0 0 0 1px currentColor` }}>
-              {isSigningOutEverywhere ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-              {isSigningOutEverywhere ? 'Signing out…' : 'Sign out of all other devices'}
-            </button>
-          </section>
-
-          {/* Skills */}
-          <section className="space-y-4 opacity-0 animate-fade-in-up delay-200">
-            <div className="p-6" style={cardStyle()} ref={skillFormRef}>
-              <SectionHeader icon={<TerminalIcon size={16} />} title="Capabilities" sub="These keywords feed your JD match scores." color={C.violet} />
-              <form onSubmit={handleSubmitSkill} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Field label="Name">
-                    <input title="Skill Name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. React, Docker" style={inputStyle} required data-testid="skill-name" />
-                  </Field>
-                  <Field label="Category">
-                    <select title="Skill Category" value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle} data-testid="skill-category">
-                      <option value="" style={{ background: C.bg1 }}>— Select category —</option>
-                      {SKILL_CATEGORIES.map((c) => <option key={c} value={c} style={{ background: C.bg1 }}>{c}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Proficiency">
-                    <select title="Skill Proficiency" value={proficiency} onChange={(e) => setProficiency(e.target.value as SkillProficiency)} style={inputStyle} data-testid="skill-proficiency">
-                      {(['Beginner', 'Intermediate', 'Advanced', 'Expert'] as SkillProficiency[]).map((p) => (
-                        <option key={p} value={p} style={{ background: C.bg1 }}>{p}</option>
-                      ))}
-                    </select>
-                  </Field>
+            <div className="mt-4">
+              {isLoading ? (
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-11" />
+                  <Skeleton className="h-11" />
                 </div>
-                <Field label="Notes · optional">
-                  <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Hooks, Context API, Redux, Next.js" style={inputStyle} data-testid="skill-notes" />
+              ) : skills.length === 0 ? (
+                <EmptyState className="px-0" title="No skills yet." description="Add the languages, frameworks and tools you would be comfortable being asked about." />
+              ) : (
+                <ul className="divide-y divide-line rounded-xl border border-line">
+                  {skills.map((skill) => (
+                    <li key={skill.id} className="group flex items-center gap-3 px-4 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13.5px] font-medium text-fg">{skill.name}</p>
+                        {skill.notes && <p className="truncate text-[12.5px] text-fg-3">{skill.notes}</p>}
+                      </div>
+                      {skill.category && <Chip className="hidden sm:inline-flex">{skill.category}</Chip>}
+                      <span className="w-24 text-right text-[12.5px] text-fg-2">{skill.proficiencyLevel}</span>
+                      <div className="flex gap-0.5 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
+                        <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={() => startEditSkill(skill)} aria-label={`Edit ${skill.name}`} />
+                        <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} onClick={() => removeSkill(skill)} aria-label={`Delete ${skill.name}`} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Section>
+
+          <Section id="capture" title="Job capture" description="A bookmarklet that saves the posting you are viewing as a draft application.">
+            <Button variant="secondary" icon={<Bookmark size={16} />} href="/capture/index.html" data-testid="settings-bookmarklet-link">
+              Get the bookmarklet
+            </Button>
+          </Section>
+
+          <Section id="data" title="Your data" description="Download everything in your account as JSON.">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="secondary" icon={<Download size={16} />} loading={isExporting} onClick={handleExportData} data-testid="settings-export-btn">
+                Download JSON
+              </Button>
+              <span className="text-[12.5px] text-fg-3">
+                API {isApiReachable === null ? 'checking' : isApiReachable ? 'reachable' : 'not reachable'}
+              </span>
+            </div>
+          </Section>
+
+          <Section id="security" title="Sessions" description="Sign out every other browser and device. This one stays signed in.">
+            <Button variant="secondary" loading={isSigningOutEverywhere} onClick={handleSignOutEverywhere}>
+              Sign out other devices
+            </Button>
+          </Section>
+
+          {!user?.isDemo && (
+            <Section id="testimonial" title="Testimonial" description="Landed a role with Precept's help? Tell other engineers. Shown on the site after review.">
+              <form onSubmit={handleSubmitTestimonial} className="flex flex-col gap-4">
+                <Field label="Your new role" htmlFor="testimony-handle">
+                  <Input id="testimony-handle" value={testimonyHandle} onChange={(e) => setTestimonyHandle(e.target.value)} placeholder="Backend engineer at a fintech" required data-testid="testimony-handle" />
                 </Field>
-                <div className="flex justify-end gap-3 pt-1">
-                  {editingId && (
-                    <button type="button" onClick={resetSkillForm} disabled={isSubmitting}
-                      className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
-                      style={{ background: 'transparent', color: C.inkDim, border: `1px solid ${C.hair2}` }}>
-                      Cancel
-                    </button>
-                  )}
-                  <button type="submit" disabled={isSubmitting || !name.trim()} data-testid="skill-submit"
-                    className="inline-flex items-center gap-2 rounded-full px-5 py-2 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
-                    style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
-                    {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : (editingId ? <Check size={12} /> : <Plus size={12} />)}
-                    {editingId ? 'Update skill' : 'Add skill'}
-                  </button>
+                <Field label="What helped" htmlFor="testimony-text" help="Keep it to two or three sentences.">
+                  <Textarea id="testimony-text" rows={3} value={testimonyText} onChange={(e) => setTestimonyText(e.target.value)} required data-testid="testimony-text" />
+                </Field>
+                <label className="flex items-start gap-2.5 text-[13px] leading-relaxed text-fg-2">
+                  <input type="checkbox" checked={isPublicConfirmed} onChange={(e) => setIsPublicConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--accent-text)]" data-testid="testimony-consent" />
+                  It is accurate, and Precept may show it on its website with my name.
+                </label>
+                <div>
+                  <Button type="submit" variant="secondary" loading={isSubmittingTestimony} disabled={!isPublicConfirmed || !testimonyHandle || !testimonyText} data-testid="testimony-submit">
+                    Send testimonial
+                  </Button>
                 </div>
               </form>
-            </div>
+            </Section>
+          )}
 
-            <div className="p-6" style={cardStyle()}>
-              <h3 className="font-mono text-[10.5px] uppercase tracking-[0.18em] mb-4" style={{ color: C.inkMute }}>Current inventory</h3>
-              {isLoading ? (
-                <div className="flex items-center gap-2 py-6 justify-center font-mono text-sm" style={{ color: C.inkDim }}>
-                  <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.teal }} /> Scanning…
-                </div>
-              ) : (
-                <AnimatedSection animation="staggerFadeUp" stagger={0.04} childSelector="> div" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {skills.map((skill) => {
-                    const ic = getSkillIcon(skill.name);
-                    const profColor = PROF_COLOR[skill.proficiencyLevel];
-                    return (
-                      <div key={skill.id} className="p-4 group transition-all duration-300 relative" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 12 }}>
-                        <div className="absolute top-1 right-1 flex opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => startEditSkill(skill)} title="Edit" className="w-8 h-8 grid place-items-center cursor-pointer" style={{ color: C.inkDim }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = C.teal)}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}><Pencil size={12} /></button>
-                          <button onClick={() => removeSkill(skill.id)} title="Delete" className="w-8 h-8 grid place-items-center cursor-pointer" style={{ color: C.inkDim }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = C.rose)}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = C.inkDim)}><X size={12} /></button>
-                        </div>
-                        <h4 className="font-display font-semibold text-[13.5px] pr-16 flex items-center gap-2" style={{ color: C.ink }}>
-                          <i className={ic.icon} style={{ color: ic.color, fontSize: 13 }} />
-                          {skill.name}
-                        </h4>
-                        <div className="flex gap-1.5 mt-2 flex-wrap">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[9.5px] uppercase tracking-widest"
-                            style={{ background: `${profColor}1c`, color: profColor, border: `1px solid ${profColor}44` }}>
-                            {skill.proficiencyLevel}
-                          </span>
-                          {skill.category && (
-                            <span className="px-2 py-0.5 rounded-full font-mono text-[9.5px] uppercase tracking-widest"
-                              style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}` }}>
-                              {skill.category}
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-3 h-1 overflow-hidden rounded-full" style={{ background: C.hair }}>
-                          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${proficiencyPct[skill.proficiencyLevel]}%`, background: profColor }} />
-                        </div>
-                        {skill.notes && (
-                          <p className="font-body text-[11.5px] mt-2.5 line-clamp-2 leading-relaxed" style={{ color: C.inkDim }} title={skill.notes}>{skill.notes}</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {skills.length === 0 && (
-                    <div className="col-span-full py-10 text-center font-mono text-[12.5px] rounded-xl flex flex-col items-center gap-2"
-                      style={{ color: C.inkMute, border: `1px dashed ${C.hair2}`, background: C.bg2 }}>
-                      <Database size={20} className="opacity-50" />
-                      Inventory empty. Add skills above to compute match scores.
-                    </div>
-                  )}
-                </AnimatedSection>
-              )}
-            </div>
-          </section>
-
-          {/* Testimonial */}
-          <section className="opacity-0 animate-fade-in-up delay-200 p-6" style={cardStyle()}>
-            <SectionHeader icon={<Megaphone size={16} />} title="Share your success story" sub="Land a role? Tell other engineers." color={C.amber} />
-            <form onSubmit={handleSubmitTestimonial} className="space-y-4">
-              <Field label="New role · handle">
-                <input type="text" value={testimonyHandle} onChange={(e) => setTestimonyHandle(e.target.value)} placeholder="Software Engineer @ Google" style={inputStyle} required data-testid="testimony-handle" />
-              </Field>
-              <Field label="The story">
-                <textarea value={testimonyText} onChange={(e) => setTestimonyText(e.target.value)} rows={3}
-                  placeholder="Precept helped me organize prep and land in 3 weeks."
-                  style={{ ...inputStyle, fontFamily: 'Geist, Inter, sans-serif', resize: 'vertical' }} required data-testid="testimony-text" />
-              </Field>
-              <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl" style={{ background: `${C.amber}10`, border: `1px solid ${C.amber}33` }}>
-                <input type="checkbox" checked={isPublicConfirmed} onChange={(e) => setIsPublicConfirmed(e.target.checked)} className="mt-0.5" style={{ accentColor: C.amber }} data-testid="testimony-consent" />
-                <span className="font-body text-[12.5px] leading-relaxed" style={{ color: C.inkDim }}>
-                  <strong className="font-semibold" style={{ color: C.amber }}>Public display consent:</strong> I confirm this is accurate and grant permission for it to appear on the Precept landing page with my name.
-                </span>
-              </label>
-              <button type="submit" disabled={isSubmittingTestimony || !isPublicConfirmed || !testimonyHandle || !testimonyText} data-testid="testimony-submit"
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
-                style={{ background: C.amber, color: C.bg0, boxShadow: `0 0 0 1px ${C.amber}` }}>
-                {isSubmittingTestimony ? <Loader2 size={12} className="animate-spin" /> : <Megaphone size={12} />}
-                {isSubmittingTestimony ? 'Publishing…' : 'Publish'}
-              </button>
-            </form>
-          </section>
-        </div>
-
-        {/* RIGHT */}
-        <div className="space-y-6 opacity-0 animate-fade-in-up delay-300">
-          {/* Diagnostics */}
-          <section className="p-6" style={cardStyle()}>
-            <SectionHeader icon={<Stethoscope size={16} />} title="Diagnostics" sub="System health probe." color={C.sky} />
-            <div className="font-mono text-sm space-y-3">
-              <div className="flex justify-between items-center pb-3" style={{ borderBottom: `1px solid ${C.hair}` }}>
-                <span style={{ color: C.inkDim }}>System status</span>
-                {isCheckingStatus ? (
-                  <span className="flex items-center gap-2" style={{ color: C.inkDim }}><Loader2 size={11} className="animate-spin" /> Checking…</span>
-                ) : isSystemOnline ? (
-                  <span className="flex items-center gap-1.5" style={{ color: C.emerald }}>
-                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: C.emerald, boxShadow: `0 0 6px ${C.emerald}` }} /> Online
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1.5" style={{ color: C.rose }}>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.rose }} /> Offline
-                  </span>
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span style={{ color: C.inkDim }}>Database</span>
-                <span style={{ color: isSystemOnline ? C.ink : C.rose }}>{isSystemOnline ? 'Connected' : 'Disconnected'}</span>
-              </div>
-            </div>
-          </section>
-
-          {/* Data export */}
-          <section className="p-6" style={cardStyle()}>
-            <SectionHeader icon={<Download size={16} />} title="Data export" sub="Your data as raw JSON. Anytime." color={C.teal} />
-            <button onClick={handleExportData} disabled={isExporting} data-testid="settings-export-btn"
-              className="w-full inline-flex items-center justify-center gap-2 rounded-full py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
-              style={{ background: 'rgba(255,255,255,0.025)', color: C.ink, border: `1px solid ${C.hair2}` }}>
-              {isExporting ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-              {isExporting ? 'Exporting…' : 'Download JSON'}
-            </button>
-          </section>
-
-          {/* Job capture bookmarklet */}
-          <section className="p-6" style={cardStyle()}>
-            <SectionHeader icon={<Bookmark size={16} />} title="Job capture" sub="One-click bookmarklet for job postings." color={C.amber} />
-            <p className="font-body text-[12px] leading-relaxed mb-4" style={{ color: C.inkDim }}>
-              Drag the bookmarklet to your browser bar. Click it on any job posting to save a draft application.
+          <Section id="danger" title="Delete account" description="Permanently removes your account and everything in it." tone="danger">
+            <Button variant="danger" onClick={handlePurge} data-testid="settings-purge-btn">Delete account</Button>
+            <p className="mt-6 text-[12.5px] text-fg-3">
+              <Link to="/terms" className="underline-offset-4 hover:text-fg-2 hover:underline">Terms of service</Link>
             </p>
-            <a
-              href="/capture/index.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="settings-bookmarklet-link"
-              className="w-full inline-flex items-center justify-center gap-2 rounded-full py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
-              style={{ background: 'rgba(255,255,255,0.025)', color: C.ink, border: `1px solid ${C.hair2}` }}
-            >
-              <Bookmark size={11} /> Get bookmarklet
-            </a>
-          </section>
-
-          {/* Danger */}
-          <section className="p-6" style={{ ...cardStyle(), borderColor: `${C.rose}33` }}>
-            <SectionHeader icon={<Radiation size={16} />} title="Danger zone" sub="Permanently delete your account and all data." color={C.rose} />
-            <button onClick={handlePurge} data-testid="settings-purge-btn"
-              className="w-full rounded-full py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
-              style={{ background: 'transparent', color: C.rose, border: `1px solid ${C.rose}55` }}>
-              Delete account
-            </button>
-          </section>
-
-          {/* Footer links */}
-          <section className="pt-4 pb-8 flex justify-center">
-            <Link to="/terms" className="font-mono text-[11px] uppercase tracking-widest hover:underline underline-offset-4" style={{ color: C.inkMute }}>
-              Terms of Service
-            </Link>
-          </section>
+          </Section>
         </div>
-      </AnimatedSection>
+      </div>
 
       <ConfirmationModal
         isOpen={confirmConfig.isOpen}
         title={confirmConfig.title}
         message={confirmConfig.message}
         confirmText={confirmConfig.confirmText}
-        cancelText="Cancel"
         danger={confirmConfig.danger}
         onConfirm={confirmConfig.onConfirm}
         onCancel={() => setConfirmConfig((p) => ({ ...p, isOpen: false }))}
       />
     </PageShell>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="font-mono text-[10px] uppercase tracking-[0.18em] block" style={{ color: C.inkMute }}>{label}</label>
-      {children}
-    </div>
   );
 }

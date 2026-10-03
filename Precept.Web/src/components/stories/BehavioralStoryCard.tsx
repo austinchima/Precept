@@ -1,78 +1,46 @@
-import React from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { BehavioralStory } from '../../types';
-import { C, cardStyle, IconButton } from './storyTheme';
-import { Pencil, Trash2, Star } from 'lucide-react';
+import { Button } from '../ui/kit';
+import { ConfidenceMeter, nextReviewLabel } from '../domain';
 
 interface BehavioralStoryCardProps {
   story: BehavioralStory;
   onEdit: (story: BehavioralStory) => void;
-  onDelete: (storyId: string) => void;
+  onDelete: (id: string) => void;
 }
 
-const STAR_SECTIONS: { key: keyof Pick<BehavioralStory, 'situation' | 'task' | 'action' | 'result'>; label: string }[] = [
-  { key: 'situation', label: 'Situation' },
-  { key: 'task', label: 'Task' },
-  { key: 'action', label: 'Action' },
-  { key: 'result', label: 'Result' },
-];
-
-export const BehavioralStoryCard: React.FC<BehavioralStoryCardProps> = ({ story, onEdit, onDelete }) => {
-  const tags = story.tags ? story.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
-
+export function BehavioralStoryCard({ story, onEdit, onDelete }: BehavioralStoryCardProps) {
+  const tags = story.tags ? story.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
   return (
-    <div className="flex flex-col group transition-all duration-300 overflow-hidden" style={cardStyle()}>
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex items-start justify-between mb-3">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest"
-            style={{ background: `${C.teal}1c`, color: C.teal, border: `1px solid ${C.teal}44` }}>
-            <Star size={9} /> STAR
-          </span>
-          <div className="flex items-center gap-2">
-            <IconButton title="Edit story" onClick={() => onEdit(story)}>
-              <Pencil size={12} />
-            </IconButton>
-            <IconButton title="Delete story" onClick={() => onDelete(story.id)} hoverColor={C.rose}>
-              <Trash2 size={12} />
-            </IconButton>
-          </div>
-        </div>
-
-        <h3 className="font-display text-[15px] font-semibold mb-1.5 line-clamp-2" style={{ color: C.ink }} title={story.title}>
-          {story.title}
-        </h3>
-
-        <div className="flex-1 space-y-2.5 mb-3">
-          {STAR_SECTIONS.map(({ key, label }) => {
-            const text = story[key];
-            if (!text?.trim()) return null;
-            return (
-              <div key={key}>
-                <strong className="font-mono uppercase tracking-wider text-[10px] block mb-0.5" style={{ color: C.teal }}>
-                  {label}
-                </strong>
-                <p className="font-body text-[12.5px] leading-relaxed line-clamp-2" style={{ color: C.inkDim }}>
-                  {text}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-
+    <article className="panel group flex flex-col transition-colors hover:border-line-strong" data-testid="behavioral-story-card">
+      <div className="flex flex-1 flex-col p-5">
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-2" style={{ borderTop: `1px solid ${C.hair}` }}>
-            {tags.map((tag, idx) => (
-              <span key={idx} className="px-2 py-0.5 rounded-full font-mono text-[9px] uppercase tracking-wider"
-                style={{ background: `${C.teal}10`, color: C.inkDim, border: `1px solid ${C.hair}` }}>
-                #{tag}
-              </span>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {tags.slice(0, 3).map((tag) => (
+              <span key={tag} className="chip">{tag}</span>
             ))}
           </div>
         )}
+        <h3 className="text-[15.5px] font-semibold leading-snug tracking-tight text-fg">{story.title}</h3>
+        <dl className="mt-3 grid gap-2.5 text-[13px] leading-relaxed">
+          {(['situation', 'action', 'result'] as const).map((k) => (
+            <div key={k} className="grid grid-cols-[72px_1fr] gap-3">
+              <dt className="font-medium capitalize text-fg-3">{k}</dt>
+              <dd className="line-clamp-2 text-fg-2">{story[k]}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
-
-      <div className="px-5 py-3 flex justify-between items-center font-mono text-[10.5px]" style={{ borderTop: `1px solid ${C.hair}`, color: C.inkMute }}>
-        <span>Updated: {story.updatedAt ? new Date(story.updatedAt).toLocaleDateString() : 'never'}</span>
-      </div>
-    </div>
+      <footer className="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
+        <div className="flex items-center gap-3">
+          <ConfidenceMeter level={story.confidenceLevel} />
+          <span className="text-[12px] text-fg-3">{nextReviewLabel(story.nextReviewAt)}</span>
+        </div>
+        <div className="flex items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
+          <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={() => onEdit(story)} aria-label={`Edit ${story.title}`} />
+          <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} onClick={() => onDelete(story.id)} aria-label={`Delete ${story.title}`} />
+        </div>
+      </footer>
+    </article>
   );
-};
+}

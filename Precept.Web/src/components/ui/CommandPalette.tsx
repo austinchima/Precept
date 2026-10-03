@@ -1,13 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { ArrowRight, Briefcase, CornerDownLeft, FileText, Loader2, Search, Sparkles } from 'lucide-react';
 import { api } from '../../api';
 import { SearchResult } from '../../types';
 import { useDebounce } from '../../hooks/useDebounce';
+import { NAV_ITEMS } from '../navigation';
+import { Kbd } from './kit';
+import { cn } from '../../lib/utils';
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+type Item = { key: string; title: string; subtitle?: string; icon: React.ReactNode; run: () => void; group: string };
+
+function iconForType(type: string) {
+  const t = type.toLowerCase();
+  if (t.includes('application')) return <Briefcase size={16} />;
+  if (t.includes('skill')) return <Sparkles size={16} />;
+  return <FileText size={16} />;
 }
 
 export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
@@ -15,159 +29,169 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [mounted, setMounted] = useState(false);
-
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-
-  const debouncedQuery = useDebounce(query, 300);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const reduce = useReducedMotion();
+  const debouncedQuery = useDebounce(query, 250);
 
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setResults([]);
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    const fetchResults = async () => {
-      if (!debouncedQuery.trim()) {
-        setResults([]);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const data = await api.get<SearchResult[]>(`/api/search?q=${encodeURIComponent(debouncedQuery)}`);
-        setResults(data);
-        setSelectedIndex(0);
-      } catch (err) {
-        console.error('Search failed:', err);
-      } finally {
-        setIsLoading(false);
-      }
+    let cancelled = false;
+    if (!debouncedQuery.trim()) {
+      setResults([]);
+      return;
+    }
+    setIsLoading(true);
+    api
+      .get<SearchResult[]>(`/api/search?q=${encodeURIComponent(debouncedQuery)}`)
+      .then((data) => {
+        if (!cancelled) {
+          setResults(data);
+          setSelectedIndex(0);
+        }
+      })
+      .catch((err) => console.error('Search failed:', err))
+      .finally(() => !cancelled && setIsLoading(false));
+    return () => {
+      cancelled = true;
     };
-
-    fetchResults();
   }, [debouncedQuery]);
 
+  const items: Item[] = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const pages: Item[] = NAV_ITEMS.filter((n) => !q || n.name.toLowerCase().includes(q)).map((n) => ({
+      key: `page-${n.path}`,
+      title: n.name,
+      subtitle: n.description,
+      icon: <n.icon size={16} />,
+      group: 'Go to',
+      run: () => navigate(n.path),
+    }));
+    const found: Item[] = results.map((r) => ({
+      key: `${r.type}-${r.id}`,
+      title: r.title,
+      subtitle: r.subtitle,
+      icon: iconForType(r.type),
+      group: 'Results',
+      run: () => navigate(`${r.route}?id=${r.id}`),
+    }));
+    return [...found, ...pages];
+  }, [query, results, navigate]);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
-
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-
-      if (e.key === 'ArrowDown') {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev));
+        setSelectedIndex((i) => Math.min(i + 1, items.length - 1));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+        setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (results[selectedIndex]) {
-          handleSelect(results[selectedIndex]);
+        const item = items[selectedIndex];
+        if (item) {
+          onClose();
+          item.run();
         }
       }
     };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, items, selectedIndex, onClose]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, results, selectedIndex]);
+  if (typeof document === 'undefined') return null;
 
-  const handleSelect = (result: SearchResult) => {
-    onClose();
-    // Navigate to the specific item if possible, or just the page
-    // Using ?search= or ?id= depending on how pages are wired up
-    // For now, we will navigate to the page with a specific query parameter
-    navigate(`${result.route}?id=${result.id}`);
-  };
-
-  if (!isOpen || !mounted) return null;
-
-  const modalContent = (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] px-4 animate-fade-in-up">
-      {/* Overlay */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      ></div>
-
-      {/* Command Palette */}
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-dashboard-bg/80 backdrop-blur-2xl border border-white/10 shadow-[inset_0_0_40px_rgba(255,255,255,0.05),0_20px_40px_rgba(0,0,0,0.5)] flex flex-col animate-scale-up">
-        
-        {/* Input */}
-        <div className="flex items-center px-4 py-4 border-b border-white/10">
-          <i className="fa-solid fa-magnifying-glass text-text-secondary mr-4"></i>
-          <input
-            ref={inputRef}
-            type="text"
-            className="flex-1 bg-transparent border-none outline-none text-white placeholder-text-secondary text-lg"
-            placeholder="Search applications, stories, or skills..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+  let lastGroup = '';
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[75] flex items-start justify-center px-4 pt-[14vh]">
+          <motion.div
+            className="absolute inset-0 bg-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={onClose}
           />
-          {isLoading && <div className="w-5 h-5 rounded-full border-2 border-accent-teal/30 border-t-accent-teal animate-spin ml-3"></div>}
-          <div className="flex items-center gap-1 ml-4 text-xs font-mono text-text-secondary opacity-50 hidden sm:flex">
-            <kbd className="bg-white/10 px-2 py-1 rounded">esc</kbd> to close
-          </div>
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Command menu"
+            data-lenis-prevent
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4, scale: 0.99 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 38 }}
+            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-surface-1 shadow-[0_32px_90px_-24px_rgb(0_0_0/0.55)]"
+          >
+            <div className="flex items-center gap-3 border-b border-line px-4">
+              <Search size={16} className="text-fg-3" aria-hidden="true" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search stories, applications, skills or pages"
+                aria-label="Search"
+                className="h-12 flex-1 bg-transparent text-[14.5px] text-fg outline-none placeholder:text-fg-3"
+                data-testid="command-input"
+              />
+              {isLoading && <Loader2 size={16} className="animate-spin text-fg-3" aria-hidden="true" />}
+              <Kbd>esc</Kbd>
+            </div>
+            <div className="max-h-[52vh] overflow-y-auto p-2" role="listbox">
+              {query && !isLoading && results.length === 0 && items.length === 0 && (
+                <p className="px-3 py-8 text-center text-[13.5px] text-fg-3">No matches for “{query}”.</p>
+              )}
+              {items.map((item, index) => {
+                const showGroup = item.group !== lastGroup;
+                lastGroup = item.group;
+                const active = index === selectedIndex;
+                return (
+                  <React.Fragment key={item.key}>
+                    {showGroup && <p className="px-3 pb-1 pt-3 text-[12px] font-medium text-fg-3">{item.group}</p>}
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      onMouseMove={() => setSelectedIndex(index)}
+                      onClick={() => {
+                        onClose();
+                        item.run();
+                      }}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors',
+                        active ? 'bg-surface-2' : 'hover:bg-surface-2/60'
+                      )}
+                    >
+                      <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-md border border-line', active ? 'text-fg' : 'text-fg-3')}>
+                        {item.icon}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13.5px] font-medium text-fg">{item.title}</span>
+                        {item.subtitle && <span className="block truncate text-[12.5px] text-fg-3">{item.subtitle}</span>}
+                      </span>
+                      {active ? <CornerDownLeft size={14} className="text-fg-3" /> : <ArrowRight size={14} className="text-transparent" />}
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </motion.div>
         </div>
-
-        {/* Results */}
-        <div className="max-h-[50vh] overflow-y-auto custom-scrollbar p-2">
-          {results.length === 0 && query.length > 0 && !isLoading && (
-            <div className="py-12 text-center text-text-secondary">
-              No results found for "{query}"
-            </div>
-          )}
-
-          {results.length === 0 && query.length === 0 && (
-            <div className="py-8 text-center text-text-secondary/50 text-sm">
-              Start typing to search...
-            </div>
-          )}
-
-          {results.map((result, index) => (
-            <div
-              key={`${result.type}-${result.id}`}
-              onClick={() => handleSelect(result)}
-              onMouseEnter={() => setSelectedIndex(index)}
-              className={`flex items-center p-4 rounded-xl cursor-pointer transition-colors ${
-                index === selectedIndex ? 'bg-accent-teal/10 border border-accent-teal/20' : 'hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 mr-4 ${
-                index === selectedIndex ? 'bg-accent-teal text-dashboard-bg shadow-[0_0_15px_rgba(45,212,191,0.3)]' : 'bg-white/5 text-text-secondary'
-              }`}>
-                <i className={`${result.icon} text-lg`}></i>
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className={`font-semibold truncate ${index === selectedIndex ? 'text-accent-teal' : 'text-white'}`}>
-                  {result.title}
-                </div>
-                <div className="text-sm text-text-secondary truncate mt-0.5">
-                  {result.subtitle}
-                </div>
-              </div>
-              
-              <div className="text-xs font-mono px-2 py-1 rounded-full bg-white/5 text-text-secondary ml-4 shrink-0">
-                {result.type}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>,
+    document.body
   );
-
-  return createPortal(modalContent, document.body);
 }

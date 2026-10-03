@@ -1,384 +1,268 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Settings, Sun } from 'lucide-react';
 import { useAuth } from '../AuthContext';
-import { gsap, useGSAP, prefersReducedMotion } from '../lib/animations';
 import CommandPalette from './ui/CommandPalette';
-import { Terminal } from 'lucide-react';
+import { Button, Dialog, Kbd, Logo, LogoMark } from './ui/kit';
+import { NAV_ITEMS } from './navigation';
+import { useTheme, type ThemePreference } from '../lib/theme';
+import { cn } from '../lib/utils';
 
-/* ─────── DESIGN TOKENS (from Landing.tsx) ─────── */
-const C = {
-  bg0: '#02050A',
-  bg1: '#06090F',
-  bg2: '#0B0F17',
-  bg3: '#11161F',
-  ink: '#E6EBF2',
-  inkDim: '#9CA8B8',
-  inkMute: '#5A6678',
-  hair: 'rgba(255,255,255,0.07)',
-  hair2: 'rgba(255,255,255,0.12)',
-  teal: '#2dd4bf',
-  tealDim: 'rgba(45,212,191,0.14)',
-  violet: '#8b5cf6',
-  rose: '#f43f5e',
-  emerald: '#10b981',
-} as const;
+const GROUPS = ['Overview', 'Prepare', 'Search'] as const;
+
+function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+  return (
+    <nav aria-label="Main" className="flex flex-col gap-5">
+      {GROUPS.map((group) => (
+        <div key={group} className="flex flex-col gap-0.5">
+          {!collapsed && <p className="px-2.5 pb-1 text-[12px] font-medium text-fg-3">{group}</p>}
+          {NAV_ITEMS.filter((n) => n.group === group).map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end
+              onClick={onNavigate}
+              title={collapsed ? item.name : undefined}
+              data-testid={item.testId}
+              className={({ isActive }) =>
+                cn(
+                  'group relative flex h-8 items-center gap-2.5 rounded-lg text-[13.5px] transition-colors',
+                  collapsed ? 'justify-center px-0' : 'px-2.5',
+                  isActive ? 'bg-surface-2 font-medium text-fg' : 'text-fg-2 hover:bg-surface-2/60 hover:text-fg'
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && <span className="absolute -left-3 top-1.5 bottom-1.5 w-[3px] rounded-full bg-accent" aria-hidden="true" />}
+                  <item.icon size={16} className={isActive ? 'text-fg' : 'text-fg-3 group-hover:text-fg-2'} aria-hidden="true" />
+                  {!collapsed && <span className="truncate">{item.name}</span>}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+const THEME_OPTIONS: { value: ThemePreference; icon: typeof Sun; label: string }[] = [
+  { value: 'light', icon: Sun, label: 'Light' },
+  { value: 'dark', icon: Moon, label: 'Dark' },
+  { value: 'system', icon: Monitor, label: 'System' },
+];
+
+function ThemeSwitch({ compact }: { compact?: boolean }) {
+  const { preference, setPreference } = useTheme();
+  if (compact) {
+    const next = preference === 'dark' ? 'light' : preference === 'light' ? 'system' : 'dark';
+    const Current = THEME_OPTIONS.find((o) => o.value === preference)!.icon;
+    return (
+      <Button variant="ghost" size="sm" icon={<Current size={16} />} onClick={() => setPreference(next)} aria-label={`Theme: ${preference}. Switch to ${next}`} title={`Theme: ${preference}`} />
+    );
+  }
+  return (
+    <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-lg border border-line bg-surface-2 p-0.5">
+      {THEME_OPTIONS.map(({ value, icon: Icon, label }) => (
+        <button
+          key={value}
+          type="button"
+          role="radio"
+          aria-checked={preference === value}
+          aria-label={label}
+          title={label}
+          onClick={() => setPreference(value)}
+          className={cn(
+            'grid h-7 w-8 place-items-center rounded-md transition-colors',
+            preference === value ? 'bg-surface-1 text-fg shadow-[0_1px_2px_rgb(0_0_0/0.08)]' : 'text-fg-3 hover:text-fg-2'
+          )}
+        >
+          <Icon size={14} />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function Layout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const layoutRef = useRef<HTMLDivElement>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    return localStorage.getItem('precept-sidebar-collapsed') === 'true';
-  });
-
-  useGSAP(() => {
-    if (!layoutRef.current || prefersReducedMotion()) return;
-    gsap.from(layoutRef.current, {
-      opacity: 0,
-      duration: 0.55,
-      ease: 'power2.out',
-    });
-  }, { scope: layoutRef });
+  const location = useLocation();
+  const reduce = useReducedMotion();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('precept-sidebar-collapsed') === 'true');
 
   useEffect(() => {
-    localStorage.setItem('precept-sidebar-collapsed', String(isSidebarCollapsed));
-  }, [isSidebarCollapsed]);
+    localStorage.setItem('precept-sidebar-collapsed', String(collapsed));
+  }, [collapsed]);
 
   useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsCommandPaletteOpen(true);
+        setPaletteOpen(true);
       }
     };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const handleLogout = (e: React.MouseEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    document.getElementById('main')?.scrollTo({ top: 0 });
+  }, [location.pathname]);
+
+  const current = NAV_ITEMS.find((n) => n.path === location.pathname)?.name ?? (location.pathname.startsWith('/settings') ? 'Settings' : '');
+  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase() || 'U';
+
+  const handleLogout = () => {
+    setLogoutOpen(false);
     logout();
     navigate('/');
   };
 
-  const navItems = [
-    { name: 'Dashboard',      path: '/dashboard',       icon: 'fa-solid fa-border-all' },
-    { name: 'Applications',   path: '/applications',    icon: 'fa-regular fa-file-lines' },
-    { name: 'STAR Bank',      path: '/story-bank',      icon: 'fa-regular fa-star' },
-    { name: 'Mock Interview', path: '/mock-interview',  icon: 'fa-solid fa-microphone-lines' },
-    { name: 'JD Matcher',     path: '/jd-matcher',      icon: 'fa-solid fa-wand-magic-sparkles' },
-    { name: 'Readiness',      path: '/readiness',       icon: 'fa-solid fa-bullseye' },
-    { name: 'Quiz Mode',      path: '/story-bank/quiz', icon: 'fa-solid fa-brain' },
-  ];
+  const userBlock = (isCollapsed: boolean) => (
+    <div className={cn('flex items-center gap-2', isCollapsed ? 'flex-col' : '')}>
+      <NavLink
+        to="/settings"
+        onClick={() => setMobileOpen(false)}
+        data-testid="sidebar-user-profile"
+        title="Settings"
+        className={({ isActive }) =>
+          cn(
+            'flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-2',
+            isActive && 'bg-surface-2',
+            isCollapsed && 'flex-none justify-center'
+          )
+        }
+      >
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-surface-3 text-[11.5px] font-semibold text-fg-2">{initials}</span>
+        {!isCollapsed && (
+          <span className="min-w-0">
+            <span className="block truncate text-[13px] font-medium text-fg">
+              {user?.firstName} {user?.lastName}
+            </span>
+            <span className="block truncate text-[12px] text-fg-3">{user?.isDemo ? 'Demo account' : user?.email}</span>
+          </span>
+        )}
+      </NavLink>
+      <Button variant="ghost" size="sm" icon={<LogOut size={16} />} onClick={() => setLogoutOpen(true)} aria-label="Sign out" title="Sign out" data-testid="sidebar-logout-btn" />
+    </div>
+  );
 
   return (
-    <>
-      <div
-        ref={layoutRef}
-        className="font-body h-screen flex overflow-hidden antialiased relative isolate"
-        style={{ background: C.bg0, color: C.ink }}
-        data-testid="app-layout"
-      >
-        {/* ambient: dotgrid + radial halo (matches Landing.tsx) */}
-        <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-40 z-0" />
-        <div
-          className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[1100px] -translate-x-1/2 rounded-[50%] z-0"
-          style={{
-            background: `radial-gradient(closest-side, rgba(45,212,191,0.10), rgba(139,92,246,0.06) 45%, transparent 75%)`,
-            filter: 'blur(4px)',
-          }}
-        />
-
-        {/* Mobile Menu Backdrop */}
-        {isMobileMenuOpen && (
-          <div
-            className="fixed inset-0 z-40 md:hidden"
-            style={{ background: 'rgba(2,5,10,0.7)', backdropFilter: 'blur(12px)' }}
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
+    <div className="flex h-[100dvh] overflow-hidden bg-bg text-fg" data-testid="app-layout">
+      {/* Desktop sidebar */}
+      <aside
+        aria-label="Sidebar"
+        data-testid="sidebar"
+        className={cn(
+          'hidden shrink-0 flex-col border-r border-line bg-bg transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:flex',
+          collapsed ? 'w-[60px]' : 'w-[232px]'
         )}
+      >
+        <div className={cn('flex h-14 items-center', collapsed ? 'justify-center' : 'justify-between px-4')}>
+          {collapsed ? <LogoMark size={22} /> : <Logo />}
+          {!collapsed && (
+            <Button variant="ghost" size="sm" icon={<PanelLeftClose size={16} />} onClick={() => setCollapsed(true)} aria-label="Collapse sidebar" data-testid="sidebar-brand-toggle" />
+          )}
+        </div>
+        <div className={cn('flex-1 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-3')}>
+          <SidebarNav collapsed={collapsed} />
+        </div>
+        <div className={cn('flex flex-col gap-2 border-t border-line py-3', collapsed ? 'items-center px-2' : 'px-3')}>
+          {collapsed && (
+            <Button variant="ghost" size="sm" icon={<PanelLeftOpen size={16} />} onClick={() => setCollapsed(false)} aria-label="Expand sidebar" />
+          )}
+          {userBlock(collapsed)}
+        </div>
+      </aside>
 
-        {/* SIDEBAR */}
-        <aside
-          aria-label="Sidebar Navigation"
-          className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} flex flex-col h-full md:h-[calc(100vh-2rem)] fixed md:relative z-50 md:my-4 md:ml-4 shrink-0 transition-all duration-300 ease-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
-          style={{
-            background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
-            border: `1px solid ${C.hair}`,
-            borderRadius: 24,
-            boxShadow: '0 40px 80px -40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
-          }}
-          data-testid="sidebar"
-        >
-          {/* Brand */}
-          <button
-            type="button"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            title="Toggle Sidebar"
-            data-testid="sidebar-brand-toggle"
-            className={`h-20 flex items-center mt-2 mx-2 rounded-2xl cursor-pointer transition-colors ${isSidebarCollapsed ? 'justify-center px-0' : 'px-4'}`}
-            style={{ background: 'transparent' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-          >
-            <Terminal
-              size={24}
-              strokeWidth={2.2}
-              className={`shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`}
-              style={{ color: C.teal }}
-            />
-            {!isSidebarCollapsed && (
-              <div className="flex flex-col items-start min-w-0">
-                <span className="font-display text-[18px] font-bold tracking-tight whitespace-nowrap" style={{ color: C.ink }}>
-                  Precept
-                </span>
-                <span className="font-mono text-[9.5px] uppercase tracking-[0.22em] mt-0.5" style={{ color: C.inkMute }}>
-                  Career&nbsp;OS
-                </span>
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-[60] md:hidden">
+            <motion.div className="absolute inset-0 bg-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMobileOpen(false)} />
+            <motion.aside
+              aria-label="Menu"
+              className="absolute inset-y-0 left-0 flex w-[272px] flex-col border-r border-line bg-bg"
+              initial={reduce ? { opacity: 0 } : { x: -280 }}
+              animate={reduce ? { opacity: 1 } : { x: 0 }}
+              exit={reduce ? { opacity: 0 } : { x: -280 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+            >
+              <div className="flex h-14 items-center px-4">
+                <Logo />
               </div>
-            )}
-          </button>
-
-          {/* nav */}
-          <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto custom-scrollbar">
-            {!isSidebarCollapsed && (
-              <div className="px-2 py-2 font-mono text-[9.5px] uppercase tracking-[0.22em]" style={{ color: C.inkMute }}>
-                ~/precept
+              <div className="flex-1 overflow-y-auto px-3 py-3">
+                <SidebarNav collapsed={false} onNavigate={() => setMobileOpen(false)} />
               </div>
-            )}
-            {navItems.map((item) => (
-              <NavLink
-                key={item.name}
-                to={item.path}
-                onClick={() => setIsMobileMenuOpen(false)}
-                title={isSidebarCollapsed ? item.name : undefined}
-                data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
-                className={({ isActive }) =>
-                  `relative flex items-center py-2.5 rounded-xl font-mono text-[12.5px] tracking-[0.04em] group transition-all duration-300 ${
-                    isSidebarCollapsed ? 'justify-center px-0' : 'px-3'
-                  } ${isActive ? 'precept-nav-active' : 'precept-nav-idle'}`
-                }
-                style={({ isActive }) => ({
-                  background: isActive ? C.tealDim : 'transparent',
-                  color: isActive ? C.teal : C.inkDim,
-                  border: isActive ? `1px solid ${C.teal}44` : '1px solid transparent',
-                }) as React.CSSProperties}
-              >
-                <i className={`${item.icon} w-5 text-center transition-transform duration-300 group-hover:scale-110 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
-                {!isSidebarCollapsed && (
-                  <span className="truncate whitespace-nowrap">{item.name}</span>
-                )}
-              </NavLink>
-            ))}
-
-          </nav>
-
-          {/* footer block */}
-          <div className="mt-auto flex flex-col" style={{ borderTop: `1px solid ${C.hair}` }}>
-            <div className={`pt-3 pb-2 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
-              <div
-                className={`flex items-center rounded-xl transition-all duration-300 cursor-pointer hover:bg-white/[0.04] ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-2'}`}
-                style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.hair}` }}
-                onClick={() => navigate('/settings')}
-                role="button"
-                tabIndex={0}
-                title="Open profile"
-                data-testid="sidebar-user-profile"
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/settings'); } }}
-              >
-                <div
-                  className={`w-9 h-9 rounded-lg grid place-items-center font-display font-bold text-[13px] shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`}
-                  style={{ background: `${C.teal}1c`, color: C.teal, border: `1px solid ${C.teal}33` }}
-                >
-                  {user?.firstName?.charAt(0)?.toUpperCase() || 'U'}
-                </div>
-                {!isSidebarCollapsed && (
-                  <div className="flex-1 min-w-0">
-                    <div className="font-body text-[13px] font-semibold truncate" style={{ color: C.ink }}>
-                      {user?.firstName} {user?.lastName?.charAt(0) || ''}.
-                    </div>
-                    <div className="font-mono text-[10px] uppercase tracking-widest truncate" style={{ color: C.inkMute }}>
-                      operator
-                    </div>
-                  </div>
-                )}
+              <div className="flex flex-col gap-3 border-t border-line p-3">
+                <ThemeSwitch />
+                {userBlock(false)}
               </div>
-            </div>
-
-            <div className="p-3 pb-5">
-              <button
-                onClick={() => setIsLogoutModalOpen(true)}
-                data-testid="sidebar-logout-btn"
-                className={`w-full flex items-center py-2.5 rounded-xl font-mono text-[12px] uppercase tracking-[0.14em] transition-all duration-300 cursor-pointer ${isSidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}
-                style={{ color: C.inkDim, background: 'transparent', border: `1px solid ${C.hair}` }}
-                title={isSidebarCollapsed ? 'Logout' : undefined}
-                onMouseEnter={(e) => { e.currentTarget.style.color = C.rose; e.currentTarget.style.borderColor = `${C.rose}55`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = C.inkDim; e.currentTarget.style.borderColor = C.hair; }}
-              >
-                <i className={`fa-solid fa-arrow-right-from-bracket w-5 text-center ${isSidebarCollapsed ? '' : 'mr-3'}`} />
-                {!isSidebarCollapsed && <span>Logout</span>}
-              </button>
-            </div>
+            </motion.aside>
           </div>
-        </aside>
+        )}
+      </AnimatePresence>
 
-        {/* MAIN */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-          {/* TOPBAR */}
-          <header
-            aria-label="Top Bar"
-            data-testid="topbar"
-            className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 mt-4 mx-4 shrink-0"
-            style={{
-              background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
-              border: `1px solid ${C.hair}`,
-              borderRadius: 18,
-              backdropFilter: 'blur(16px) saturate(140%)',
-              boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
-            }}
-          >
-            <div className="flex items-center gap-3">
-              {/* mobile burger */}
-              <button
-                title="Open Mobile Menu"
-                className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition-colors cursor-pointer"
-                style={{ color: C.inkDim, background: C.hair }}
-                onClick={() => setIsMobileMenuOpen(true)}
-                data-testid="mobile-menu-btn"
-              >
-                <i className="fa-solid fa-bars text-lg" />
-              </button>
-
-              {/* breadcrumb pill */}
-              <div
-                className="hidden md:flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.18em]"
-                style={{ background: `${C.teal}10`, border: `1px solid ${C.teal}33`, color: C.teal }}
-              >
-                <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: C.teal, boxShadow: `0 0 8px ${C.teal}` }} />
-                live · command center
-              </div>
-
-              {/* command search */}
-              <div className="relative w-full max-w-[200px] md:w-96 group hidden sm:block">
-                <button
-                  onClick={() => setIsCommandPaletteOpen(true)}
-                  data-testid="topbar-search"
-                  className="w-full flex items-center justify-between pl-4 pr-3 py-2 rounded-xl transition-all duration-300 cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, color: C.inkDim }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${C.teal}55`; e.currentTarget.style.color = C.ink; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.hair; e.currentTarget.style.color = C.inkDim; }}
-                >
-                  <div className="flex items-center gap-3 font-mono text-[12px]">
-                    <i className="fa-solid fa-magnifying-glass text-[11px]" />
-                    <span>Search command palette…</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] font-mono" style={{ color: C.inkMute }}>
-                    <kbd className="px-1.5 py-0.5 rounded" style={{ background: C.hair }}>⌘</kbd>
-                    <kbd className="px-1.5 py-0.5 rounded" style={{ background: C.hair }}>K</kbd>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 md:gap-5">
-              <button
-                aria-label="Notifications"
-                onClick={() => alert('Notifications not implemented yet')}
-                data-testid="topbar-notifications"
-                className="w-9 h-9 rounded-full grid place-items-center transition-all duration-300 cursor-pointer relative"
-                style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, color: C.inkDim }}
-              >
-                <i className="fa-regular fa-bell text-sm" />
-              </button>
-
-              <div className="text-right hidden md:flex flex-col items-end justify-center min-w-[88px] px-2">
-                <div className="font-display text-[15px] font-semibold tracking-tight" style={{ color: C.ink }}>
-                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-                <div className="font-mono text-[10.5px] uppercase tracking-widest" style={{ color: C.inkMute }}>
-                  {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {/* CONTENT */}
-          <div id="main-scroller" className="flex-1 overflow-y-auto relative z-10 scroll-smooth custom-scrollbar">
-            {user?.isDemo && (
-              <div
-                className="mx-4 md:mx-8 mt-4 px-4 py-2.5 rounded-xl font-body text-[13px]"
-                style={{ background: C.tealDim, border: `1px solid ${C.teal}44`, color: C.ink }}
-                data-testid="demo-banner"
-              >
-                Demo account with sample data. It is deleted
-                {user.demoExpiresAt ? ` on ${new Date(user.demoExpiresAt).toLocaleString()}` : ' after 24 hours'}.
-                AI features show fixed samples.
-              </div>
-            )}
-            <Outlet />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header data-testid="topbar" className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line px-4 md:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button variant="ghost" size="sm" className="md:hidden" icon={<Menu size={18} />} onClick={() => setMobileOpen(true)} aria-label="Open menu" data-testid="mobile-menu-btn" />
+            <span className="truncate text-[14px] font-medium text-fg">{current}</span>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              data-testid="topbar-search"
+              className="hidden h-8 w-64 items-center gap-2 rounded-lg border border-line bg-surface-1 px-2.5 text-[13px] text-fg-3 transition-colors hover:border-line-strong hover:text-fg-2 sm:flex"
+            >
+              <Search size={14} aria-hidden="true" />
+              <span className="flex-1 text-left">Search or jump to</span>
+              <Kbd>⌘</Kbd>
+              <Kbd>K</Kbd>
+            </button>
+            <Button variant="ghost" size="sm" className="sm:hidden" icon={<Search size={16} />} onClick={() => setPaletteOpen(true)} aria-label="Search" />
+            <div className="hidden md:block">
+              <ThemeSwitch compact />
+            </div>
+            <Button variant="ghost" size="sm" icon={<Settings size={16} />} to="/settings" aria-label="Settings" title="Settings" />
+          </div>
+        </header>
+
+        <main id="main" tabIndex={-1} className="relative flex-1 overflow-y-auto outline-none" data-lenis-prevent>
+          {user?.isDemo && (
+            <div className="border-b border-line bg-accent-soft px-4 py-2 text-[13px] text-fg-2 md:px-8" data-testid="demo-banner">
+              <span className="font-medium text-fg">Demo account.</span> Sample data, deleted
+              {user.demoExpiresAt ? ` on ${new Date(user.demoExpiresAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}` : ' after 24 hours'}. AI features return fixed samples.
+            </div>
+          )}
+          <Outlet />
         </main>
       </div>
 
-      {/* LOGOUT MODAL */}
-      {isLogoutModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(2,5,10,0.7)', backdropFilter: 'blur(12px)' }}>
-          <div
-            className="flex flex-col p-7 w-[90vw] sm:w-[420px] max-w-full opacity-0 animate-fade-in-up"
-            style={{
-              background: `linear-gradient(180deg, ${C.bg2} 0%, ${C.bg1} 100%)`,
-              border: `1px solid ${C.hair2}`,
-              borderRadius: 20,
-              boxShadow: '0 40px 80px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
-            }}
-            data-testid="logout-modal"
-          >
-            <div
-              className="inline-flex self-start items-center gap-2 rounded-full px-3 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.18em] mb-4"
-              style={{ background: `${C.rose}14`, border: `1px solid ${C.rose}33`, color: C.rose }}
-            >
-              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: C.rose, boxShadow: `0 0 8px ${C.rose}` }} />
-              end session
-            </div>
-            <h3 className="font-display text-2xl font-bold mb-2" style={{ color: C.ink }}>
-              Sign out of <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>Precept?</span>
-            </h3>
-            <p className="font-body text-[14px] leading-relaxed mb-7" style={{ color: C.inkDim }}>
-              You'll be returned to the landing page. Your data stays put.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setIsLogoutModalOpen(false)}
-                data-testid="logout-cancel"
-                className="px-4 py-2.5 rounded-full font-mono text-[11.5px] uppercase tracking-[0.16em] transition-colors cursor-pointer"
-                style={{ color: C.inkDim, background: 'transparent', border: `1px solid ${C.hair2}` }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLogout}
-                data-testid="logout-confirm"
-                className="px-5 py-2.5 rounded-full font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] transition-all cursor-pointer"
-                style={{
-                  background: C.rose,
-                  color: C.bg0,
-                  boxShadow: `0 0 0 1px ${C.rose}, 0 12px 30px -10px rgba(244,63,94,0.4)`,
-                }}
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        title="Sign out of Precept?"
+        size="sm"
+        testId="logout-modal"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setLogoutOpen(false)} data-testid="logout-cancel">Cancel</Button>
+            <Button variant="primary" onClick={handleLogout} data-testid="logout-confirm">Sign out</Button>
+          </>
+        }
+      >
+        <p className="text-[14px] leading-relaxed text-fg-2">Your stories and applications stay saved.</p>
+      </Dialog>
 
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-      />
-    </>
+      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+    </div>
   );
 }

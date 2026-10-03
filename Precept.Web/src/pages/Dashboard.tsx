@@ -1,71 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Check, ChevronRight, Layers, Plus } from 'lucide-react';
 import { api } from '../api';
-import { Application, Story, Skill, BehavioralStory, ConfidenceLevel, PagedResponse } from '../types';
+import { Application, ApplicationStatus, BehavioralStory, ConfidenceLevel, DashboardStats, PagedResponse, Skill, Story } from '../types';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
-import { getSkillIcon, getCompanyIcon } from '../lib/utils';
-import { CountUp } from '../components/animation/CountUp';
 import SkillRadar from '../components/SkillRadar';
-import { computeSkillAxes, READINESS_TARGET } from '../lib/skills';
-import { 
-  Layers, 
-  FileCode2, 
-  RefreshCw, 
-  GitBranch, 
-  Activity, 
-  Hash, 
-  ArrowUpRight, 
-  Plus, 
-  Sparkles,
-  ArrowRight,
-  Zap,
-  Check,
-  ChevronDown,
-  CheckCircle2,
-  Circle
-} from 'lucide-react';
+import { computeSkillAxes, formatCategoryName, READINESS_TARGET } from '../lib/skills';
 import PageShell from '../components/PageShell';
-import { ConfidenceTrendChart } from '../components/analytics/ConfidenceTrendChart';
-import { ApplicationVelocityFunnel } from '../components/analytics/ApplicationVelocityFunnel';
+import { Button, EmptyState, Monogram, Panel, PanelHeader, Reveal, Segmented, Select, Skeleton } from '../components/ui/kit';
+import { ConfidenceMeter, ConfidencePicker, STATUS_META, STATUS_ORDER, confidenceMeta, isDue, overdueLabel } from '../components/domain';
+import { cn } from '../lib/utils';
 
-/* ─────── DESIGN TOKENS (Matching Landing.tsx) ─────── */
-const C = {
-  bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
-  ink: '#E6EBF2', inkDim: '#9CA8B8', inkMute: '#5A6678',
-  hair: 'rgba(255,255,255,0.07)', hair2: 'rgba(255,255,255,0.12)',
-  teal: '#2dd4bf', tealDim: 'rgba(45,212,191,0.14)',
-  violet: '#8b5cf6', rose: '#f43f5e', amber: '#f59e0b', sky: '#38bdf8', emerald: '#10b981',
-} as const;
+type QueueItem = { id: string; title: string; kind: 'Technical' | 'Behavioral'; confidence: ConfidenceLevel; nextReviewAt: string | null };
 
-const ConfidenceRungs: { key: ConfidenceLevel; label: string; color: string; pct: number }[] = [
-  { key: 'Panic',    label: 'Panic',    color: C.rose,    pct: 18 },
-  { key: 'Shaky',    label: 'Shaky',    color: C.amber,   pct: 36 },
-  { key: 'Okay',     label: 'Okay',     color: C.sky,     pct: 56 },
-  { key: 'Solid',    label: 'Solid',    color: C.teal,    pct: 80 },
-  { key: 'CanTeach', label: 'Can Teach',color: C.emerald, pct: 100 },
-];
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
-interface DashboardStats {
-  storyStats: {
-    totalStories: number;
-    confidenceBreakdown: Record<string, number>;
-    categoryBreakdown: Record<string, number>;
-    totalReviewed: number;
-    needsReview: number;
-  };
-  applicationStats: {
-    totalApplications: number;
-    statusBreakdown: Record<string, number>;
-    interviewingCount: number;
-    offersCount: number;
-    rejectionRate: number;
-    responseRate: number;
-  };
-  jobDescriptionStats: {
-    totalJobDescriptions: number;
-    averageMatchScore: number;
-  };
+function DashboardSkeleton() {
+  return (
+    <PageShell dataTestId="dashboard-page">
+      <Skeleton className="h-9 w-72" />
+      <Skeleton className="h-24" />
+      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <Skeleton className="h-80" />
+        <Skeleton className="h-80" />
+      </div>
+    </PageShell>
+  );
 }
 
 export default function Dashboard() {
@@ -80,12 +46,10 @@ export default function Dashboard() {
   const [behavioralStories, setBehavioralStories] = useState<BehavioralStory[]>([]);
   const [followUpsDue, setFollowUpsDue] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Spotlight controls
+  const [loadFailed, setLoadFailed] = useState(false);
   const [spotlightType, setSpotlightType] = useState<'technical' | 'behavioral'>('technical');
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
   const [selectedBehavioralIndex, setSelectedBehavioralIndex] = useState(0);
-
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const loadDashboardData = async () => {
@@ -96,7 +60,7 @@ export default function Dashboard() {
         api.get<PagedResponse<Story>>('/api/story'),
         api.get<PagedResponse<Skill>>('/api/skill'),
         api.get<PagedResponse<BehavioralStory>>('/api/behavioralstory'),
-        api.get<{items: Application[], count: number}>('/api/application/followups-due'),
+        api.get<{ items: Application[]; count: number }>('/api/application/followups-due'),
       ]);
       setStats(statsData);
       setApplications(appsRes.items ?? []);
@@ -104,13 +68,12 @@ export default function Dashboard() {
       setSkills(skillsRes.items ?? []);
       setBehavioralStories(behavioralStoriesRes.items ?? []);
       setFollowUpsDue(followUpsRes.items ?? []);
-
-      // Trigger onboarding checklist for new users
       if (statsData.applicationStats.totalApplications === 0 && statsData.storyStats.totalReviewed === 0) {
         setShowOnboarding(true);
       }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
+      setLoadFailed(true);
     } finally {
       setIsLoading(false);
     }
@@ -123,549 +86,385 @@ export default function Dashboard() {
   const activeApps = applications.filter((a) => ['Applied', 'PhoneScreen', 'Interviewing'].includes(a.status));
   const recentApps = [...applications]
     .sort((a, b) => new Date(b.dateApplied || b.followUpDate).getTime() - new Date(a.dateApplied || a.followUpDate).getTime())
-    .slice(0, 6);
-
+    .slice(0, 5);
   const skillAxes = computeSkillAxes(skills);
 
-  const statusPill = (status: string): { bg: string; color: string; border: string } => {
-    let color: string = C.teal;
-    if (status === 'Applied') color = C.teal;
-    else if (status === 'PhoneScreen' || status === 'Interviewing' || status === 'Tech Interview') color = C.sky;
-    else if (status === 'Offer') color = C.emerald;
-    else if (status === 'Rejected') color = C.rose;
-    else color = C.inkDim;
-    return { bg: `${color}1c`, color, border: `1px solid ${color}44` };
-  };
-
-  const getCompanyLogo = (name: string) => {
-    const { icon, color, isText, initials } = getCompanyIcon(name);
-    if (isText) {
-      return (
-        <div className="h-7 w-7 rounded-md grid place-items-center shrink-0 font-display font-bold text-[11px]" style={{ background: color, color: '#fff' }}>
-          {initials}
-        </div>
-      );
-    }
-    return (
-      <div className="h-7 w-7 rounded-md grid place-items-center shrink-0" style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}>
-        <i className={`${icon} text-sm`} />
-      </div>
-    );
-  };
-
-  const getDaysOverdueText = (date: string) => {
-    const d = new Date(date);
+  const queue: QueueItem[] = useMemo(() => {
     const now = new Date();
-    const diffTime = now.getTime() - d.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays <= 0) return { text: 'Due today', color: C.amber };
-    if (diffDays === 1) return { text: '1 day overdue', color: C.rose };
-    return { text: `${diffDays} days overdue`, color: C.rose };
-  };
+    const items: QueueItem[] = [
+      ...stories.filter((s) => isDue(s.nextReviewAt, now)).map((s) => ({ id: s.id, title: s.title, kind: 'Technical' as const, confidence: s.confidenceLevel, nextReviewAt: s.nextReviewAt })),
+      ...behavioralStories.filter((s) => isDue(s.nextReviewAt, now)).map((s) => ({ id: s.id, title: s.title, kind: 'Behavioral' as const, confidence: s.confidenceLevel, nextReviewAt: s.nextReviewAt })),
+    ];
+    return items.sort((a, b) => confidenceMeta(a.confidence).step - confidenceMeta(b.confidence).step);
+  }, [stories, behavioralStories]);
 
-  // Interactive handlers
+  const statusCounts = useMemo(() => {
+    const counts = new Map<ApplicationStatus, number>();
+    applications.forEach((a) => counts.set(a.status, (counts.get(a.status) ?? 0) + 1));
+    return STATUS_ORDER.map((s) => ({ status: s, count: counts.get(s) ?? 0 })).filter((x) => x.count > 0);
+  }, [applications]);
+
   const handleUpdateConfidence = async (newRung: ConfidenceLevel) => {
     if (spotlightType === 'behavioral') return;
     const currentStory = stories[selectedStoryIndex % stories.length];
     if (!currentStory) return;
-
     try {
       const updated = await api.put<Story>(`/api/story/${currentStory.id}`, { ...currentStory, confidenceLevel: newRung });
       setStories((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
-      toast.success(`Updated confidence to ${newRung}`);
+      toast.success(`Confidence set to ${confidenceMeta(newRung).label}.`);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to update story confidence.');
+      toast.error('Could not update confidence. Try again.');
     }
   };
 
-  const handleUpdateAppStatus = async (appId: string, newStatus: any) => {
+  const handleUpdateAppStatus = async (appId: string, newStatus: ApplicationStatus) => {
     try {
       await api.patch(`/api/application/${appId}/status`, { status: newStatus });
       setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, status: newStatus } : a)));
       setFollowUpsDue((prev) => prev.filter((a) => a.id !== appId));
-      toast.success(`Moved application to ${newStatus}`);
+      toast.success(`Moved to ${STATUS_META[newStatus].label}.`);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to update status.');
+      toast.error('Could not update the status. Try again.');
     }
   };
 
   const handleMarkContacted = async (appId: string) => {
     try {
-      // Just update the status to whatever it is to trigger the backend logic that sets DateLastContact and recalculates FollowUpDate, 
-      // or we can call a specific endpoint. Wait, the backend doesn't have a specific `mark-contacted` endpoint. 
-      // We can just fetch the app, update DateLastContact and FollowUpDate (e.g. +7 days), and PUT it.
-      // But it's easier to just do a full PUT with the updated DateLastContact.
-      const appToUpdate = applications.find(a => a.id === appId) || followUpsDue.find(a => a.id === appId);
+      const appToUpdate = applications.find((a) => a.id === appId) || followUpsDue.find((a) => a.id === appId);
       if (!appToUpdate) return;
-      
-      const now = new Date().toISOString();
-      // Add 7 days to follow up by default if marked contacted manually
       const nextFollowUp = new Date();
       nextFollowUp.setDate(nextFollowUp.getDate() + 7);
-      
-      const updated = { 
-        ...appToUpdate, 
-        dateLastContact: now,
-        followUpDate: nextFollowUp.toISOString() 
-      };
-      
+      const updated = { ...appToUpdate, dateLastContact: new Date().toISOString(), followUpDate: nextFollowUp.toISOString() };
       await api.put(`/api/application/${appId}`, updated);
-      
       setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, ...updated } : a)));
       setFollowUpsDue((prev) => prev.filter((a) => a.id !== appId));
-      toast.success('Marked as contacted');
+      toast.success('Marked as contacted. Next follow-up in 7 days.');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to mark as contacted.');
+      toast.error('Could not mark as contacted. Try again.');
     }
   };
 
-  if (isLoading) {
+  if (isLoading) return <DashboardSkeleton />;
+
+  if (loadFailed) {
     return (
-      <div className="flex flex-col items-center justify-center py-40 gap-3 font-mono text-sm" style={{ color: C.inkDim }}>
-        <div className="w-10 h-10 rounded-full border-2 animate-spin" style={{ borderColor: `${C.teal}22`, borderTopColor: C.teal }} />
-        <span>Initializing Precept Command Center…</span>
-      </div>
+      <PageShell dataTestId="dashboard-page" title="Dashboard">
+        <Panel>
+          <EmptyState
+            title="The dashboard could not load."
+            description="Check your connection and try again."
+            action={<Button variant="secondary" onClick={() => { setIsLoading(true); setLoadFailed(false); loadDashboardData(); }}>Retry</Button>}
+          />
+        </Panel>
+      </PageShell>
     );
   }
 
-  // Active spotlight item
   const activeTechStory = stories.length > 0 ? stories[selectedStoryIndex % stories.length] : null;
   const activeSTARStory = behavioralStories.length > 0 ? behavioralStories[selectedBehavioralIndex % behavioralStories.length] : null;
+  const spotlightCount = spotlightType === 'technical' ? stories.length : behavioralStories.length;
 
-  const currentConfidence = activeTechStory ? activeTechStory.confidenceLevel : 'Okay';
-  const currentRungIndex = Math.max(0, ConfidenceRungs.findIndex(r => r.key.toLowerCase() === currentConfidence.toLowerCase()));
+  const summary = [
+    { label: 'Reviews due', value: queue.length, to: '/story-bank/quiz' },
+    { label: 'Follow-ups due', value: followUpsDue.length, to: '/applications' },
+    { label: 'Active applications', value: activeApps.length, to: '/applications' },
+    { label: 'Stories banked', value: stories.length + behavioralStories.length, to: '/story-bank' },
+  ];
 
-  // Stories due for review
-  const dueForReview = stories.filter(s => s.confidenceLevel === 'Panic' || s.confidenceLevel === 'Shaky');
+  const subtitleParts = [
+    queue.length ? `${queue.length} ${queue.length === 1 ? 'story is' : 'stories are'} due for review` : 'No stories are due for review',
+    followUpsDue.length ? `${followUpsDue.length} ${followUpsDue.length === 1 ? 'follow-up' : 'follow-ups'} waiting` : null,
+  ].filter(Boolean);
 
   return (
     <PageShell
       dataTestId="dashboard-page"
-      badge="Career OS Cockpit"
-      badgeColor={C.teal}
-      title={<>Welcome back, <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>{user?.firstName || 'developer'}.</span></>}
-      subtitle="All systems nominal. Track your pipeline, drill stories, and defend your readiness."
+      title={`${greeting()}, ${user?.firstName || 'there'}`}
+      subtitle={`${subtitleParts.join(' and ')}.`}
       actions={
         <>
-          <button
-            onClick={() => navigate('/story-bank', { state: { openNewForm: true } })}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors cursor-pointer hover:border-white/30"
-            style={{ background: C.bg2, border: `1px solid ${C.hair2}`, color: C.ink }}
-          >
-            <Plus size={13} style={{ color: C.violet }} /> Bank Story
-          </button>
-          <button
-            onClick={() => navigate('/applications', { state: { openNewForm: true } })}
-            data-testid="dash-applied-btn"
-            className="group inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] transition-all cursor-pointer"
-            style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}, 0 12px 40px -15px rgba(45,212,191,0.4)` }}
-          >
-            New Application <ArrowUpRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-          </button>
+          <Button variant="secondary" icon={<Plus size={16} />} onClick={() => navigate('/story-bank', { state: { openNewForm: true } })}>
+            New story
+          </Button>
+          <Button variant="primary" icon={<Plus size={16} />} onClick={() => navigate('/applications', { state: { openNewForm: true } })} data-testid="dash-applied-btn">
+            New application
+          </Button>
         </>
       }
-      contentClassName="space-y-6"
     >
-      {/* TOP METRICS RIBBON */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 opacity-0 animate-fade-in-up delay-100">
-        {[
-          { label: 'Active Pipeline', val: activeApps.length, sub: `${applications.length} total tracked`, color: C.teal, route: '/applications' },
-          { label: 'Story Inventory', val: stories.length + behavioralStories.length, sub: `${stories.length} tech · ${behavioralStories.length} STAR`, color: C.violet, route: '/story-bank' },
-          { label: 'Drill Readiness', val: stats?.storyStats.totalReviewed || 0, sub: `${dueForReview.length} items due for review`, color: C.amber, route: '/readiness' },
-          { label: 'JD Match Score', val: stats?.jobDescriptionStats.averageMatchScore ? `${Math.round(stats.jobDescriptionStats.averageMatchScore)}%` : '—', sub: `${stats?.jobDescriptionStats.totalJobDescriptions || 0} analyses run`, color: C.sky, route: '/jd-matcher' },
-        ].map((m, idx) => (
-          <div 
-            key={idx}
-            onClick={() => navigate(m.route)}
-            className="p-4 rounded-xl cursor-pointer transition-all duration-300 group hover:border-white/20"
-            style={{ background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`, border: `1px solid ${C.hair}` }}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10.5px] uppercase tracking-widest" style={{ color: C.inkMute }}>{m.label}</span>
-              <ArrowUpRight size={13} style={{ color: C.inkMute }} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <div className="font-display text-[26px] font-bold mt-1.5 leading-none" style={{ color: m.color }}>
-              {typeof m.val === 'number' ? <CountUp end={m.val} duration={1.2} /> : m.val}
-            </div>
-            <div className="font-mono text-[10.5px] mt-1.5 truncate" style={{ color: C.inkDim }}>{m.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* VISUAL ANALYTICS: CONFIDENCE TRAJECTORY & PIPELINE VELOCITY */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0 animate-fade-in-up delay-150">
-        <ConfidenceTrendChart stories={stories} behavioralStories={behavioralStories} />
-        <ApplicationVelocityFunnel applications={applications} />
-      </div>
-
-      {/* Functional 3-Column Control Workspace Grid */}
-      <div className="grid grid-cols-12 gap-4 p-4 md:p-6 rounded-2xl opacity-0 animate-fade-in-up delay-200" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
-          
-          {/* Column 1: Interactive Story Drill & Spotlight (5 Cols) */}
-          <div className="col-span-12 lg:col-span-5 rounded-xl flex flex-col justify-between" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
-            <div>
-              {/* Top Bar with Mode Switcher */}
-              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${C.hair}` }}>
-                <div className="flex items-center gap-1 p-0.5 rounded-lg font-mono text-[10px] uppercase tracking-wider" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
-                  <button
-                    onClick={() => setSpotlightType('technical')}
-                    className="px-2.5 py-1 rounded transition-colors cursor-pointer"
-                    style={{ background: spotlightType === 'technical' ? C.tealDim : 'transparent', color: spotlightType === 'technical' ? C.teal : C.inkDim }}
-                  >
-                    Tech ({stories.length})
-                  </button>
-                  <button
-                    onClick={() => setSpotlightType('behavioral')}
-                    className="px-2.5 py-1 rounded transition-colors cursor-pointer"
-                    style={{ background: spotlightType === 'behavioral' ? `${C.violet}22` : 'transparent', color: spotlightType === 'behavioral' ? C.violet : C.inkDim }}
-                  >
-                    STAR ({behavioralStories.length})
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {(spotlightType === 'technical' ? stories.length : behavioralStories.length) > 1 && (
-                    <button 
-                      onClick={() => spotlightType === 'technical' ? setSelectedStoryIndex(i => i + 1) : setSelectedBehavioralIndex(i => i + 1)}
-                      className="text-[10px] font-mono uppercase px-2 py-1 rounded cursor-pointer transition-colors hover:bg-white/10"
-                      style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}` }}
-                    >
-                      Next Item →
-                    </button>
-                  )}
-                </div>
+      {showOnboarding && (
+        <Reveal>
+          <Panel className="p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[15px] font-medium text-fg">Set up your workspace</h2>
+                <p className="mt-1 text-[13px] text-fg-3">Example stories are already in your bank. Three steps get everything else working.</p>
               </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowOnboarding(false)}>Dismiss</Button>
+            </div>
+            <ol className="mt-5 grid gap-3 md:grid-cols-3">
+              {[
+                { done: (stats?.storyStats.totalReviewed ?? 0) > 0, title: 'Drill a story', body: 'Rate how well you recall one of the example stories.', cta: 'Start drill', to: '/story-bank/quiz' },
+                { done: (stats?.applicationStats.totalApplications ?? 0) > 0, title: 'Log an application', body: 'Add a role you applied to so follow-ups get scheduled.', cta: 'Add application', to: '/applications', state: { openNewForm: true } },
+                { done: (stats?.jobDescriptionStats.totalJobDescriptions ?? 0) > 0, title: 'Check a job description', body: 'Paste a posting to see which skills it asks for.', cta: 'Open JD Matcher', to: '/jd-matcher' },
+              ].map((step) => (
+                <li key={step.title} className="flex gap-3 rounded-lg border border-line bg-surface-2 p-4">
+                  <span className={cn('mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border', step.done ? 'border-transparent bg-accent text-accent-ink' : 'border-line-strong')}>
+                    {step.done && <Check size={12} strokeWidth={3} />}
+                  </span>
+                  <div>
+                    <p className="text-[13.5px] font-medium text-fg">{step.title}</p>
+                    <p className="mt-1 text-[12.5px] leading-relaxed text-fg-3">{step.body}</p>
+                    <Link to={step.to} state={step.state} className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-medium text-accent-text hover:underline">
+                      {step.cta} <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </Panel>
+        </Reveal>
+      )}
 
-              {/* Story Content Card */}
-              <div className="p-4 md:p-5">
+      <Reveal delay={0.04}>
+        <Panel className="grid grid-cols-2 gap-px overflow-hidden bg-line md:grid-cols-4">
+          {summary.map((s) => (
+            <Link
+              key={s.label}
+              to={s.to}
+              className="group flex flex-col gap-1 bg-surface-1 p-5 transition-colors hover:bg-surface-2"
+            >
+              <span className="flex items-center justify-between text-[13px] text-fg-3">
+                {s.label}
+                <ChevronRight size={14} className="opacity-0 transition-opacity group-hover:opacity-100" />
+              </span>
+              <span className="num text-[30px] font-semibold leading-none tracking-tight text-fg">{s.value}</span>
+            </Link>
+          ))}
+        </Panel>
+      </Reveal>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Reveal delay={0.08}>
+            <Panel>
+              <PanelHeader
+                title="Review queue"
+                description="Stories due today, weakest first."
+                actions={queue.length > 0 && <Button variant="primary" size="sm" icon={<Layers size={14} />} to="/story-bank/quiz">Start drill</Button>}
+              />
+              {queue.length === 0 ? (
+                <EmptyState icon={<Check size={18} />} title="Nothing due today." description="Stories come back here when their next review date arrives." />
+              ) : (
+                <ul className="mt-3 divide-y divide-line border-t border-line">
+                  {queue.slice(0, 6).map((q) => (
+                    <li key={`${q.kind}-${q.id}`}>
+                      <Link to="/story-bank/quiz" className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface-2/60">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13.5px] font-medium text-fg">{q.title}</p>
+                          <p className="text-[12.5px] text-fg-3">{q.kind}</p>
+                        </div>
+                        <ConfidenceMeter level={q.confidence} />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {queue.length > 6 && (
+                <p className="border-t border-line px-5 py-3 text-[12.5px] text-fg-3">and {queue.length - 6} more in the drill.</p>
+              )}
+            </Panel>
+          </Reveal>
+
+          <Reveal delay={0.12}>
+            <Panel>
+              <PanelHeader
+                title="Practise one story"
+                description="Read it, say it out loud, then rate how it went."
+                actions={
+                  <>
+                    <Segmented
+                      size="sm"
+                      ariaLabel="Story type"
+                      value={spotlightType}
+                      onChange={setSpotlightType}
+                      options={[
+                        { value: 'technical', label: 'Technical', count: stories.length },
+                        { value: 'behavioral', label: 'STAR', count: behavioralStories.length },
+                      ]}
+                    />
+                    {spotlightCount > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconRight={<ArrowRight size={14} />}
+                        onClick={() => (spotlightType === 'technical' ? setSelectedStoryIndex((i) => i + 1) : setSelectedBehavioralIndex((i) => i + 1))}
+                      >
+                        Next
+                      </Button>
+                    )}
+                  </>
+                }
+              />
+              <div className="p-5">
                 {spotlightType === 'technical' ? (
                   activeTechStory ? (
-                    <>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="rounded-full px-2.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider" style={{ background: `${C.teal}22`, color: C.teal, border: `1px solid ${C.teal}33` }}>
-                          {activeTechStory.category}
-                        </span>
-                        <span className="font-mono text-[10px]" style={{ color: C.inkMute }}>{activeTechStory.sourceProject || 'General'}</span>
+                    <article>
+                      <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-fg-3">
+                        <span className="chip">{formatCategoryName(activeTechStory.category)}</span>
+                        {activeTechStory.sourceProject && <span>{activeTechStory.sourceProject}</span>}
                       </div>
-                      <h3 className="font-display text-[18px] font-semibold leading-snug" style={{ color: C.ink }}>
-                        {activeTechStory.title}
-                      </h3>
-                      <p className="mt-2 font-body text-[13px] leading-relaxed line-clamp-3" style={{ color: C.inkDim }}>
-                        {activeTechStory.explanation}
-                      </p>
+                      <h3 className="mt-3 text-[18px] font-semibold leading-snug tracking-tight text-fg">{activeTechStory.title}</h3>
+                      <p className="mt-2 line-clamp-3 text-[13.5px] leading-relaxed text-fg-2">{activeTechStory.explanation}</p>
                       {activeTechStory.codeSnippet && (
-                        <pre className="mt-3.5 overflow-x-auto rounded-xl p-3.5 font-mono text-[11.5px] leading-[1.6] custom-scrollbar max-h-[160px]" style={{ background: C.bg0, color: C.inkDim, border: `1px solid ${C.hair}` }}>
+                        <pre className="mt-4 max-h-44 overflow-auto rounded-lg border border-line bg-bg p-4 font-mono text-[12px] leading-relaxed text-fg-2">
                           <code>{activeTechStory.codeSnippet}</code>
                         </pre>
                       )}
-                    </>
-                  ) : (
-                    <div className="py-12 text-center font-mono text-xs" style={{ color: C.inkMute }}>
-                      No technical stories banked yet. Bank stories to enable instant recall drilling.
-                    </div>
-                  )
-                ) : (
-                  activeSTARStory ? (
-                    <>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="rounded-full px-2.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider" style={{ background: `${C.violet}22`, color: C.violet, border: `1px solid ${C.violet}33` }}>
-                          STAR Method
-                        </span>
-                        <span className="font-mono text-[10px]" style={{ color: C.inkMute }}>{activeSTARStory.tags || 'General'}</span>
+                      <div className="mt-5">
+                        <p className="mb-2 text-[12.5px] text-fg-3">How confident are you telling this one?</p>
+                        <ConfidencePicker value={activeTechStory.confidenceLevel} onChange={handleUpdateConfidence} size="sm" />
                       </div>
-                      <h3 className="font-display text-[18px] font-semibold leading-snug" style={{ color: C.ink }}>
-                        {activeSTARStory.title}
-                      </h3>
-                      <div className="mt-3 space-y-2 font-body text-[12.5px] leading-relaxed" style={{ color: C.inkDim }}>
-                        <p><strong className="text-purple-400 font-mono text-[11px] uppercase">Situation:</strong> {activeSTARStory.situation}</p>
-                        <p className="line-clamp-2"><strong className="text-sky-400 font-mono text-[11px] uppercase">Task:</strong> {activeSTARStory.task}</p>
-                        <p className="line-clamp-2"><strong className="text-teal-400 font-mono text-[11px] uppercase">Action:</strong> {activeSTARStory.action}</p>
-                        <p className="line-clamp-2"><strong className="text-emerald-400 font-mono text-[11px] uppercase">Result:</strong> {activeSTARStory.result}</p>
-                      </div>
-                    </>
+                    </article>
                   ) : (
-                    <div className="py-12 text-center font-mono text-xs" style={{ color: C.inkMute }}>
-                      No STAR behavioral stories banked yet.
-                    </div>
+                    <EmptyState className="px-0 py-6" title="No technical stories yet." action={<Button variant="secondary" size="sm" to="/story-bank">Add a story</Button>} />
                   )
-                )}
-              </div>
-            </div>
-
-            {/* Interactive Confidence Update Bar & Drill CTA */}
-            <div className="p-4 md:p-5 pt-0 space-y-3">
-              {spotlightType === 'technical' && activeTechStory && (
-                <div className="p-3.5 rounded-xl space-y-2" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: C.inkMute }}>
-                      Click to Update Confidence
-                    </span>
-                    <span className="font-mono text-[11px] font-semibold" style={{ color: ConfidenceRungs[currentRungIndex]?.color || C.teal }}>
-                      {activeTechStory.confidenceLevel}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5 pt-1">
-                    {ConfidenceRungs.map((r) => {
-                      const isCurrent = r.key.toLowerCase() === activeTechStory.confidenceLevel.toLowerCase();
-                      return (
-                        <button
-                          key={r.key}
-                          onClick={() => handleUpdateConfidence(r.key)}
-                          title={`Set confidence to ${r.label}`}
-                          className="py-1.5 rounded text-[9.5px] font-mono uppercase transition-all cursor-pointer truncate text-center"
-                          style={{
-                            background: isCurrent ? `${r.color}22` : C.bg0,
-                            color: isCurrent ? r.color : C.inkMute,
-                            border: `1px solid ${isCurrent ? r.color : C.hair}`,
-                            boxShadow: isCurrent ? `0 0 10px ${r.color}33` : 'none'
-                          }}
-                        >
-                          {r.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={() => navigate('/story-bank/quiz')}
-                className="w-full py-2.5 rounded-xl font-mono text-[11px] font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer hover:border-white/30"
-                style={{ background: C.tealDim, color: C.teal, border: `1px solid ${C.teal}44` }}
-              >
-                <Zap size={14} /> Launch Spaced Repetition Drill
-              </button>
-            </div>
-          </div>
-
-          {/* Column 2: Live Pipeline Action Center (4 Cols) */}
-          <div className="col-span-12 lg:col-span-4 rounded-xl p-4 md:p-5 flex flex-col justify-between" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
-            <div>
-              <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider mb-3 pb-2" style={{ color: C.inkDim, borderBottom: `1px solid ${C.hair}` }}>
-                <span className="flex items-center gap-1.5"><GitBranch size={13} style={{ color: C.teal }} /> Active Pipeline</span>
-                <span style={{ color: C.teal }}>{activeApps.length} active</span>
-              </div>
-
-              <div className="space-y-2">
-                {recentApps.length === 0 && (
-                  <div className="py-12 text-center font-mono text-xs" style={{ color: C.inkMute }}>No applications logged yet.</div>
-                )}
-                {recentApps.map((a) => {
-                  const pill = statusPill(a.status);
-                  return (
-                    <div 
-                      key={a.id} 
-                      onClick={() => navigate('/applications')}
-                      className="flex items-center justify-between rounded-xl p-3 cursor-pointer transition-colors hover:border-white/20" 
-                      style={{ background: C.bg1, border: `1px solid ${C.hair}` }}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 pr-2">
-                        {getCompanyLogo(a.companyName)}
-                        <div className="min-w-0">
-                          <div className="font-body text-[13px] font-semibold truncate" style={{ color: C.ink }}>{a.companyName}</div>
-                          <div className="font-mono text-[10.5px] truncate" style={{ color: C.inkMute }}>{a.roleTitle}</div>
+                ) : activeSTARStory ? (
+                  <article>
+                    {activeSTARStory.tags && <span className="chip">{activeSTARStory.tags.split(',')[0]}</span>}
+                    <h3 className="mt-3 text-[18px] font-semibold leading-snug tracking-tight text-fg">{activeSTARStory.title}</h3>
+                    <dl className="mt-4 grid gap-3 text-[13px] leading-relaxed sm:grid-cols-2">
+                      {(['situation', 'task', 'action', 'result'] as const).map((k) => (
+                        <div key={k}>
+                          <dt className="text-[12px] font-medium capitalize text-fg-3">{k}</dt>
+                          <dd className="mt-0.5 line-clamp-3 text-fg-2">{activeSTARStory[k]}</dd>
                         </div>
-                      </div>
-
-                      {/* Interactive Quick Status Changer */}
-                      <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          title="Select Application Status"
-                          value={a.status}
-                          onChange={(e) => handleUpdateAppStatus(a.id, e.target.value)}
-                          className="appearance-none rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-wider font-semibold cursor-pointer pr-6 focus:outline-none transition-all"
-                          style={{ background: pill.bg, color: pill.color, border: pill.border }}
-                        >
-                          <option value="Applied" style={{ background: C.bg1, color: C.ink }}>Applied</option>
-                          <option value="PhoneScreen" style={{ background: C.bg1, color: C.ink }}>Phone Screen</option>
-                          <option value="Interviewing" style={{ background: C.bg1, color: C.ink }}>Interviewing</option>
-                          <option value="Offer" style={{ background: C.bg1, color: C.emerald }}>Offer</option>
-                          <option value="Rejected" style={{ background: C.bg1, color: C.rose }}>Rejected</option>
-                        </select>
-                        <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: pill.color }} />
-                      </div>
+                      ))}
+                    </dl>
+                    <div className="mt-4">
+                      <ConfidenceMeter level={activeSTARStory.confidenceLevel} />
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button 
-              onClick={() => navigate('/applications')}
-              className="mt-4 w-full text-center py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-wider cursor-pointer transition-colors hover:border-white/20 flex items-center justify-center gap-1.5"
-              style={{ background: 'rgba(255,255,255,0.02)', color: C.ink, border: `1px solid ${C.hair}` }}
-            >
-              Manage Full Kanban Board →
-            </button>
-          </div>
-
-          {/* Column 3: Readiness Radar & Review Queue (3 Cols) */}
-          <div className="col-span-12 lg:col-span-3 rounded-xl p-4 md:p-5 flex flex-col justify-between" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
-            <div>
-              <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider mb-3 pb-2" style={{ color: C.inkDim, borderBottom: `1px solid ${C.hair}` }}>
-                <span className="flex items-center gap-1.5"><Activity size={13} style={{ color: C.sky }} /> Readiness</span>
-                <span style={{ color: C.amber }}>{dueForReview.length} due</span>
-              </div>
-
-              {/* Radar Preview */}
-              <div 
-                onClick={() => navigate('/readiness')}
-                className="mb-4 flex items-center justify-center min-h-[150px] cursor-pointer rounded-xl p-2 transition-transform hover:scale-[1.02]"
-                style={{ background: C.bg1, border: `1px solid ${C.hair}` }}
-              >
-                {skillAxes.length >= 3 ? (
-                  <SkillRadar axes={skillAxes} size={150} target={READINESS_TARGET} className="w-full max-w-[170px]" />
+                  </article>
                 ) : (
-                  <div className="text-center font-mono text-xs p-4" style={{ color: C.inkMute }}>
-                    Add skills across ≥3 categories to generate your radar.
-                  </div>
+                  <EmptyState className="px-0 py-6" title="No STAR stories yet." action={<Button variant="secondary" size="sm" to="/story-bank">Add a story</Button>} />
                 )}
               </div>
+            </Panel>
+          </Reveal>
+        </div>
 
-              {/* Due For Review Quick Action List */}
-              <div className="space-y-1.5 mb-6">
-                <div className="font-mono text-[10px] uppercase tracking-widest px-1 mb-1" style={{ color: C.inkMute }}>Immediate Review Queue</div>
-                {dueForReview.slice(0, 3).map((s) => (
-                  <div 
-                    key={s.id} 
-                    onClick={() => navigate('/story-bank/quiz')}
-                    className="flex items-center justify-between rounded-lg px-2.5 py-2 font-mono text-[11px] cursor-pointer transition-colors hover:border-white/20" 
-                    style={{ background: C.bg1, color: C.inkDim, border: `1px solid ${C.hair}` }}
-                  >
-                    <span className="truncate flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full shrink-0 animate-pulse" style={{ background: s.confidenceLevel === 'Panic' ? C.rose : C.amber }} />
-                      <span className="truncate">{s.title}</span>
-                    </span>
-                    <span className="text-[9.5px] uppercase font-semibold shrink-0 ml-2 px-1.5 py-0.5 rounded" style={{ background: `${C.amber}1c`, color: C.amber }}>Drill</span>
-                  </div>
-                ))}
-                {dueForReview.length === 0 && (
-                  <div className="py-4 text-center font-mono text-xs rounded-lg" style={{ background: C.bg1, color: C.emerald }}>
-                    ✓ All banked stories are solid!
-                  </div>
-                )}
-              </div>
-
-              {/* Follow-Ups Due Widget */}
-              <div className="space-y-1.5" data-testid="followups-due-widget">
-                <div className="font-mono text-[10px] uppercase tracking-widest px-1 mb-1 flex items-center justify-between" style={{ color: C.inkMute }}>
-                  <span>Follow-Ups Due</span>
-                  {followUpsDue.length > 0 && <span className="rounded-full px-1.5 bg-rose-500/20 text-rose-400">{followUpsDue.length}</span>}
-                </div>
-                {followUpsDue.slice(0, 3).map((app) => {
-                  const overdueInfo = getDaysOverdueText(app.followUpDate);
-                  return (
-                    <div 
-                      key={app.id} 
-                      data-testid={`followup-row-${app.id}`}
-                      className="flex flex-col gap-2 rounded-lg p-3 transition-colors hover:border-white/20" 
-                      style={{ background: C.bg1, border: `1px solid ${C.hair}` }}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {getCompanyLogo(app.companyName)}
+        <div className="flex min-w-0 flex-col gap-6">
+          <Reveal delay={0.1}>
+            <Panel data-testid="followups-due-widget">
+              <PanelHeader title="Follow-ups" description="Applications waiting on a nudge from you." />
+              {followUpsDue.length === 0 ? (
+                <EmptyState icon={<Check size={18} />} title="No follow-ups pending." />
+              ) : (
+                <ul className="mt-3 divide-y divide-line border-t border-line">
+                  {followUpsDue.slice(0, 4).map((app) => {
+                    const due = overdueLabel(app.followUpDate);
+                    return (
+                      <li key={app.id} data-testid={`followup-row-${app.id}`} className="flex items-center gap-3 px-5 py-3">
+                        <Monogram name={app.companyName} size={32} />
                         <div className="min-w-0 flex-1">
-                          <div className="font-body text-[12px] font-semibold truncate" style={{ color: C.ink }}>{app.companyName}</div>
-                          <div className="font-mono text-[10px] truncate" style={{ color: C.inkMute }}>{app.roleTitle}</div>
+                          <p className="truncate text-[13.5px] font-medium text-fg">{app.companyName}</p>
+                          <p className={cn('text-[12.5px]', due.overdue ? 'text-danger' : 'text-warning')}>{due.text}</p>
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="font-mono text-[9.5px] font-semibold" style={{ color: overdueInfo.color }}>
-                          {overdueInfo.text}
-                        </span>
-                        <button
-                          data-testid={`mark-contacted-btn-${app.id}`}
-                          onClick={(e) => { e.stopPropagation(); handleMarkContacted(app.id); }}
-                          className="px-2 py-1 rounded text-[9px] uppercase tracking-wider font-semibold cursor-pointer transition-colors hover:bg-white/10"
-                          style={{ background: C.bg2, color: C.ink, border: `1px solid ${C.hair}` }}
-                        >
-                          Mark Contacted
-                        </button>
-                      </div>
+                        <Button variant="secondary" size="sm" onClick={() => handleMarkContacted(app.id)} data-testid={`mark-contacted-btn-${app.id}`}>
+                          Mark contacted
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Panel>
+          </Reveal>
+
+          <Reveal delay={0.14}>
+            <Panel>
+              <PanelHeader
+                title="Pipeline"
+                description={`${applications.length} ${applications.length === 1 ? 'application' : 'applications'} tracked.`}
+                actions={<Button variant="ghost" size="sm" to="/applications" iconRight={<ArrowRight size={14} />}>Open</Button>}
+              />
+              {applications.length === 0 ? (
+                <EmptyState title="No applications yet." action={<Button variant="secondary" size="sm" onClick={() => navigate('/applications', { state: { openNewForm: true } })}>Add application</Button>} />
+              ) : (
+                <>
+                  <div className="px-5 pt-4">
+                    <div className="flex h-2 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
+                      {statusCounts.map(({ status, count }) => (
+                        <span
+                          key={status}
+                          style={{ flexGrow: count }}
+                          className={cn(
+                            'h-full',
+                            STATUS_META[status].tone === 'accent' && 'bg-accent',
+                            STATUS_META[status].tone === 'warning' && 'bg-warning',
+                            STATUS_META[status].tone === 'danger' && 'bg-danger',
+                            STATUS_META[status].tone === 'neutral' && 'bg-fg-2',
+                            STATUS_META[status].tone === 'muted' && 'bg-fg-3'
+                          )}
+                        />
+                      ))}
                     </div>
-                  );
-                })}
-                {followUpsDue.length === 0 && (
-                  <div className="py-4 text-center font-mono text-xs rounded-lg" style={{ background: C.bg1, color: C.emerald }}>
-                    ✓ No follow-ups pending. You're on top of things.
+                    <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-fg-3">
+                      {statusCounts.map(({ status, count }) => (
+                        <li key={status}>
+                          {STATUS_META[status].label} <span className="num font-medium text-fg">{count}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
+                  <ul className="mt-4 divide-y divide-line border-t border-line">
+                    {recentApps.map((a) => (
+                      <li key={a.id} className="flex items-center gap-3 px-5 py-3">
+                        <Monogram name={a.companyName} size={32} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13.5px] font-medium text-fg">{a.companyName}</p>
+                          <p className="truncate text-[12.5px] text-fg-3">{a.roleTitle}</p>
+                        </div>
+                        <Select
+                          aria-label={`Status for ${a.companyName}`}
+                          value={a.status}
+                          onChange={(e) => handleUpdateAppStatus(a.id, e.target.value as ApplicationStatus)}
+                          className="h-8 min-h-0 w-[136px] py-0 text-[12.5px]"
+                        >
+                          {STATUS_ORDER.filter((s) => s !== 'Ghosted' || a.status === 'Ghosted').map((s) => (
+                            <option key={s} value={s}>{STATUS_META[s].label}</option>
+                          ))}
+                        </Select>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </Panel>
+          </Reveal>
+
+          <Reveal delay={0.18}>
+            <Panel>
+              <PanelHeader
+                title="Skill coverage"
+                description={`Dashed line marks interview-ready (${READINESS_TARGET}%).`}
+                actions={<Button variant="ghost" size="sm" to="/readiness" iconRight={<ArrowRight size={14} />}>Details</Button>}
+              />
+              <div className="grid place-items-center px-5 pb-5 pt-2">
+                {skillAxes.length >= 3 ? (
+                  <SkillRadar axes={skillAxes} size={260} target={READINESS_TARGET} className="w-full max-w-[280px]" />
+                ) : (
+                  <EmptyState className="px-0" title="Add skills in at least three categories to see coverage." action={<Button variant="secondary" size="sm" to="/settings">Add skills</Button>} />
                 )}
               </div>
-            </div>
-
-            <button 
-              onClick={() => navigate('/readiness')}
-              className="mt-4 w-full text-center py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-wider cursor-pointer transition-colors hover:border-white/20"
-              style={{ background: 'rgba(255,255,255,0.02)', color: C.ink, border: `1px solid ${C.hair}` }}
-            >
-              Open Full Readiness Matrix →
-            </button>
-          </div>
-
+            </Panel>
+          </Reveal>
+        </div>
       </div>
 
-      {showOnboarding && (
-        <div className="rounded-xl p-5 md:p-6 opacity-0 animate-fade-in-up delay-300" style={{ background: `linear-gradient(135deg, ${C.tealDim} 0%, transparent 100%)`, border: `1px solid ${C.teal}44` }}>
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="font-display text-lg font-semibold flex items-center gap-2" style={{ color: C.ink }}>
-                <Sparkles size={18} style={{ color: C.teal }} /> Getting Started Checklist
-              </h2>
-              <p className="font-body text-[13.5px] mt-1" style={{ color: C.inkDim }}>
-                We've seeded your bank with example stories. Complete these steps to configure your command center.
-              </p>
-            </div>
-            <button onClick={() => setShowOnboarding(false)} className="text-xs font-mono uppercase tracking-widest cursor-pointer hover:text-white" style={{ color: C.inkMute }}>
-              Dismiss
-            </button>
-          </div>
-          
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-lg p-4 flex gap-3" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
-              {stats?.storyStats.totalReviewed && stats.storyStats.totalReviewed > 0 ? (
-                <CheckCircle2 size={18} style={{ color: C.emerald }} className="shrink-0 mt-0.5" />
-              ) : (
-                <Circle size={18} style={{ color: C.inkMute }} className="shrink-0 mt-0.5" />
-              )}
-              <div>
-                <h3 className="font-semibold text-[13.5px]" style={{ color: C.ink }}>Drill a Story</h3>
-                <p className="font-body text-[12px] mt-1 mb-3" style={{ color: C.inkDim }}>Run the Spaced Repetition Drill to update your confidence on the seeded examples.</p>
-                <button onClick={() => navigate('/story-bank/quiz')} className="font-mono text-[10.5px] uppercase tracking-wider text-teal-400 hover:text-teal-300 transition-colors">Start Drill →</button>
-              </div>
-            </div>
-
-            <div className="rounded-lg p-4 flex gap-3" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
-              {stats?.applicationStats.totalApplications && stats.applicationStats.totalApplications > 0 ? (
-                <CheckCircle2 size={18} style={{ color: C.emerald }} className="shrink-0 mt-0.5" />
-              ) : (
-                <Circle size={18} style={{ color: C.inkMute }} className="shrink-0 mt-0.5" />
-              )}
-              <div>
-                <h3 className="font-semibold text-[13.5px]" style={{ color: C.ink }}>Log an Application</h3>
-                <p className="font-body text-[12px] mt-1 mb-3" style={{ color: C.inkDim }}>Track your first job application to initialize the Kanban pipeline view.</p>
-                <button onClick={() => navigate('/applications', { state: { openNewForm: true } })} className="font-mono text-[10.5px] uppercase tracking-wider text-teal-400 hover:text-teal-300 transition-colors">Add Application →</button>
-              </div>
-            </div>
-
-            <div className="rounded-lg p-4 flex gap-3" style={{ background: C.bg2, border: `1px solid ${C.hair}` }}>
-              {stats?.jobDescriptionStats.totalJobDescriptions && stats.jobDescriptionStats.totalJobDescriptions > 0 ? (
-                <CheckCircle2 size={18} style={{ color: C.emerald }} className="shrink-0 mt-0.5" />
-              ) : (
-                <Circle size={18} style={{ color: C.inkMute }} className="shrink-0 mt-0.5" />
-              )}
-              <div>
-                <h3 className="font-semibold text-[13.5px]" style={{ color: C.ink }}>Run JD Matcher</h3>
-                <p className="font-body text-[12px] mt-1 mb-3" style={{ color: C.inkDim }}>Paste a job description to see how your story inventory stacks up.</p>
-                <button onClick={() => navigate('/jd-matcher')} className="font-mono text-[10.5px] uppercase tracking-wider text-teal-400 hover:text-teal-300 transition-colors">Analyze JD →</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </PageShell>
   );
 }
-

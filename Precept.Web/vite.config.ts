@@ -19,7 +19,7 @@ export default defineConfig(() => {
     },
     optimizeDeps: {
       // Pre-bundle the React entrypoints together so they share one instance.
-      include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
+      include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'motion/react', 'gsap', 'gsap/ScrollTrigger', 'gsap/SplitText', '@gsap/react', 'lenis', 'lenis/react'],
     },
     build: {
       rollupOptions: {

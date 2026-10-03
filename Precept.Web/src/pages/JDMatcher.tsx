@@ -1,46 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link2, Plus, ScanText, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
-import { getSkillIcon } from '../lib/utils';
-import { AnimatedSection } from '../components/animation/AnimatedSection';
 import { JobDescription, PagedResponse } from '../types';
-import { Zap, FileText, Link2, ChartPie, CheckCircle2, XCircle, Plus, Loader2, Trash2, ChevronRight } from 'lucide-react';
 import PageShell from '../components/PageShell';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
+import { Button, Chip, EmptyState, Field, Input, Panel, PanelHeader, Reveal, Skeleton, Textarea } from '../components/ui/kit';
+import { cn } from '../lib/utils';
 
-const C = {
-  bg0: '#02050A', bg1: '#06090F', bg2: '#0B0F17', bg3: '#11161F',
-  ink: '#E6EBF2', inkDim: '#9CA8B8', inkMute: '#5A6678',
-  hair: 'rgba(255,255,255,0.07)', hair2: 'rgba(255,255,255,0.12)',
-  teal: '#2dd4bf', tealDim: 'rgba(45,212,191,0.14)',
-  violet: '#8b5cf6', rose: '#f43f5e', amber: '#f59e0b', sky: '#38bdf8', emerald: '#10b981',
-} as const;
-
-const cardStyle = (): React.CSSProperties => ({
-  background: `linear-gradient(180deg, ${C.bg1} 0%, ${C.bg0} 100%)`,
-  border: `1px solid ${C.hair}`,
-  borderRadius: 18,
-  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset',
-});
-
-const Eyebrow = ({ children, color = C.teal }: { children: React.ReactNode; color?: string }) => (
-  <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]"
-    style={{ background: `${color}14`, border: `1px solid ${color}33`, color }}>
-    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-    {children}
-  </span>
-);
-
-const inputStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.025)',
-  border: `1px solid ${C.hair}`,
-  borderRadius: 10,
-  color: C.ink,
-  padding: '10px 12px',
-  fontFamily: 'JetBrains Mono, monospace',
-  fontSize: 13,
-  width: '100%',
-  outline: 'none',
-};
+function ScoreRing({ score }: { score: number }) {
+  const r = 46;
+  const circumference = 2 * Math.PI * r;
+  const tone = score >= 70 ? 'var(--accent-text)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
+  return (
+    <svg viewBox="0 0 112 112" className="h-28 w-28 -rotate-90" aria-hidden="true">
+      <circle cx="56" cy="56" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="8" />
+      <circle
+        cx="56"
+        cy="56"
+        r={r}
+        fill="none"
+        stroke={tone}
+        strokeWidth="8"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference - (circumference * score) / 100}
+        style={{ transition: 'stroke-dashoffset 900ms cubic-bezier(0.16,1,0.3,1)' }}
+      />
+    </svg>
+  );
+}
 
 export default function JDMatcher() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -48,7 +37,7 @@ export default function JDMatcher() {
   const [results, setResults] = useState<JobDescription | null>(null);
   const [savedJDs, setSavedJDs] = useState<JobDescription[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<JobDescription | null>(null);
   const toast = useToast();
 
   const [company, setCompany] = useState('');
@@ -79,10 +68,10 @@ export default function JDMatcher() {
     setJdText(jd.description);
   };
 
-  const handleDeleteJD = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (!confirm('Delete this job description?')) return;
-    setIsDeleting(id);
+  const handleDeleteJD = async () => {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
+    setPendingDelete(null);
     try {
       await api.delete(`/api/jobdescription/${id}`);
       setSavedJDs((prev) => prev.filter((jd) => jd.id !== id));
@@ -96,9 +85,7 @@ export default function JDMatcher() {
       toast.success('Job description deleted.');
     } catch (err) {
       console.error('Failed to delete JD:', err);
-      toast.error((err as Error).message || 'Failed to delete.');
-    } finally {
-      setIsDeleting(null);
+      toast.error((err as Error).message || 'Could not delete it.');
     }
   };
 
@@ -119,7 +106,7 @@ export default function JDMatcher() {
       await loadSavedJDs();
     } catch (err) {
       console.error('Extraction failed:', err);
-      toast.error((err as Error).message || 'Analysis failed.');
+      toast.error((err as Error).message || 'The analysis failed. Try again.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -141,286 +128,160 @@ export default function JDMatcher() {
         dateLastContact: today,
         followUpDate: fu.toISOString(),
         resumeVersion: 'v1',
-        notes: `Linked to JD. Match: ${results.yourMatchScore}%.`,
+        notes: `Linked to JD. Keyword match: ${results.yourMatchScore}%.`,
         isRemote: true,
         source: 'JD Matcher UI',
         jobDescriptionId: results.id,
       });
-      toast.success(`Application pipeline created for ${results.companyName}!`, 'Pipeline added');
+      toast.success(`${results.companyName} added to your applications.`);
     } catch (err) {
       console.error('Failed to create app from JD:', err);
-      toast.error((err as Error).message || 'Failed to add to pipeline.');
+      toast.error((err as Error).message || 'Could not add the application.');
     } finally {
       setIsAdding(false);
     }
   };
 
-  const scoreColor = (score: number) => (score >= 80 ? C.emerald : score >= 50 ? C.amber : C.rose);
-  const scoreLabel = (score: number) => {
-    if (score >= 80) return { text: 'Strong core match. Perfect technical fit.', verdict: 'Apply.', color: C.emerald };
-    if (score >= 50) return { text: 'Moderate compatibility. Gaps are learnable.', verdict: 'Apply.', color: C.amber };
-    return { text: 'Low compatibility. Significant gaps detected.', verdict: 'Review.', color: C.rose };
-  };
+  const wordCount = jdText.split(/\s+/).filter(Boolean).length;
+  const matched = results ? results.extractedKeyWords.filter((kw) => !results.missingKeyWords.some((m) => m.toLowerCase() === kw.toLowerCase())) : [];
+  const score = results?.yourMatchScore ?? 0;
 
   return (
     <PageShell
       dataTestId="jd-matcher-page"
-      badge="JD analyzer"
-      badgeColor={C.sky}
-      title={
-        <>
-          Paste a JD. See your <span className="font-editorial" style={{ color: C.sky, fontWeight: 400 }}>gaps.</span>
-        </>
-      }
-      subtitle="Precept maps requirements against your inventory, surfaces missing keywords, and computes a real match score."
+      title="JD Matcher"
+      subtitle="Paste a job description. Precept finds the skills it names and checks them against your skills list."
     >
-      <div className="rounded-2xl p-4 md:p-6 opacity-0 animate-fade-in-up delay-200" style={{ background: C.bg1, border: `1px solid ${C.hair}` }}>
-          <AnimatedSection animation="staggerFadeUp" stagger={0.1} childSelector="> div" className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* LEFT — input */}
-        <div className="lg:col-span-7 flex flex-col gap-5">
-          <div className="p-6 flex flex-col gap-5 relative overflow-hidden" style={cardStyle()}>
-            <h3 className="font-display text-[17px] font-semibold flex items-center gap-2" style={{ color: C.ink }}>
-              <FileText size={16} style={{ color: C.sky }} /> Analyze job description
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Company">
-                <input type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g. Stripe, Google" style={inputStyle} data-testid="jd-company" />
-              </Field>
-              <Field label="Role">
-                <input type="text" value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Frontend Engineer" style={inputStyle} data-testid="jd-role" />
-              </Field>
-            </div>
-
-            <Field label="Job URL · optional">
-              <div className="relative">
-                <Link2 size={13} style={{ color: C.inkMute }} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://careers.company.com/jobs/…" style={{ ...inputStyle, paddingLeft: 34 }} data-testid="jd-url" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <Reveal>
+          <Panel className="p-5">
+            <form
+              className="flex flex-col gap-5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAnalyze();
+              }}
+            >
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Company" htmlFor="jd-company">
+                  <Input id="jd-company" value={company} onChange={(e) => setCompany(e.target.value)} data-testid="jd-company" />
+                </Field>
+                <Field label="Role" htmlFor="jd-role">
+                  <Input id="jd-role" value={role} onChange={(e) => setRole(e.target.value)} data-testid="jd-role" />
+                </Field>
               </div>
-            </Field>
+              <Field label="Posting URL" htmlFor="jd-url" optional>
+                <div className="relative">
+                  <Link2 size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
+                  <Input id="jd-url" type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" className="pl-9" data-testid="jd-url" />
+                </div>
+              </Field>
+              <Field label="Job description" htmlFor="jd-text" help={<span className="num">{wordCount} words</span>}>
+                <Textarea id="jd-text" rows={12} value={jdText} onChange={(e) => setJdText(e.target.value)} placeholder="Paste the full posting." data-testid="jd-text" />
+              </Field>
+              <Button type="submit" variant="primary" size="lg" icon={<ScanText size={16} />} loading={isAnalyzing} disabled={!jdText.trim()} data-testid="jd-analyze-btn">
+                {isAnalyzing ? 'Analyzing' : 'Analyze'}
+              </Button>
+            </form>
+          </Panel>
+        </Reveal>
 
-            <Field label="Paste JD text">
-              <div className="flex justify-between items-end mb-1">
-                <span />
-                <span className="font-mono text-[10px]" style={{ color: C.inkMute }}>~{jdText.split(/\s+/).filter(Boolean).length} words</span>
+        <Reveal delay={0.06}>
+          <Panel className="flex h-full flex-col" aria-live="polite">
+            {isAnalyzing ? (
+              <div className="flex flex-col gap-4 p-5">
+                <Skeleton className="h-28 w-28 rounded-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-20" />
               </div>
-              <textarea value={jdText} onChange={(e) => setJdText(e.target.value)} rows={10}
-                placeholder="Paste the full JD here…"
-                style={{ ...inputStyle, fontFamily: 'Geist, Inter, sans-serif', resize: 'vertical', minHeight: 260 }}
-                data-testid="jd-text"
+            ) : !results ? (
+              <EmptyState
+                className="my-auto"
+                icon={<ScanText size={18} />}
+                title="Results appear here."
+                description="You will see which skills the posting names, which are on your list and which are missing."
               />
-            </Field>
-
-            <button onClick={handleAnalyze} disabled={isAnalyzing || !jdText.trim()} data-testid="jd-analyze-btn"
-              className="group w-full inline-flex items-center justify-center gap-2 rounded-full py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-50"
-              style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}, 0 18px 60px -20px rgba(45,212,191,0.45)` }}>
-              {isAnalyzing ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
-              {isAnalyzing ? 'Analyzing…' : 'Analyze description'}
-            </button>
-          </div>
-
-          {/* SAVED JDS LIST */}
-          <div className="p-6 flex flex-col gap-4" style={cardStyle()}>
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-[17px] font-semibold flex items-center gap-2" style={{ color: C.ink }}>
-                <FileText size={16} style={{ color: C.sky }} /> Processed JDs
-              </h3>
-              <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: C.inkMute }}>
-                {savedJDs.length} saved
-              </span>
-            </div>
-
-            {isLoadingList ? (
-              <div className="py-8 flex items-center justify-center">
-                <Loader2 size={20} className="animate-spin" style={{ color: C.teal }} />
-              </div>
-            ) : savedJDs.length === 0 ? (
-              <p className="font-body text-[13px] italic" style={{ color: C.inkDim }}>
-                No job descriptions analyzed yet. Paste one above to get started.
-              </p>
             ) : (
-              <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
-                {savedJDs.map((jd) => {
-                  const score = jd.yourMatchScore ?? 0;
-                  const color = scoreColor(score);
-                  const isSelected = results?.id === jd.id;
-                  return (
-                    <div
-                      key={jd.id}
-                      onClick={() => handleSelectJD(jd)}
-                      className="group relative flex items-center justify-between gap-3 rounded-xl px-3 py-3 cursor-pointer transition-all"
-                      style={{
-                        background: isSelected ? `${C.sky}14` : C.bg2,
-                        border: `1px solid ${isSelected ? `${C.sky}44` : C.hair}`,
-                      }}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="font-body text-[13px] font-semibold truncate" style={{ color: C.ink }}>
-                          {jd.companyName}
-                        </div>
-                        <div className="font-mono text-[10.5px] truncate" style={{ color: C.inkDim }}>
-                          {jd.roleTitle}
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-2 font-mono text-[9.5px] uppercase tracking-wider" style={{ color: C.inkMute }}>
-                          <span style={{ color }}>{score}% match</span>
-                          <span>·</span>
-                          <span>{jd.missingKeyWords.length} gaps</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <ChevronRight size={14} style={{ color: C.inkMute }} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <button
-                          onClick={(e) => handleDeleteJD(e, jd.id)}
-                          disabled={isDeleting === jd.id}
-                          className="p-1.5 rounded-lg cursor-pointer transition-colors hover:bg-rose-500/10"
-                          style={{ color: C.inkMute }}
-                          title="Delete JD"
-                        >
-                          {isDeleting === jd.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                        </button>
-                      </div>
+              <>
+                <div className="flex items-center gap-5 border-b border-line p-5">
+                  <div className="relative">
+                    <ScoreRing score={score} />
+                    <span className="num absolute inset-0 grid place-items-center text-[26px] font-semibold tracking-tight text-fg">{score}%</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-medium text-fg">{results.companyName || 'Untitled posting'}</p>
+                    <p className="truncate text-[13px] text-fg-3">{results.roleTitle}</p>
+                    <p className="mt-2 text-[13px] leading-relaxed text-fg-2">
+                      <span className="num font-medium text-fg">{matched.length}</span> of <span className="num font-medium text-fg">{results.extractedKeyWords.length}</span> skills it names are on your list.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col gap-5 p-5">
+                  <div>
+                    <h3 className="text-[13px] font-medium text-fg">On your list</h3>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {matched.length ? matched.map((kw) => <Chip key={kw} tone="accent">{kw}</Chip>) : <span className="text-[13px] text-fg-3">None yet.</span>}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                  <div>
+                    <h3 className="text-[13px] font-medium text-fg">Missing from your list</h3>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {results.missingKeyWords.length ? results.missingKeyWords.map((kw) => <Chip key={kw}>{kw}</Chip>) : <span className="text-[13px] text-fg-3">Nothing missing.</span>}
+                    </div>
+                    <p className="field-help">Missing can mean you lack the skill, or that it is not in your skills list yet. Add skills in Settings.</p>
+                  </div>
+                  <Button variant="secondary" className="mt-auto" icon={<Plus size={16} />} loading={isAdding} onClick={handleAddToApplications} data-testid="jd-add-app-btn">
+                    Add to applications
+                  </Button>
+                </div>
+              </>
             )}
-          </div>
-        </div>
+          </Panel>
+        </Reveal>
+      </div>
 
-        {/* RIGHT — output */}
-        <div className="lg:col-span-5 flex flex-col gap-5">
-          {isAnalyzing && (
-            <div className="p-8 flex flex-col items-center justify-center min-h-[400px]" style={cardStyle()}>
-              <Loader2 className="w-12 h-12 animate-spin mb-3" style={{ color: C.teal }} />
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em]" style={{ color: C.teal }}>Running match vectors…</p>
+      <Reveal delay={0.1}>
+        <Panel>
+          <PanelHeader title="Saved analyses" description={`${savedJDs.length} saved`} />
+          {isLoadingList ? (
+            <div className="flex flex-col gap-2 p-5">
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
             </div>
+          ) : savedJDs.length === 0 ? (
+            <EmptyState title="Nothing saved yet." description="Every analysis is saved here so you can reopen it." />
+          ) : (
+            <ul className="mt-3 divide-y divide-line border-t border-line">
+              {savedJDs.map((jd) => {
+                const selected = results?.id === jd.id;
+                return (
+                  <li key={jd.id} className={cn('group flex items-center gap-3 pr-3', selected && 'bg-surface-2')}>
+                    <button type="button" onClick={() => handleSelectJD(jd)} className="flex min-w-0 flex-1 items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-surface-2/60">
+                      <span className="num w-12 shrink-0 text-[15px] font-semibold text-fg">{jd.yourMatchScore ?? 0}%</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13.5px] font-medium text-fg">{jd.companyName || 'Untitled posting'}</span>
+                        <span className="block truncate text-[12.5px] text-fg-3">{jd.roleTitle}</span>
+                      </span>
+                      <span className="hidden shrink-0 text-[12.5px] text-fg-3 sm:block">{jd.missingKeyWords.length} missing</span>
+                    </button>
+                    <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} onClick={() => setPendingDelete(jd)} aria-label={`Delete ${jd.companyName}`} />
+                  </li>
+                );
+              })}
+            </ul>
           )}
+        </Panel>
+      </Reveal>
 
-          {!results && !isAnalyzing && (
-            <div className="p-8 flex flex-col items-center justify-center min-h-[400px] text-center gap-4" style={cardStyle()}>
-              <div className="w-12 h-12 rounded-xl grid place-items-center" style={{ background: `${C.teal}14`, border: `1px solid ${C.teal}33` }}>
-                <ChartPie size={20} style={{ color: C.teal }} />
-              </div>
-              <Eyebrow color={C.inkDim}>Waiting for input</Eyebrow>
-              <p className="font-body text-[13.5px] leading-relaxed max-w-[280px]" style={{ color: C.inkDim }}>
-                Paste a JD on the left to compute match score and surface keyword gaps.
-              </p>
-            </div>
-          )}
-
-          {results && !isAnalyzing && (
-            <>
-              {/* Score card */}
-              <div className="p-6 flex flex-col items-center relative overflow-hidden" style={cardStyle()}>
-                <div className="absolute -top-20 -right-20 h-44 w-44 rounded-full" style={{ background: `radial-gradient(circle, ${C.tealDim}, transparent 70%)`, filter: 'blur(4px)' }} />
-                <div className="self-start"><Eyebrow color={C.teal}>Match analysis</Eyebrow></div>
-
-                <div className="relative w-44 h-44 mt-6 mb-4">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
-                    <circle cx="60" cy="60" r="52" stroke={C.hair} strokeWidth="8" fill="none" />
-                    <circle cx="60" cy="60" r="52" stroke={scoreColor(results.yourMatchScore || 0)} strokeWidth="8" fill="none"
-                      strokeDasharray={326.7}
-                      strokeDashoffset={326.7 - (326.7 * (results.yourMatchScore || 0)) / 100}
-                      strokeLinecap="round"
-                      style={{ filter: `drop-shadow(0 0 8px ${scoreColor(results.yourMatchScore || 0)}88)`, transition: 'stroke-dashoffset 1.5s ease-out' }}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 grid place-items-center">
-                    <div className="text-center">
-                      <div className="font-display text-[42px] font-bold leading-none" style={{ color: scoreColor(results.yourMatchScore || 0) }}>
-                        {results.yourMatchScore || 0}
-                      </div>
-                      <div className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: C.inkMute }}>percent</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-center px-4 py-3 mt-2" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 12, width: '100%' }}>
-                  <p className="font-body text-[13px] leading-relaxed" style={{ color: C.inkDim }}>
-                    {scoreLabel(results.yourMatchScore || 0).text}{' '}
-                    <span className="font-mono font-medium" style={{ color: scoreLabel(results.yourMatchScore || 0).color }}>
-                      {scoreLabel(results.yourMatchScore || 0).verdict}
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Keyword card */}
-              <div className="p-6 flex flex-col gap-5 flex-1" style={cardStyle()}>
-                <div className="flex items-center justify-between">
-                  <Eyebrow color={C.violet}>Keyword match</Eyebrow>
-                  <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: C.inkMute }}>
-                    {results.extractedKeyWords.length} keywords
-                  </span>
-                </div>
-
-                {/* Matched */}
-                <div>
-                  <div className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.16em] mb-2" style={{ color: C.teal }}>
-                    <CheckCircle2 size={11} /> Matched ({results.extractedKeyWords.length - results.missingKeyWords.length})
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {results.extractedKeyWords
-                      .filter((kw) => !results.missingKeyWords.some((m) => m.toLowerCase() === kw.toLowerCase()))
-                      .map((kw) => {
-                        const ic = getSkillIcon(kw);
-                        return (
-                          <span key={kw} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest"
-                            style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}>
-                            <i className={ic.icon} style={{ color: ic.color }} />
-                            {kw}
-                          </span>
-                        );
-                      })}
-                    {results.extractedKeyWords.length === results.missingKeyWords.length && (
-                      <span className="font-mono text-[11px] italic" style={{ color: C.inkMute }}>No matched capabilities.</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Missing */}
-                <div>
-                  <div className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.16em] mb-2" style={{ color: C.rose }}>
-                    <XCircle size={11} /> Gap ({results.missingKeyWords.length})
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {results.missingKeyWords.map((kw) => {
-                      const ic = getSkillIcon(kw);
-                      return (
-                        <span key={kw} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest"
-                          style={{ background: `${C.rose}14`, color: C.rose, border: `1px solid ${C.rose}33` }}>
-                          <i className={ic.icon} style={{ color: ic.color }} />
-                          {kw}
-                        </span>
-                      );
-                    })}
-                    {results.missingKeyWords.length === 0 && (
-                      <span className="font-mono text-[11px] italic" style={{ color: C.teal }}>No skill gaps! Perfect match.</span>
-                    )}
-                  </div>
-                </div>
-
-                <button onClick={handleAddToApplications} disabled={isAdding} data-testid="jd-add-app-btn"
-                  className="mt-auto inline-flex items-center justify-center gap-2 rounded-full py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60 transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.025)', color: C.ink, border: `1px solid ${C.hair2}` }}>
-                  {isAdding ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
-                  {isAdding ? 'Adding…' : 'Add to applications'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-          </AnimatedSection>
-        </div>
+      <ConfirmationModal
+        isOpen={!!pendingDelete}
+        title="Delete this analysis?"
+        message={`The saved job description for ${pendingDelete?.companyName || 'this posting'} will be removed.`}
+        confirmText="Delete"
+        onConfirm={handleDeleteJD}
+        onCancel={() => setPendingDelete(null)}
+        danger
+      />
     </PageShell>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="font-mono text-[10px] uppercase tracking-[0.18em] block" style={{ color: C.inkMute }}>{label}</label>
-      {children}
-    </div>
   );
 }

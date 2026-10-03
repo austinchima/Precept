@@ -1,8 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import type { Application } from '../types';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Button, Logo } from '../components/ui/kit';
 
 /**
  * Capture page — invoked by the bookmarklet with `?url=...&title=...`.
@@ -14,7 +16,7 @@ export default function Capture() {
   const navigate = useNavigate();
   const { success, error } = useToast();
   const [status, setStatus] = useState<'idle' | 'capturing' | 'success' | 'error'>('idle');
-  const [message, setMessage] = useState('Reading job posting...');
+  const [message, setMessage] = useState('Reading the job posting.');
   const hasRun = useRef(false);
 
   const url = searchParams.get('url');
@@ -50,35 +52,35 @@ export default function Capture() {
   }, [url, title, navigate, success, error]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-brand-secondary px-6">
-      <div className="max-w-md w-full text-center space-y-6">
+    <div className="flex min-h-[100dvh] flex-col bg-bg px-6">
+      <header className="mx-auto flex h-16 w-full max-w-xl items-center">
+        <Logo />
+      </header>
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center pb-24" aria-live="polite">
         {status === 'error' ? (
           <>
-            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
-              <i className="fa-solid fa-triangle-exclamation text-red-400 text-2xl"></i>
+            <span className="grid h-10 w-10 place-items-center rounded-lg bg-danger-soft text-danger">
+              <AlertTriangle size={18} />
+            </span>
+            <h1 className="mt-5 text-[22px] font-semibold tracking-tight text-fg">The posting could not be captured.</h1>
+            <p className="mt-2 text-[14px] leading-relaxed text-fg-2">{message}</p>
+            <div className="mt-6">
+              <Button variant="primary" to="/applications">Go to applications</Button>
             </div>
-            <h1 className="text-xl font-semibold text-text-primary">Couldn&apos;t capture posting</h1>
-            <p className="text-text-secondary font-mono text-sm">{message}</p>
-            <button
-              onClick={() => navigate('/applications')}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-brand-primary text-white text-sm font-medium hover:bg-brand-primary/90 transition-colors cursor-pointer"
-            >
-              Go to Application Tracker
-            </button>
           </>
         ) : (
           <>
-            <div className="w-16 h-16 rounded-full border-4 border-brand-primary/10 border-t-brand-primary animate-spin mx-auto"></div>
-            <h1 className="text-xl font-semibold text-text-primary">Capturing job posting...</h1>
-            <p className="text-text-secondary font-mono text-sm">{message}</p>
+            <Loader2 size={22} className="animate-spin text-fg-2" aria-hidden="true" />
+            <h1 className="mt-5 text-[22px] font-semibold tracking-tight text-fg">Saving the posting as a draft</h1>
+            <p className="mt-2 text-[14px] text-fg-2">{message}</p>
             {url && (
-              <p className="text-text-muted text-xs truncate" title={url}>
+              <p className="mt-3 truncate font-mono text-[12px] text-fg-3" title={url}>
                 {url}
               </p>
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }

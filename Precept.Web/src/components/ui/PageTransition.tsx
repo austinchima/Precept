@@ -1,22 +1,20 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'motion/react';
 
 interface PageTransitionProps {
   children: React.ReactNode;
   className?: string;
 }
 
+/** Short fade-and-rise on route entry; static under reduced motion. */
 export default function PageTransition({ children, className = '' }: PageTransitionProps) {
+  const reduce = useReducedMotion();
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15, filter: 'blur(8px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: -15, filter: 'blur(8px)' }}
-      transition={{ 
-        duration: 0.5, 
-        ease: [0.22, 1, 0.36, 1] // Custom smooth easing (like Apple/premium)
-      }}
-      className={`w-full h-full ${className}`}
+      initial={reduce ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className={className}
     >
       {children}
     </motion.div>
