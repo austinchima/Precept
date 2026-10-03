@@ -275,9 +275,11 @@ public class AuthEndpointTests : IAsyncLifetime
             "precept_auth cookie must be set on demo login");
 
         // 2. Verify seeded data in DB
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
         await using var db = _factory.CreateDbContext();
-        var demoUser = await db.Users.FirstOrDefaultAsync(u => u.Email == "demo@precept.app");
+        var demoUser = await db.Users.FirstOrDefaultAsync(u => u.Id == auth!.UserId);
         demoUser.Should().NotBeNull();
+        demoUser!.IsDemo.Should().BeTrue();
 
         var demoApps = await db.Applications.IgnoreQueryFilters().Where(a => a.UserId == demoUser!.Id).ToListAsync();
         demoApps.Should().NotBeEmpty("demo applications must be seeded");
@@ -287,7 +289,7 @@ public class AuthEndpointTests : IAsyncLifetime
         var demoStories = await db.Stories.IgnoreQueryFilters().Where(s => s.UserId == demoUser!.Id).ToListAsync();
         demoStories.Should().NotBeEmpty("demo stories must be seeded");
 
-        // 3. Subsequent Demo Login succeeds seamlessly
+        // 3. A subsequent demo login also succeeds (with its own account; see DemoIsolationTests)
         var client2 = _factory.CreateCookieClient();
         var response2 = await client2.PostAsync("/api/auth/demo-login", null);
         response2.StatusCode.Should().Be(HttpStatusCode.OK);

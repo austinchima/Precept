@@ -7,6 +7,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ToastProvider } from './components/ui/Toast';
+import { LogoMark } from './components/ui/kit';
 
 // Eagerly loaded components (critical path)
 import Layout from './components/Layout';
@@ -24,25 +25,22 @@ const MockInterview = lazy(() => import('./pages/MockInterview'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Capture = lazy(() => import('./pages/Capture'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
-const NotFound1 = lazy(() => import('./components/ui/8bit-not-found1'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 import PageTransition from './components/ui/PageTransition';
 
-// A simple protected route wrapper
+function FullPageLoader() {
+  return (
+    <div className="grid min-h-[100dvh] place-items-center bg-bg" role="status" aria-label="Loading">
+      <LogoMark size={28} className="animate-pulse" />
+    </div>
+  );
+}
+
+// Protected routes redirect signed-out visitors to the landing page.
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-brand-secondary font-mono text-sm text-brand-primary">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-full border-4 border-brand-primary/10 border-t-brand-primary animate-spin" />
-          <span className="animate-pulse">Accessing Secure Vault...</span>
-        </div>
-      </div>
-    );
-  }
-
+  if (isLoading) return <FullPageLoader />;
   if (!isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -50,18 +48,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // Redirects already-authenticated users to /dashboard
 function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) return <RouteLoader />;
+  if (isLoading) return <FullPageLoader />;
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
-// Fallback loader for lazy routes
+// Fallback while a lazy route chunk loads: a skeleton in the content area.
 const RouteLoader = () => (
-  <div className="min-h-[50vh] flex items-center justify-center font-mono text-sm text-brand-primary/60">
-    <div className="flex items-center gap-2">
-      <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-      <span>Loading module...</span>
+  <div className="mx-auto w-full max-w-6xl px-4 pt-8 md:px-8" role="status" aria-label="Loading">
+    <div className="skeleton h-8 w-56" />
+    <div className="skeleton mt-3 h-4 w-80" />
+    <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <div className="skeleton h-28" />
+      <div className="skeleton h-28" />
+      <div className="skeleton h-28" />
     </div>
   </div>
 );
@@ -105,7 +105,7 @@ export default function App() {
               </ProtectedRoute>
             } />
             
-            <Route path="*" element={<PageTransition><NotFound1 /></PageTransition>} />
+            <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
           </Routes>
         </Suspense>
       </Router>

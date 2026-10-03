@@ -273,6 +273,9 @@ namespace Precept.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<DateTime?>("DemoExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("DigestHourUtc")
                         .HasColumnType("integer");
 
@@ -295,6 +298,9 @@ namespace Precept.Api.Migrations
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDemo")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastDigestSentAt")
                         .HasColumnType("timestamp with time zone");

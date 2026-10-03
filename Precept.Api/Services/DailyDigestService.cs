@@ -49,6 +49,7 @@ public class DailyDigestService(IServiceProvider serviceProvider, ILogger<DailyD
 
         var usersToProcess = await dbContext.Users
             .Where(u => u.EmailDigestEnabled 
+                     && !u.IsDemo
                      && u.DigestHourUtc == currentHour 
                      && (u.LastDigestSentAt == null || u.LastDigestSentAt < today))
             .ToListAsync(cancellationToken);

@@ -10,6 +10,8 @@ using Scalar.AspNetCore;
 using Serilog;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -188,6 +190,7 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 // ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IDigestQueryService, DigestQueryService>();
 builder.Services.AddHostedService<DailyDigestService>();
+builder.Services.AddHostedService<DemoCleanupService>();
 builder.Services.AddSingleton<ISpacedRepetitionAlgorithm, Sm2Algorithm>();
 builder.Services.AddSingleton<IReviewScheduler, ReviewScheduler>();
 builder.Services.AddScoped<IStoryService, StoryService>();
@@ -208,6 +211,8 @@ builder.Services.Configure<AiSettings>(builder.Configuration.GetSection(AiSettin
 builder.Services.AddSingleton<ILlmClientFactory, LlmClientFactory>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IMockInterviewService, MockInterviewService>();
+builder.Services.Configure<DemoSettings>(builder.Configuration.GetSection(DemoSettings.SectionName));
+builder.Services.AddScoped<IDemoAccountService, DemoAccountService>();
 
 // ─────────────────────────────────────────────────────────────
 //  8. Rate Limiting (prevents brute-force and abuse)
@@ -231,6 +236,21 @@ builder.Services.AddRateLimiter(options =>
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
+    });
+
+    // Demo account creation: partitioned by client IP so one visitor cannot mint unlimited tenants.
+    // Behind a reverse proxy this needs forwarded headers (M1-F4) to see the real client IP.
+    options.AddPolicy("demo", httpContext =>
+    {
+        var demoSettings = httpContext.RequestServices.GetRequiredService<IOptions<DemoSettings>>().Value;
+        return RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = demoSettings.MaxCreationsPerIpPerHour,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0
+            });
     });
 
     options.OnRejected = async (context, token) =>
@@ -322,6 +342,22 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("RunMigr
 //  8. Authorization      — enforces policy using established identity
 //  9. Endpoints          — actual business logic
 // ─────────────────────────────────────────────────────────────
+
+// 0. Forwarded headers (opt-in): behind a trusted reverse proxy, take the client IP from the
+//    right-most X-Forwarded-For entry so per-IP rate limits see real visitors.
+//    Only enable when every request reaches the API through a proxy that appends this header;
+//    otherwise a client could spoof its own address.
+if (app.Configuration.GetValue<bool>("ForwardedHeaders:TrustAllProxies"))
+{
+    var forwardedOptions = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+        ForwardLimit = 1
+    };
+    forwardedOptions.KnownIPNetworks.Clear();
+    forwardedOptions.KnownProxies.Clear();
+    app.UseForwardedHeaders(forwardedOptions);
+}
 
 app.Use(async (context, next) =>
 {

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 
 export type ToastVariant = 'success' | 'error' | 'info' | 'warning';
 
@@ -19,8 +19,6 @@ interface ToastContextValue {
   warning: (message: string, title?: string) => void;
 }
 
-// ─── Context ─────────────────────────────────────────────────────────────────
-
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function useToast(): ToastContextValue {
@@ -29,101 +27,44 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-
 const DISMISS_AFTER_MS = 5000;
 
-const VARIANT_CONFIG: Record<
-  ToastVariant,
-  { iconClass: string; border: string; iconColor: string; bg: string; titleColor: string }
-> = {
-  success: {
-    iconClass: 'fa-solid fa-circle-check',
-    border: 'border-[#4ade80]/40',
-    iconColor: 'text-[#4ade80]',
-    bg: 'bg-[#4ade80]/5',
-    titleColor: 'text-[#4ade80]',
-  },
-  error: {
-    iconClass: 'fa-solid fa-circle-xmark',
-    border: 'border-[#f87171]/40',
-    iconColor: 'text-[#f87171]',
-    bg: 'bg-[#f87171]/5',
-    titleColor: 'text-[#f87171]',
-  },
-  warning: {
-    iconClass: 'fa-solid fa-triangle-exclamation',
-    border: 'border-[#fbbf24]/40',
-    iconColor: 'text-[#fbbf24]',
-    bg: 'bg-[#fbbf24]/5',
-    titleColor: 'text-[#fbbf24]',
-  },
-  info: {
-    iconClass: 'fa-solid fa-circle-info',
-    border: 'border-accent-teal/40',
-    iconColor: 'text-accent-teal',
-    bg: 'bg-accent-teal/5',
-    titleColor: 'text-accent-teal',
-  },
+const ICONS: Record<ToastVariant, { icon: React.ReactNode; tone: string }> = {
+  success: { icon: <CheckCircle2 size={16} />, tone: 'text-accent-text' },
+  error: { icon: <XCircle size={16} />, tone: 'text-danger' },
+  warning: { icon: <AlertTriangle size={16} />, tone: 'text-warning' },
+  info: { icon: <Info size={16} />, tone: 'text-fg-2' },
 };
 
-// ─── Individual Toast Item ────────────────────────────────────────────────────
-
-interface ToastItemProps {
-  key?: React.Key;
-  toast: Toast;
-  onDismiss: (id: string) => void;
-}
-
-function ToastItem({ toast, onDismiss }: ToastItemProps) {
-  const { iconClass, border, iconColor, bg, titleColor } = VARIANT_CONFIG[toast.variant];
-  const defaultTitle: Record<ToastVariant, string> = {
-    success: 'Success',
-    error: 'Something went wrong',
-    warning: 'Warning',
-    info: 'Info',
-  };
-
+function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
+  const reduce = useReducedMotion();
+  const { icon, tone } = ICONS[toast.variant];
   return (
-    <div
-      aria-live="polite"
-      aria-label="Notification"
-      className={`
-        flex items-start gap-3 w-full max-w-[384px] p-4 rounded-lg border shadow-2xl
-        ${bg} ${border}
-        bg-dashboard-bg/95
-        backdrop-blur-sm
-        animate-toast-in
-        pointer-events-auto
-      `}
-      role="alert"
+    <motion.div
+      layout={!reduce}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, x: 24 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+      role={toast.variant === 'error' ? 'alert' : 'status'}
+      className="pointer-events-auto flex w-[min(92vw,360px)] items-start gap-3 rounded-xl border border-line bg-surface-1 px-4 py-3 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.45)]"
     >
-      <i
-        className={`${iconClass} ${iconColor} text-sm mt-0.5 shrink-0`}
-        aria-hidden="true"
-      ></i>
-
-      <div className="flex-1 min-w-0">
-        <p className={`text-xs font-mono font-semibold uppercase tracking-widest mb-0.5 ${titleColor}`}>
-          {toast.title ?? defaultTitle[toast.variant]}
-        </p>
-        <p className="text-sm text-text-primary leading-relaxed wrap-break-word">
-          {toast.message}
-        </p>
+      <span className={`mt-0.5 ${tone}`} aria-hidden="true">{icon}</span>
+      <div className="min-w-0 flex-1">
+        {toast.title && <p className="text-[13.5px] font-medium text-fg">{toast.title}</p>}
+        <p className="text-[13px] leading-relaxed text-fg-2">{toast.message}</p>
       </div>
-
       <button
+        type="button"
         onClick={() => onDismiss(toast.id)}
-        className="text-text-secondary hover:text-white transition-colors shrink-0 cursor-pointer flex items-center justify-center min-w-[44px] min-h-[44px] -my-3 -mr-3"
+        className="-mr-1 grid h-6 w-6 place-items-center rounded-md text-fg-3 transition-colors hover:bg-surface-2 hover:text-fg"
         aria-label="Dismiss notification"
       >
-        <i className="fa-solid fa-xmark text-xs"></i>
+        <X size={14} />
       </button>
-    </div>
+    </motion.div>
   );
 }
-
-// ─── Provider + Portal ────────────────────────────────────────────────────────
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -138,31 +79,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback(
     (message: string, variant: ToastVariant = 'info', title?: string) => {
       const id = `${Date.now()}-${Math.random()}`;
-      setToasts((prev) => [...prev.slice(-4), { id, message, variant, title }]);
-
-      const timer = setTimeout(() => dismiss(id), DISMISS_AFTER_MS);
-      timers.current.set(id, timer);
+      setToasts((prev) => [...prev.slice(-3), { id, message, variant, title }]);
+      timers.current.set(id, setTimeout(() => dismiss(id), DISMISS_AFTER_MS));
     },
     [dismiss]
   );
 
   const success = useCallback((msg: string, title?: string) => toast(msg, 'success', title), [toast]);
-  const error   = useCallback((msg: string, title?: string) => toast(msg, 'error', title),   [toast]);
-  const info    = useCallback((msg: string, title?: string) => toast(msg, 'info', title),    [toast]);
+  const error = useCallback((msg: string, title?: string) => toast(msg, 'error', title), [toast]);
+  const info = useCallback((msg: string, title?: string) => toast(msg, 'info', title), [toast]);
   const warning = useCallback((msg: string, title?: string) => toast(msg, 'warning', title), [toast]);
 
   return (
     <ToastContext.Provider value={{ toast, success, error, info, warning }}>
       {children}
-
-      {/* Toast portal — fixed top-right */}
-      <div
-        className="fixed top-4 right-4 z-9999 flex flex-col gap-2 pointer-events-none"
-        aria-label="Notifications"
-      >
-        {toasts.map((t) => (
-          <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
-        ))}
+      <div className="pointer-events-none fixed bottom-4 right-4 z-[80] flex flex-col items-end gap-2" aria-live="polite">
+        <AnimatePresence initial={false}>
+          {toasts.map((t) => (
+            <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );

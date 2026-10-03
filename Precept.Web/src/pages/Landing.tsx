@@ -1,1623 +1,517 @@
-import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import {
-  ArrowRight, ArrowUpRight, Check, Menu, X, Quote, Sparkles,
-  Mic, RefreshCw, FileCode2, GitBranch, FileSearch, Layers,
-  Terminal, Activity, Hash, Star, ChevronDown,
-} from "lucide-react";
-import { useAuth } from "../AuthContext";
-import { api } from "../api";
-import type { Testimonial } from "../types";
-import PageTransition from "../components/ui/PageTransition";
-import { gsap, useGSAP, prefersReducedMotion } from "../lib/animations";
-import { AnimatedSection } from "../components/animation/AnimatedSection";
-import { SmoothScroll } from "../components/animation/SmoothScroll";
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Bookmark, Download, Github, Menu, Mic, Moon, ShieldCheck, Sun, X } from 'lucide-react';
+import { useAuth } from '../AuthContext';
+import { api } from '../api';
+import type { ConfidenceLevel, Testimonial } from '../types';
+import { SmoothScroll } from '../components/animation/SmoothScroll';
+import { gsap, MOTION_OK, ScrollTrigger, SplitText, useGSAP } from '../lib/animations';
+import { useTheme } from '../lib/theme';
+import { Button, Chip, Kbd, Logo } from '../components/ui/kit';
+import { ConfidencePicker } from '../components/domain';
+import { useToast } from '../components/ui/Toast';
+import { cn } from '../lib/utils';
 
-/* ─────────────────────────── DESIGN TOKENS ─────────────────────────── */
+const GITHUB_URL = 'https://github.com/austinchima/Precept';
 
-const c = {
-  bg0:    "#02050A",          // deep slate-black
-  bg1:    "#06090F",
-  bg2:    "#0B0F17",
-  bg3:    "#11161F",
-  ink:    "#E6EBF2",
-  inkDim: "#9CA8B8",
-  inkMute:"#5A6678",
-  hair:   "rgba(255,255,255,0.07)",
-  hair2:  "rgba(255,255,255,0.12)",
-  teal:   "#2dd4bf",
-  tealDim:"rgba(45,212,191,0.14)",
-  violet: "#8b5cf6",
-  // Confidence ladder
-  rose:   "#f43f5e",
-  amber:  "#f59e0b",
-  sky:    "#38bdf8",
-  emerald:"#10b981",
-} as const;
-
-/* ─────────────────────────── PRIMITIVE: PILL ─────────────────────────── */
-
-function Eyebrow({ children, color = c.teal }: { children: ReactNode; color?: string }) {
+/** Real screenshots of the app (fictional sample data), one per theme. */
+function ProductShot({ name, alt, className, priority }: { name: string; alt: string; className?: string; priority?: boolean }) {
+  const { resolved } = useTheme();
   return (
-    <span
-      className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.18em]"
-      style={{
-        background: `${color}14`,
-        border: `1px solid ${color}33`,
-        color,
-      }}
-    >
-      <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-      {children}
-    </span>
+    <img
+      src={`/product/${resolved}-${name}.webp`}
+      alt={alt}
+      width={2400}
+      height={1500}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding="async"
+      className={cn('block h-auto w-full select-none', className)}
+      draggable={false}
+    />
   );
 }
 
-/* ─────────────────────────── NAVBAR ─────────────────────────── */
-
-function Navbar() {
+function useDemo() {
+  const { demoLogin } = useAuth();
   const navigate = useNavigate();
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const toast = useToast();
+  const [loading, setLoading] = useState(false);
+  const start = async () => {
+    setLoading(true);
+    try {
+      await demoLogin();
+      navigate('/dashboard');
+    } catch (err) {
+      toast.error((err as Error).message || 'The demo could not start. Try again in a minute.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  return { start, loading };
+}
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+/* ───────────────────────── Navigation ───────────────────────── */
 
-  const navLinks = [
-    { label: "Wedge", href: "#wedge" },
-    { label: "Modules", href: "#modules" },
-    { label: "Confidence", href: "#ladder" },
-    { label: "How it works", href: "#how" },
-    { label: "Roadmap", href: "#r2" },
+function Nav() {
+  const navRef = useRef<HTMLElement>(null);
+  const [open, setOpen] = useState(false);
+  const { resolved, setPreference } = useTheme();
+  const demo = useDemo();
+
+  useGSAP(() => {
+    const nav = navRef.current!;
+    // toggleClass drops the class once progress hits 'max', so derive it from the scroll position instead.
+    ScrollTrigger.create({ start: 0, end: 'max', onUpdate: (self) => nav.classList.toggle('nav-scrolled', self.scroll() > 8) });
+  });
+
+  const links = [
+    { href: '#product', label: 'Product' },
+    { href: '#features', label: 'Features' },
+    { href: '#privacy', label: 'Privacy' },
   ];
 
-  const { demoLogin } = useAuth();
-
-  const goLogin = (mode?: "signup") => {
-    navigate("/login", mode === "signup" ? { state: { mode: "signup" } } : undefined);
-    setMobileOpen(false);
-  };
-
-  const handleLaunchDemo = async () => {
-    try {
-      await demoLogin();
-      navigate('/dashboard');
-    } catch {
-      navigate('/login');
-    }
-  };
-
   return (
-    <>
-      <nav
-        data-testid="landing-nav"
-        className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
-        style={{
-          background: scrolled ? "rgba(6,9,15,0.72)" : "transparent",
-          backdropFilter: scrolled ? "blur(18px) saturate(160%)" : "none",
-          WebkitBackdropFilter: scrolled ? "blur(18px) saturate(160%)" : "none",
-          borderBottom: scrolled ? `1px solid ${c.hair}` : "1px solid transparent",
-        }}
-      >
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-          {/* Wordmark */}
-          <a href="/" className="flex items-center gap-2 no-underline" data-testid="landing-logo">
-            <Terminal size={22} strokeWidth={2.2} className="shrink-0" style={{ color: c.teal }} />
-            <span className="font-display text-[18px] font-bold tracking-tight" style={{ color: c.ink }}>
-              Precept
-            </span>
-            <span
-              className="hidden origin-left overflow-hidden whitespace-nowrap font-mono text-[10px] uppercase tracking-widest transition-all duration-500 ease-out sm:inline-block"
-              style={{
-                color: c.inkMute,
-                opacity: scrolled ? 0 : 1,
-                maxWidth: scrolled ? 0 : "140px",
-                transform: scrolled ? "translateX(-10px)" : "translateX(0)",
-              }}
-            >
-              ─ Career&nbsp;OS
-            </span>
-          </a>
-
-          {/* Center Links */}
-          <div className="hidden items-center gap-7 md:flex">
-            {navLinks.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                className="font-mono text-[12px] uppercase tracking-[0.14em] transition-colors"
-                style={{ color: c.inkDim }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = c.ink)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = c.inkDim)}
-              >
-                {l.label}
-              </a>
-            ))}
-          </div>
-
-          {/* Right CTA */}
-          <div className="hidden items-center gap-4 pl-4 md:flex">
-            <button
-              type="button"
-              data-testid="nav-demo-btn"
-              onClick={handleLaunchDemo}
-              className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.14em] transition-all cursor-pointer"
-              style={{
-                background: "rgba(45,212,191,0.12)",
-                color: c.teal,
-                border: "1px solid rgba(45,212,191,0.35)",
-              }}
-            >
-              <span>⚡</span> Live Demo
-            </button>
-            <a
-              href="https://github.com/austinchima/Precept"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="nav-github-link"
-              className="flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.14em] transition-colors"
-              style={{ color: c.inkDim }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = c.ink)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = c.inkDim)}
-            >
-              <i className="fa-brands fa-github" /> GitHub
-            </a>
-            <button
-              type="button"
-              data-testid="nav-cta-btn"
-              onClick={() => goLogin("signup")}
-              className="flex items-center gap-1.5 rounded-full px-4 py-2 font-mono text-[12px] uppercase tracking-[0.14em] transition-colors cursor-pointer"
-              style={{
-                background: c.ink,
-                color: c.bg0,
-                boxShadow: `0 0 0 1px ${c.ink}, 0 8px 24px -8px rgba(255,255,255,0.18)`,
-              }}
-            >
-              Get started <ArrowUpRight className="ml-1" size={12} />
-            </button>
-          </div>
-
-          {/* Mobile toggle */}
-          <button
-            type="button"
-            data-testid="mobile-menu-toggle"
-            className="flex h-9 w-9 items-center justify-center rounded-md md:hidden"
-            style={{ color: c.ink, background: c.hair }}
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile sheet */}
-      {mobileOpen && (
-        <div
-          data-testid="mobile-menu"
-          className="fixed inset-0 z-40 flex flex-col items-start gap-8 px-8 pt-24 md:hidden"
-          style={{ background: "rgba(2,5,10,0.96)", backdropFilter: "blur(24px)" }}
-        >
-          {navLinks.map((l) => (
-            <a
-              key={l.label}
-              href={l.href}
-              className="font-display text-3xl font-bold"
-              style={{ color: c.ink }}
-              onClick={() => setMobileOpen(false)}
-            >
-              {l.label}
-            </a>
+    <header
+      ref={navRef}
+      data-testid="landing-nav"
+      className="group/nav fixed inset-x-0 top-0 z-50 border-b border-transparent transition-[background-color,border-color,backdrop-filter] duration-300 [&.nav-scrolled]:border-line [&.nav-scrolled]:bg-bg/80 [&.nav-scrolled]:backdrop-blur-md"
+    >
+      <nav aria-label="Main" className="mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-6 px-5 md:px-8">
+        <a href="#top" aria-label="Precept home" data-testid="landing-logo">
+          <Logo />
+        </a>
+        <ul className="hidden items-center gap-1 md:flex">
+          {links.map((l) => (
+            <li key={l.href}>
+              <a href={l.href} className="rounded-md px-3 py-2 text-[14px] text-fg-2 transition-colors hover:text-fg">{l.label}</a>
+            </li>
           ))}
-          <button
-            type="button"
-            onClick={() => goLogin("signup")}
-            className="mt-auto mb-12 w-full rounded-full px-6 py-3 font-mono text-sm uppercase tracking-widest"
-            style={{ background: c.ink, color: c.bg0 }}
-          >
-            Get started free →
-          </button>
+        </ul>
+        <div className="hidden items-center gap-2 md:flex">
+          <Button variant="ghost" size="sm" icon={resolved === 'dark' ? <Sun size={16} /> : <Moon size={16} />} onClick={() => setPreference(resolved === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme" />
+          <Button variant="ghost" size="sm" to="/login" data-testid="nav-signin">Sign in</Button>
+          <Button variant="secondary" size="sm" loading={demo.loading} onClick={demo.start} data-testid="nav-demo-btn">Try the demo</Button>
+          <Button variant="primary" size="sm" to="/login?mode=signup" data-testid="nav-cta-btn">Create account</Button>
+        </div>
+        <Button variant="ghost" size="sm" className="md:hidden" icon={open ? <X size={18} /> : <Menu size={18} />} onClick={() => setOpen((o) => !o)} aria-label="Menu" aria-expanded={open} data-testid="mobile-menu-toggle" />
+      </nav>
+      {open && (
+        <div className="border-t border-line bg-bg px-5 pb-6 pt-2 md:hidden" data-testid="mobile-menu">
+          <ul className="flex flex-col">
+            {links.map((l) => (
+              <li key={l.href}>
+                <a href={l.href} onClick={() => setOpen(false)} className="block py-3 text-[16px] text-fg">{l.label}</a>
+              </li>
+            ))}
+            <li><Link to="/login" className="block py-3 text-[16px] text-fg">Sign in</Link></li>
+          </ul>
+          <div className="mt-4 grid gap-2">
+            <Button variant="primary" size="lg" to="/login?mode=signup">Create account</Button>
+            <Button variant="secondary" size="lg" loading={demo.loading} onClick={demo.start}>Try the demo</Button>
+          </div>
         </div>
       )}
-    </>
+    </header>
   );
 }
 
-/* ─────────────────────────── HERO ─────────────────────────── */
-
-const ConfidenceRungs = [
-  { key: "Panic",    label: "Panic",    color: c.rose,    pct: 18 },
-  { key: "Shaky",    label: "Shaky",    color: c.amber,   pct: 36 },
-  { key: "Okay",     label: "Okay",     color: c.sky,     pct: 56 },
-  { key: "Solid",    label: "Solid",    color: c.teal,    pct: 80 },
-  { key: "CanTeach", label: "Can Teach",color: c.emerald, pct: 100 },
-];
+/* ───────────────────────── Hero ───────────────────────── */
 
 function Hero() {
-  const navigate = useNavigate();
-  const { demoLogin } = useAuth();
-  const heroRef = useRef<HTMLElement>(null);
-  const [activeRung, setActiveRung] = useState(3); // Solid by default
-
-  const handleLaunchDemo = async () => {
-    try {
-      await demoLogin();
-      navigate('/dashboard');
-    } catch {
-      navigate('/login');
-    }
-  };
-
-  // cycle the rung in the mockup
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const i = setInterval(() => setActiveRung((r) => (r + 1) % ConfidenceRungs.length), 1800);
-    return () => clearInterval(i);
-  }, []);
+  const ref = useRef<HTMLElement>(null);
+  const demo = useDemo();
 
   useGSAP(
     () => {
-      if (prefersReducedMotion() || !heroRef.current) return;
-      const ctx = gsap.context(() => {
-        const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-        tl.from(".hero-eyebrow",   { opacity: 0, y: 16, duration: 0.6 })
-          .from(".hero-headline",  { opacity: 0, y: 28, duration: 0.85 }, "-=0.3")
-          .from(".hero-sub",       { opacity: 0, y: 22, duration: 0.7 },  "-=0.55")
-          .from(".hero-ctas > *",  { opacity: 0, y: 16, duration: 0.55, stagger: 0.08, clearProps: "transform" }, "-=0.45")
-          .from(".hero-mock",      { opacity: 0, y: 40, scale: 0.97, duration: 1.0 }, "-=0.4")
-          .from(".hero-techbar > *", { opacity: 0, y: 10, duration: 0.5, stagger: 0.05 }, "-=0.5");
-
-        gsap.to(".hero-orb", { y: -22, duration: 5.5, ease: "sine.inOut", repeat: -1, yoyo: true });
-      }, heroRef);
-      return () => ctx.revert();
+      const mm = gsap.matchMedia();
+      mm.add(MOTION_OK, () => {
+        // Headline rises line by line from behind a mask; re-splits on resize and font load.
+        SplitText.create('.hero-title', {
+          type: 'lines',
+          mask: 'lines',
+          autoSplit: true,
+          onSplit: (self) => gsap.from(self.lines, { yPercent: 105, duration: 1.1, ease: 'expo.out', stagger: 0.09, delay: 0.1 }),
+        });
+        gsap.from('.hero-fade', { opacity: 0, y: 14, duration: 0.9, ease: 'expo.out', stagger: 0.08, delay: 0.45 });
+        gsap.from('.hero-shot', { opacity: 0, y: 60, duration: 1.4, ease: 'expo.out', delay: 0.35 });
+        // The product frame settles from a tilt to flat as you scroll into it.
+        gsap.fromTo(
+          '.hero-shot-inner',
+          { rotateX: 16, scale: 0.94 },
+          { rotateX: 0, scale: 1, ease: 'none', scrollTrigger: { trigger: '.hero-shot', start: 'top 92%', end: 'top 18%', scrub: 0.6 } }
+        );
+      });
+      return () => mm.revert();
     },
-    { scope: heroRef }
+    { scope: ref }
   );
 
   return (
-    <section
-      ref={heroRef}
-      data-testid="hero-section"
-      className="relative isolate overflow-hidden pt-32 pb-24"
-      style={{
-        background: c.bg0,
-      }}
-    >
-      {/* dot-grid floor */}
-      <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-60" />
-      {/* horizon glow */}
-      <div
-        className="hero-orb pointer-events-none absolute left-1/2 top-[14%] h-[640px] w-[1100px] -translate-x-1/2 rounded-[50%]"
-        style={{
-          background: `radial-gradient(closest-side, rgba(45,212,191,0.18), rgba(139,92,246,0.10) 45%, transparent 75%)`,
-          filter: "blur(4px)",
-        }}
-      />
-      {/* corner accents (IDE-style) */}
-      <div className="pointer-events-none absolute left-6 top-24 hidden font-mono text-[10px] uppercase tracking-[0.22em] md:block" style={{ color: c.inkMute }}>
-        ~/precept&nbsp;<span className="caret-blink" />
-      </div>
-      <div className="pointer-events-none absolute right-6 top-24 hidden font-mono text-[10px] tracking-[0.18em] md:block" style={{ color: c.inkMute }}>
-        v1.0 · R1 shipped · R2 incoming
-      </div>
-
-      <div className="relative mx-auto max-w-[1200px] px-6">
-        {/* Eyebrow */}
-        <div className="hero-eyebrow flex justify-center">
-          <Eyebrow color={c.teal}>The Career OS for software engineers</Eyebrow>
+    <section ref={ref} id="top" className="relative overflow-hidden pt-28 md:pt-32" data-testid="hero-section">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[720px] bg-[radial-gradient(60%_50%_at_70%_0%,var(--accent-soft),transparent_70%)]" />
+      <div className="mx-auto grid max-w-[1240px] items-end gap-10 px-5 md:px-8 lg:grid-cols-12">
+        <div className="lg:col-span-7">
+          <h1 className="hero-title display-xl max-w-[13ch] text-fg">Know your engineering stories cold.</h1>
         </div>
-
-        {/* Headline */}
-        <h1
-          className="hero-headline mx-auto mt-7 max-w-[960px] text-center font-display font-bold leading-[1.02]"
-          style={{ fontSize: "clamp(44px, 7.2vw, 88px)", color: c.ink, letterSpacing: "-0.03em" }}
-        >
-          Turn interview <span className="font-editorial" style={{ color: c.teal, fontWeight: 400 }}>panic</span>
-          <br className="hidden sm:block" />
-          {" "}into{" "}
-          <span className="relative">
-            <span className="font-editorial" style={{ color: c.emerald, fontWeight: 400 }}>confidence.</span>
-            <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 300 10" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M2,7 Q75,1 150,5 T298,4" stroke={c.emerald} strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.6" />
-            </svg>
-          </span>
-        </h1>
-
-        {/* Sub */}
-        <p
-          className="hero-sub mx-auto mt-7 max-w-[620px] text-center font-body text-[17px] leading-[1.55]"
-          style={{ color: c.inkDim }}
-        >
-          Precept is the command center where engineers bank their interview stories, drill them with spaced repetition,
-          and run the whole job pipeline like a project — not a graveyard of browser tabs.
-        </p>
-
-        {/* CTAs */}
-        <div className="hero-ctas mt-9 flex flex-wrap items-center justify-center gap-2.5">
-          <button
-            type="button"
-            data-testid="hero-primary-cta"
-            onClick={() => navigate("/login", { state: { mode: "signup" } })}
-            className="gsap-magnetic group inline-flex items-center gap-2 rounded-full border border-transparent px-5 py-3 font-mono text-[12px] font-semibold uppercase leading-none tracking-[0.14em] transition-colors cursor-pointer"
-            style={{
-              background: c.ink,
-              color: c.bg0,
-              boxShadow: `0 0 0 1px ${c.ink}, 0 14px 40px -15px rgba(45,212,191,0.5)`,
-            }}
-          >
-            Get started — free
-            <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-          </button>
-          <a
-            data-testid="hero-github-cta"
-            href="https://github.com/austinchima/Precept"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="gsap-magnetic inline-flex items-center gap-2 rounded-full border px-5 py-3 font-mono text-[12px] font-semibold uppercase leading-none tracking-[0.14em] transition-colors"
-            style={{
-              background: "rgba(255,255,255,0.025)",
-              borderColor: c.hair2,
-              color: c.ink,
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            <i className="fa-brands fa-github" /> View on GitHub
-          </a>
-          <button
-            type="button"
-            data-testid="hero-demo-cta"
-            onClick={handleLaunchDemo}
-            className="gsap-magnetic group inline-flex items-center gap-1.5 rounded-full border px-4 py-3 font-mono text-[12px] font-semibold uppercase leading-none tracking-[0.14em] transition-all cursor-pointer"
-            style={{
-              background: "rgba(45,212,191,0.10)",
-              borderColor: "rgba(45,212,191,0.35)",
-              color: c.teal,
-              boxShadow: "0 0 20px rgba(45,212,191,0.10)",
-            }}
-          >
-            <span>⚡</span>
-            <span>Live Demo</span>
-          </button>
-        </div>
-
-        {/* tech credibility */}
-        <div className="hero-techbar mt-8 flex flex-wrap items-center justify-center gap-x-7 gap-y-3 font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: c.inkMute }}>
-          <span>Open source · MIT</span>
-          <span className="opacity-30">/</span>
-          <span><i className="devicon-dot-net-plain colored mr-1" />.NET 10</span>
-          <span className="opacity-30">/</span>
-          <span><i className="devicon-react-original colored mr-1" />React 19</span>
-          <span className="opacity-30">/</span>
-          <span><i className="devicon-postgresql-plain colored mr-1" />PostgreSQL</span>
-          <span className="opacity-30">/</span>
-          <span><i className="devicon-typescript-plain colored mr-1" />TypeScript</span>
-          <span className="opacity-30">/</span>
-          <span><i className="devicon-docker-plain colored mr-1" />Docker</span>
-        </div>
-
-        {/* HERO MOCKUP — live command center */}
-        <div
-          className="hero-mock relative mx-auto mt-16 w-full max-w-[1080px] rounded-2xl"
-          style={{
-            background: `linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)`,
-            border: `1px solid ${c.hair2}`,
-            boxShadow: `0 60px 120px -40px rgba(45,212,191,0.25), inset 0 1px 0 rgba(255,255,255,0.06)`,
-            backdropFilter: "blur(20px) saturate(140%)",
-          }}
-        >
-          {/* window chrome */}
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${c.hair}` }}>
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#ff5f57" }} />
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#febc2e" }} />
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28c840" }} />
-            </div>
-            <div
-              className="hidden items-center gap-2 rounded-md px-3 py-1 font-mono text-[10.5px] sm:flex"
-              style={{ background: c.bg2, color: c.inkMute, border: `1px solid ${c.hair}` }}
-            >
-              <Terminal size={11} /> precept · ~/career
-            </div>
-            <div className="font-mono text-[10.5px]" style={{ color: c.inkMute }}>
-              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full" style={{ background: c.emerald }} />
-              live
-            </div>
+        <div className="lg:col-span-5 lg:pb-2">
+          <p className="hero-fade max-w-[44ch] text-[17px] leading-relaxed text-fg-2">
+            Bank the work you have shipped, drill it on a spaced schedule, and practise answering out loud before every interview.
+          </p>
+          <div className="hero-fade mt-7 flex flex-wrap gap-2">
+            <Button variant="primary" size="lg" to="/login?mode=signup" iconRight={<ArrowRight size={16} />} data-testid="hero-primary-cta">Create account</Button>
+            <Button variant="secondary" size="lg" loading={demo.loading} onClick={demo.start} data-testid="hero-demo-cta">Try the demo</Button>
           </div>
-
-          {/* mockup body grid */}
-          <div className="grid grid-cols-12 gap-3 p-3 md:gap-4 md:p-5" style={{ background: c.bg1 }}>
-            {/* sidebar */}
-            <aside className="col-span-12 hidden flex-col gap-1 rounded-xl p-3 md:col-span-2 md:flex" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-              {[
-                { i: <Layers size={14} />, l: "Dashboard" },
-                { i: <FileCode2 size={14} />, l: "Story Bank", active: true },
-                { i: <RefreshCw size={14} />, l: "Quiz Mode" },
-                { i: <Mic size={14} />, l: "Mock Interview" },
-                { i: <FileSearch size={14} />, l: "JD Matcher" },
-                { i: <GitBranch size={14} />, l: "Pipeline" },
-                { i: <Activity size={14} />, l: "Analytics" },
-              ].map((it) => (
-                <div
-                  key={it.l}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 font-mono text-[11px]"
-                  style={{
-                    background: it.active ? c.tealDim : "transparent",
-                    color: it.active ? c.teal : c.inkDim,
-                  }}
-                >
-                  {it.i} <span className="truncate">{it.l}</span>
-                </div>
-              ))}
-              <div className="mt-2 pt-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: c.inkMute, borderTop: `1px solid ${c.hair}` }}>
-                Streak · 12d
-              </div>
-            </aside>
-
-            {/* center: story card */}
-            <div className="col-span-12 rounded-xl md:col-span-6" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${c.hair}` }}>
-                <div className="flex items-center gap-2 font-mono text-[11px]" style={{ color: c.inkDim }}>
-                  <Hash size={12} style={{ color: c.teal }} /> Story · <span style={{ color: c.ink }}>Auth/JWT-Rotation</span>
-                </div>
-                <div className="rounded-full px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-wider" style={{ background: `${c.violet}22`, color: c.violet, border: `1px solid ${c.violet}33` }}>
-                  Security
-                </div>
-              </div>
-              <div className="px-4 py-4">
-                <h3 className="font-display text-[17px] font-semibold" style={{ color: c.ink }}>
-                  Refresh-token reuse detection with cascade revocation
-                </h3>
-                <p className="mt-1.5 font-body text-[12.5px] leading-relaxed" style={{ color: c.inkDim }}>
-                  SHA-256-hashed refresh tokens in HttpOnly cookies. On reuse of a revoked token, the entire lineage of
-                  sessions is revoked atomically with an optimistic-concurrency guard.
-                </p>
-                {/* code snippet */}
-                <pre
-                  className="mt-3 overflow-hidden rounded-lg p-3 font-mono text-[11px] leading-[1.55]"
-                  style={{ background: c.bg0, color: c.inkDim, border: `1px solid ${c.hair}` }}
-                >
-<span style={{ color: c.violet }}>if</span> (token.IsRevoked) {"{"}
-{"  "}<span style={{ color: c.teal }}>await</span> _sessions.RevokeLineageAsync(token.LineageId);
-{"  "}<span style={{ color: c.rose }}>throw new</span> SecurityException(<span style={{ color: c.amber }}>"reuse"</span>);
-{"}"}
-                </pre>
-
-                {/* confidence ladder live */}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: c.inkMute }}>
-                      Confidence
-                    </span>
-                    <span
-                      className="font-mono text-[11px]"
-                      style={{ color: ConfidenceRungs[activeRung].color }}
-                    >
-                      {ConfidenceRungs[activeRung].label}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-1.5">
-                    {ConfidenceRungs.map((r, i) => (
-                      <div
-                        key={r.key}
-                        className="h-1.5 flex-1 rounded-full transition-all duration-500"
-                        style={{
-                          background: i <= activeRung ? r.color : c.hair,
-                          boxShadow: i === activeRung ? `0 0 12px ${r.color}` : "none",
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* right: pipeline kanban */}
-            <div className="col-span-12 grid grid-cols-2 gap-3 md:col-span-4 md:grid-cols-1">
-              <div className="rounded-xl p-3" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-wider" style={{ color: c.inkDim }}>
-                  <span>Pipeline</span>
-                  <span style={{ color: c.teal }}>28 active</span>
-                </div>
-                <div className="mt-2 space-y-1.5">
-                  {[
-                    { co: "Stripe",   role: "Senior Backend",   st: "Phone Screen", color: c.sky },
-                    { co: "Linear",   role: "Full-Stack Eng",   st: "Interviewing", color: c.amber },
-                    { co: "Vercel",   role: "Platform Eng",     st: "Offer",        color: c.emerald },
-                  ].map((a) => (
-                    <div key={a.co} className="flex items-center justify-between rounded-md px-2 py-2" style={{ background: c.bg1, border: `1px solid ${c.hair}` }}>
-                      <div>
-                        <div className="font-body text-[12px] font-semibold" style={{ color: c.ink }}>{a.co}</div>
-                        <div className="font-mono text-[10px]" style={{ color: c.inkMute }}>{a.role}</div>
-                      </div>
-                      <span
-                        className="rounded-full px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-wider"
-                        style={{ background: `${a.color}1c`, color: a.color, border: `1px solid ${a.color}33` }}
-                      >
-                        {a.st}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl p-3" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-wider" style={{ color: c.inkDim }}>
-                  <span>Due for review</span>
-                  <span style={{ color: c.amber }}>3</span>
-                </div>
-                <div className="mt-2 space-y-1">
-                  {["System Design / Sharding", "DevOps / K8s rollout", "Behavioral / Conflict"].map((t) => (
-                    <div key={t} className="flex items-center gap-2 font-mono text-[10.5px]" style={{ color: c.inkDim }}>
-                      <RefreshCw size={11} style={{ color: c.amber }} /> <span className="truncate">{t}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <p className="hero-fade mt-4 text-[13px] text-fg-3">The demo needs no sign-up and deletes itself after 24 hours.</p>
         </div>
       </div>
 
-      {/* scroll hint */}
-      <div className="relative mx-auto mt-10 flex justify-center" style={{ color: c.inkMute }}>
-        <ChevronDown size={20} className="animate-bounce opacity-60" />
+      <div className="hero-shot mx-auto mt-14 max-w-[1240px] px-5 md:mt-20 md:px-8 [perspective:1600px]">
+        <div className="hero-shot-inner origin-top overflow-hidden rounded-2xl border border-line-strong bg-surface-1 shadow-[0_40px_120px_-40px_rgb(0_0_0/0.55)] [transform-style:preserve-3d]">
+          <ProductShot name="dashboard" priority alt="The Precept dashboard showing stories due for review, follow-ups and the application pipeline." />
+        </div>
       </div>
     </section>
   );
 }
 
-/* ─────────────────────────── MARQUEE (logos / proof ticker) ─────────────────────────── */
+/* ───────────────────────── Manifesto ───────────────────────── */
 
-function Marquee() {
-  const items = [
-    "“Replaced 3 spreadsheets + a Notion doc.”",
-    "SuperMemo-2 (SM-2) Spaced Repetition",
-    "“I rehearsed STAR until I knew them cold.”",
-    "AI Mock Interview with Voice STAR Grading",
-    "“Pipeline view killed my tab graveyard.”",
-    "AI-Agnostic Engine (OpenAI · Claude · Gemini · DeepSeek)",
-    "“Walked into the round without freezing.”",
-    "1-Click Interactive Live Demo · Zero Friction",
-  ];
-  const loop = [...items, ...items];
+function Manifesto() {
+  const ref = useRef<HTMLElement>(null);
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add(MOTION_OK, () => {
+        // Words light up as you read down the paragraph.
+        const split = SplitText.create('.manifesto-text', { type: 'words', aria: 'auto' });
+        gsap.fromTo(
+          split.words,
+          { opacity: 0.16 },
+          { opacity: 1, ease: 'none', stagger: 0.1, scrollTrigger: { trigger: ref.current, start: 'top 70%', end: 'bottom 55%', scrub: true } }
+        );
+        return () => split.revert();
+      });
+      return () => mm.revert();
+    },
+    { scope: ref }
+  );
 
   return (
-    <section
-      className="relative overflow-hidden border-y py-5"
-      style={{
-        background: c.bg1,
-        borderColor: c.hair,
-      }}
-      data-testid="marquee-section"
-    >
-      <div className="marquee-track flex whitespace-nowrap gap-12">
-        {loop.map((it, i) => (
-          <span
-            key={i}
-            className="flex items-center gap-12 font-mono text-[12px] uppercase tracking-[0.18em]"
-            style={{ color: i % 2 === 0 ? c.inkDim : c.inkMute }}
-          >
-            {it}
-            <span style={{ color: c.teal, opacity: 0.55 }}>◇</span>
-          </span>
+    <section ref={ref} className="mx-auto max-w-[1240px] px-5 py-28 md:px-8 md:py-40">
+      <p className="manifesto-text display-md max-w-[30ch] text-fg">
+        Interviewers rarely ask what a hash map is. They ask about the outage you fixed, the trade-off you chose and the migration you led. Precept keeps those stories in one place and gets you to tell them without notes.
+      </p>
+    </section>
+  );
+}
+
+/* ───────────────────────── Product loop (pinned) ───────────────────────── */
+
+const STEPS = [
+  { title: 'Bank the work', body: 'Write each story once: the problem, what you chose and what happened. Technical snippets and STAR answers sit side by side.', shot: 'stories', alt: 'The STAR Bank with technical stories, categories and confidence levels.' },
+  { title: 'Drill it on a schedule', body: 'Spaced repetition brings each story back just before you would forget it. Say it, reveal your notes, rate yourself, and the next review moves.', shot: 'quiz', alt: 'A drill card with a code snippet, a typed answer and the saved explanation.' },
+  { title: 'Track every application', body: 'A board for each stage, follow-up reminders when a lead goes quiet, and an optional daily email with what is due.', shot: 'applications', alt: 'The applications board with columns for each stage.' },
+  { title: 'See where you are thin', body: 'Compare your stories and skills with the interview-ready bar, and with the job descriptions you save.', shot: 'readiness', alt: 'The readiness view with a radar chart of recall by category.' },
+] as const;
+
+function ProductLoop() {
+  const ref = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(0);
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add(`${MOTION_OK} and (min-width: 1024px)`, () => {
+        const shots = gsap.utils.toArray<HTMLElement>('.loop-shot');
+        gsap.set(shots.slice(1), { autoAlpha: 0, y: 24 });
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: '.loop-pin',
+            start: 'top top',
+            end: () => `+=${window.innerHeight * (STEPS.length - 1)}`,
+            pin: true,
+            scrub: 0.6,
+            invalidateOnRefresh: true,
+            snap: { snapTo: 1 / (STEPS.length - 1), duration: { min: 0.2, max: 0.6 }, ease: 'power2.inOut' },
+            onUpdate: (self) => setActive(Math.round(self.progress * (STEPS.length - 1))),
+          },
+        });
+        shots.forEach((shot, i) => {
+          if (i === 0) return;
+          tl.to(shots[i - 1], { autoAlpha: 0, y: -24, duration: 0.5 }, i - 1 + 0.25).to(shot, { autoAlpha: 1, y: 0, duration: 0.5 }, i - 1 + 0.35);
+        });
+        tl.to('.loop-progress', { scaleY: 1, ease: 'none', duration: STEPS.length - 1 }, 0);
+      });
+      return () => mm.revert();
+    },
+    { scope: ref }
+  );
+
+  return (
+    <section ref={ref} id="product" aria-labelledby="loop-heading" className="relative">
+      <div className="loop-pin mx-auto max-w-[1240px] px-5 md:px-8 lg:flex lg:h-[100dvh] lg:items-center">
+        <div className="grid w-full gap-12 lg:grid-cols-12 lg:items-center">
+          <div className="lg:col-span-4">
+            <p className="text-[13px] font-medium text-accent-text">How it works</p>
+            <h2 id="loop-heading" className="display-lg mt-3 text-fg">One loop, four screens.</h2>
+            <ol className="relative mt-10 hidden flex-col gap-7 pl-6 lg:flex">
+              <span aria-hidden="true" className="absolute left-0 top-1 h-[calc(100%-8px)] w-px bg-line" />
+              <span aria-hidden="true" className="loop-progress absolute left-0 top-1 h-[calc(100%-8px)] w-px origin-top scale-y-0 bg-accent-text" />
+              {STEPS.map((s, i) => (
+                <li key={s.title} className={cn('transition-opacity duration-500', active === i ? 'opacity-100' : 'opacity-40')}>
+                  <h3 className="text-[17px] font-semibold tracking-tight text-fg">{s.title}</h3>
+                  <p className="mt-1.5 max-w-[38ch] text-[14.5px] leading-relaxed text-fg-2">{s.body}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="relative hidden lg:col-span-8 lg:block">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-line-strong bg-surface-1">
+              {STEPS.map((s) => (
+                <div key={s.shot} className="loop-shot absolute inset-0">
+                  <ProductShot name={s.shot} alt={s.alt} />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Small screens and reduced motion: a plain stacked list */}
+          <ol className="flex flex-col gap-14 lg:hidden">
+            {STEPS.map((s) => (
+              <li key={s.title}>
+                <h3 className="text-[19px] font-semibold tracking-tight text-fg">{s.title}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-fg-2">{s.body}</p>
+                <div className="mt-5 overflow-hidden rounded-xl border border-line-strong">
+                  <ProductShot name={s.shot} alt={s.alt} />
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ───────────────────────── Features (bento) ───────────────────────── */
+
+function VoiceBars() {
+  return (
+    <div aria-hidden="true" className="flex h-14 items-center gap-[3px]">
+      {Array.from({ length: 36 }).map((_, i) => (
+        <span
+          key={i}
+          className="w-[3px] origin-center rounded-full bg-fg-3 motion-safe:animate-[voice_1.4s_ease-in-out_infinite]"
+          style={{ height: `${18 + ((i * 37) % 70)}%`, animationDelay: `${(i % 9) * 0.11}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function Features() {
+  const [level, setLevel] = useState<ConfidenceLevel>('Shaky');
+  return (
+    <section id="features" aria-labelledby="features-heading" className="mx-auto max-w-[1240px] px-5 py-28 md:px-8 md:py-36">
+      <h2 id="features-heading" className="reveal display-lg max-w-[18ch] text-fg">The rest of the search, in the same place.</h2>
+      <div className="mt-14 grid gap-4 md:grid-cols-6">
+        <article className="reveal panel flex flex-col justify-between gap-10 p-7 md:col-span-4">
+          <div>
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-surface-3 text-fg"><Mic size={18} /></span>
+            <h3 className="mt-5 text-[20px] font-semibold tracking-tight text-fg">Mock interviews, out loud</h3>
+            <p className="mt-2 max-w-[52ch] text-[15px] leading-relaxed text-fg-2">
+              Get a question for your role, a job post or one of your stories. Answer by voice or keyboard, then read feedback on situation, task, action and result.
+            </p>
+          </div>
+          <VoiceBars />
+        </article>
+
+        <article className="reveal panel flex flex-col gap-6 bg-accent-soft p-7 md:col-span-2">
+          <div>
+            <h3 className="text-[20px] font-semibold tracking-tight text-fg">Rate it honestly</h3>
+            <p className="mt-2 text-[15px] leading-relaxed text-fg-2">Five steps from panic to can-teach. Try it.</p>
+          </div>
+          <div className="mt-auto">
+            <ConfidencePicker value={level} onChange={setLevel} size="sm" />
+          </div>
+        </article>
+
+        <article className="reveal panel p-7 md:col-span-2">
+          <h3 className="text-[20px] font-semibold tracking-tight text-fg">Check a job post</h3>
+          <p className="mt-2 text-[15px] leading-relaxed text-fg-2">Paste a posting to see which skills it names that are on your list, and which are not.</p>
+          <div className="mt-6 flex flex-wrap gap-1.5" aria-label="Example result">
+            <Chip tone="accent">PostgreSQL</Chip>
+            <Chip tone="accent">TypeScript</Chip>
+            <Chip tone="accent">Docker</Chip>
+            <Chip>Kafka</Chip>
+            <Chip>Terraform</Chip>
+          </div>
+          <p className="mt-2 text-[12px] text-fg-3">Example result</p>
+        </article>
+
+        <article className="reveal panel flex flex-col p-7 md:col-span-2">
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-surface-3 text-fg"><Bookmark size={18} /></span>
+          <h3 className="mt-5 text-[20px] font-semibold tracking-tight text-fg">Save postings in one click</h3>
+          <p className="mt-2 text-[15px] leading-relaxed text-fg-2">A bookmarklet turns the posting you are reading into a draft application.</p>
+        </article>
+
+        <article className="reveal panel-quiet flex flex-col p-7 md:col-span-2">
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-surface-3 text-fg"><Download size={18} /></span>
+          <h3 className="mt-5 text-[20px] font-semibold tracking-tight text-fg">Search everything</h3>
+          <p className="mt-2 text-[15px] leading-relaxed text-fg-2">
+            Press <Kbd>⌘</Kbd> <Kbd>K</Kbd> to find a story, an application or a skill, or jump to any screen.
+          </p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+/* ───────────────────────── Privacy ───────────────────────── */
+
+const PRIVACY = [
+  { title: 'Export any time', body: 'Download everything in your account as JSON from Settings.' },
+  { title: 'Delete for good', body: 'Deleting your account removes your stories, applications and skills.' },
+  { title: 'Recordings stay with you', body: 'Mock interview audio is kept in your browser and never sent to Precept.' },
+  { title: 'AI only when you ask', body: 'Only the text you submit for feedback goes to the configured AI provider. The demo never calls one.' },
+  { title: 'Open source', body: 'MIT licensed. Run it yourself with Docker Compose if you prefer.' },
+];
+
+function Privacy() {
+  return (
+    <section id="privacy" aria-labelledby="privacy-heading" className="border-y border-line bg-surface-1/40">
+      <div className="mx-auto grid max-w-[1240px] gap-12 px-5 py-24 md:px-8 md:py-32 lg:grid-cols-12">
+        <div className="reveal lg:col-span-4">
+          <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent text-accent-ink"><ShieldCheck size={20} /></span>
+          <h2 id="privacy-heading" className="display-md mt-6 max-w-[16ch] text-fg">Your prep is personal. It stays yours.</h2>
+        </div>
+        <dl className="grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:col-span-8">
+          {PRIVACY.map((p) => (
+            <div key={p.title} className="reveal border-t border-line pt-5">
+              <dt className="text-[16px] font-semibold tracking-tight text-fg">{p.title}</dt>
+              <dd className="mt-1.5 text-[14.5px] leading-relaxed text-fg-2">{p.body}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+/* ───────────────────────── Testimonials (real, approved only) ───────────────────────── */
+
+function Testimonials() {
+  const [items, setItems] = useState<Testimonial[]>([]);
+  useEffect(() => {
+    api
+      .get<Testimonial[]>('/api/testimonial/public', { skipAuth: true })
+      .then((data) => setItems((data ?? []).slice(0, 3)))
+      .catch(() => setItems([]));
+  }, []);
+
+  useEffect(() => {
+    if (items.length) ScrollTrigger.refresh();
+  }, [items.length]);
+
+  if (items.length === 0) return null;
+  return (
+    <section aria-labelledby="testimonials-heading" className="mx-auto max-w-[1240px] px-5 py-24 md:px-8" data-testid="testimonials-section">
+      <h2 id="testimonials-heading" className="display-md text-fg">From people using it</h2>
+      <div className="mt-10 grid gap-4 md:grid-cols-3">
+        {items.map((t, i) => (
+          <figure key={t.id} className="panel flex flex-col justify-between gap-6 p-6" data-testid={`testimonial-${i}`}>
+            <blockquote className="line-clamp-3 text-[15.5px] leading-relaxed text-fg">“{t.text}”</blockquote>
+            <figcaption className="text-[13px]">
+              <span className="font-medium text-fg">{t.name}</span>
+              <span className="text-fg-3"> - {t.handle}</span>
+            </figcaption>
+          </figure>
         ))}
       </div>
     </section>
   );
 }
 
-/* ─────────────────────────── WEDGE — vs trackers ─────────────────────────── */
+/* ───────────────────────── Closing CTA and footer ───────────────────────── */
 
-function Wedge() {
+function FinalCta() {
+  const demo = useDemo();
   return (
-    <section
-      id="wedge"
-      data-testid="wedge-section"
-      className="relative overflow-hidden py-32"
-      style={{ background: c.bg0 }}
-    >
-      <div className="mx-auto max-w-[1200px] px-6">
-        <div className="flex flex-col items-center text-center">
-          <Eyebrow color={c.violet}>The wedge</Eyebrow>
-          <h2
-            className="mt-5 max-w-[860px] font-display font-bold leading-[1.05]"
-            style={{ fontSize: "clamp(34px, 5.2vw, 60px)", color: c.ink }}
-          >
-            Other tools track applications. Precept also <span className="font-editorial" style={{ color: c.teal, fontWeight: 400 }}>makes you interview-ready.</span>
-          </h2>
-          <p className="mt-5 max-w-[640px] font-body text-[16px] leading-relaxed" style={{ color: c.inkDim }}>
-            Trackers tell you <em>where</em> your applications are. Precept tells you <em>whether you're ready</em> for what comes next — by banking your stories and drilling them until recall is automatic.
-          </p>
-        </div>
-
-        {/* comparison grid */}
-        <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {/* Spreadsheet */}
-          <div
-            className="rounded-2xl p-7"
-            style={{
-              background: c.bg1,
-              border: `1px solid ${c.hair}`,
-              filter: "saturate(0.6)",
-            }}
-          >
-            <div className="font-mono text-[10.5px] uppercase tracking-widest" style={{ color: c.inkMute }}>
-              The spreadsheet
-            </div>
-            <div className="mt-1 font-display text-[22px] font-semibold" style={{ color: c.inkDim }}>
-              Google Sheets &amp; tabs
-            </div>
-            <ul className="mt-6 space-y-3 font-body text-[13.5px]" style={{ color: c.inkMute }}>
-              {["Status columns that go stale", "STAR stories in a side doc", "No drill, no recall, no rehearsal", "Tabs everywhere", "You freeze in the room"].map((t) => (
-                <li key={t} className="flex items-start gap-2">
-                  <X size={14} className="mt-0.5 flex-shrink-0" style={{ color: c.rose }} /> {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Trackers */}
-          <div
-            className="rounded-2xl p-7"
-            style={{
-              background: c.bg1,
-              border: `1px solid ${c.hair}`,
-            }}
-          >
-            <div className="font-mono text-[10.5px] uppercase tracking-widest" style={{ color: c.inkMute }}>
-              Job trackers
-            </div>
-            <div className="mt-1 font-display text-[22px] font-semibold" style={{ color: c.inkDim }}>
-              Teal · Huntr · Simplify
-            </div>
-            <ul className="mt-6 space-y-3 font-body text-[13.5px]" style={{ color: c.inkDim }}>
-              <li className="flex items-start gap-2"><Check size={14} className="mt-0.5 shrink-0" style={{ color: c.emerald }} /> Pipeline tracking</li>
-              <li className="flex items-start gap-2"><Check size={14} className="mt-0.5 shrink-0" style={{ color: c.emerald }} /> Application reminders</li>
-              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 shrink-0" style={{ color: c.rose }} /> No technical story bank</li>
-              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 shrink-0" style={{ color: c.rose }} /> No drilling / recall practice</li>
-              <li className="flex items-start gap-2"><X size={14} className="mt-0.5 shrink-0" style={{ color: c.rose }} /> Not built for engineers</li>
-            </ul>
-          </div>
-
-          {/* Precept */}
-          <div
-            className="relative overflow-hidden rounded-2xl p-7"
-            style={{
-              background: `linear-gradient(160deg, ${c.bg1} 0%, ${c.bg2} 100%)`,
-              border: `1px solid ${c.teal}66`,
-              boxShadow: `0 0 0 1px ${c.tealDim}, 0 30px 80px -30px rgba(45,212,191,0.35)`,
-            }}
-          >
-            <div
-              className="absolute -right-12 -top-12 h-44 w-44 rounded-full"
-              style={{ background: `radial-gradient(circle, ${c.tealDim}, transparent 70%)`, filter: "blur(4px)" }}
-            />
-            <div className="relative">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10.5px] uppercase tracking-widest" style={{ color: c.teal }}>
-                  Precept
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: c.emerald }}>
-                  Career OS
-                </span>
-              </div>
-              <div className="mt-1 font-display text-[22px] font-semibold" style={{ color: c.ink }}>
-                Track + drill + close the loop
-              </div>
-              <ul className="mt-6 space-y-3 font-body text-[13.5px]" style={{ color: c.ink }}>
-                {[
-                  "Full pipeline tracker with event history",
-                  "Technical & behavioral STAR story banks",
-                  "SuperMemo-2 (SM-2) Spaced Repetition Drill Engine",
-                  "AI Mock Interview Studio with Voice STAR Grading",
-                  "JD Matcher: paste a JD, see your gaps",
-                  "Interactive visual analytics & velocity funnel",
-                ].map((t) => (
-                  <li key={t} className="flex items-start gap-2">
-                    <Check size={14} className="mt-0.5 shrink-0" style={{ color: c.teal }} /> {t}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+    <section className="mx-auto max-w-[1240px] px-5 py-28 md:px-8 md:py-40">
+      <div className="reveal grid gap-10 lg:grid-cols-12 lg:items-end">
+        <h2 className="display-lg max-w-[16ch] text-fg lg:col-span-8">Your next interview will ask about your work.</h2>
+        <div className="flex flex-wrap gap-2 lg:col-span-4 lg:justify-end">
+          <Button variant="primary" size="lg" to="/login?mode=signup" iconRight={<ArrowRight size={16} />}>Create account</Button>
+          <Button variant="secondary" size="lg" loading={demo.loading} onClick={demo.start}>Try the demo</Button>
         </div>
       </div>
     </section>
   );
 }
-
-/* ─────────────────────────── MODULES — feature grid w/ real fragments ─────────────────────────── */
-
-function Modules() {
-  return (
-    <section
-      id="modules"
-      data-testid="modules-section"
-      className="relative overflow-hidden py-32"
-      style={{
-        background: `radial-gradient(ellipse 60% 50% at 80% 0%, rgba(139,92,246,0.10), transparent 55%), ${c.bg0}`,
-      }}
-    >
-      <div className="mx-auto max-w-[1200px] px-6">
-        <div className="flex flex-col items-end text-right">
-          <Eyebrow color={c.teal}>The modules</Eyebrow>
-          <h2
-            className="mt-5 max-w-[760px] font-display font-bold leading-[1.05]"
-            style={{ fontSize: "clamp(32px, 4.6vw, 56px)", color: c.ink }}
-          >
-            Eight instruments, <span className="font-editorial" style={{ color: c.violet, fontWeight: 400 }}>one cockpit.</span>
-          </h2>
-          <p className="mt-4 max-w-[560px] font-body text-[15.5px] leading-relaxed" style={{ color: c.inkDim }}>
-            Every module is wired into the next — your stories feed the SM-2 active recall drills, the mock interview tests your live delivery, and the JD analyzer pulls from both.
-          </p>
-        </div>
-
-        <AnimatedSection
-          animation="staggerFadeUp"
-          childSelector=".mod-card"
-          stagger={0.08}
-          className="mt-14 grid grid-cols-12 gap-4"
-        >
-          {/* 1. Technical Story Bank (large) */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 lg:col-span-7" style={modCardStyle()}>
-            <ModuleHeader index="01" title="Technical Story Bank" color={c.teal} />
-            <p className="mt-3 max-w-[460px] font-body text-[14px]" style={{ color: c.inkDim }}>
-              Catalog what you've actually built — title, snippet, explanation — tagged across 12 engineering domains, each with a live confidence rating.
-            </p>
-            {/* tag cloud */}
-            <div className="mt-5 flex flex-wrap gap-1.5">
-              {["Auth","Database","AI/ML","DevOps","Frontend","Backend","System Design","Security","Testing","Cloud","Architecture"].map((t) => (
-                <span
-                  key={t}
-                  className="rounded-md px-2 py-1 font-mono text-[10.5px]"
-                  style={{
-                    background: c.bg2,
-                    color: c.inkDim,
-                    border: `1px solid ${c.hair}`,
-                  }}
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-            {/* mini story rows */}
-            <div className="mt-5 space-y-2">
-              {[
-                { title: "Postgres row-level security w/ tenant claims", cat: "Database", conf: "Solid", color: c.teal },
-                { title: "Redis-backed rate limiter (sliding log)", cat: "Backend", conf: "Okay", color: c.sky },
-                { title: "Vector embeddings for semantic JD match", cat: "AI/ML", conf: "Shaky", color: c.amber },
-              ].map((s) => (
-                <div key={s.title} className="flex items-center justify-between rounded-md px-3 py-2.5" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                  <div className="min-w-0">
-                    <div className="truncate font-body text-[13px]" style={{ color: c.ink }}>{s.title}</div>
-                    <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: c.inkMute }}>{s.cat}</div>
-                  </div>
-                  <span className="rounded-full px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-widest" style={{ background: `${s.color}1c`, color: s.color, border: `1px solid ${s.color}44` }}>
-                    {s.conf}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. Behavioral Story Bank */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-5" style={modCardStyle()}>
-            <ModuleHeader index="02" title="Behavioral Story Bank" color={c.violet} />
-            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
-              Structured STAR narratives so you never blank in a behavioral round.
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-2 font-mono text-[10.5px]">
-              {[
-                { l: "Situation", v: "On-call rotation, prod down" },
-                { l: "Task",      v: "Triage and restore SLA" },
-                { l: "Action",    v: "Rolled back, paged team" },
-                { l: "Result",    v: "MTTR cut 38%" },
-              ].map((r) => (
-                <div key={r.l} className="rounded-md p-2.5" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                  <div className="uppercase tracking-widest" style={{ color: c.violet }}>{r.l}</div>
-                  <div className="mt-1 font-body text-[12.5px] leading-snug" style={{ color: c.ink }}>{r.v}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 3. AI Mock Interview Studio */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 lg:col-span-7" style={modCardStyle()}>
-            <ModuleHeader index="03" title="AI Mock Interview Studio" color={c.sky} />
-            <p className="mt-3 max-w-[500px] font-body text-[14px]" style={{ color: c.inkDim }}>
-              Rehearse out loud with live browser STT transcription. The AI judge grades STAR structure, delivery tone, and provides actionable model answers.
-            </p>
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-xl p-3.5" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-widest" style={{ color: c.inkMute }}>
-                  <span>AI STAR Evaluation</span>
-                  <span className="font-bold text-emerald-400">88/100</span>
-                </div>
-                <div className="mt-3 space-y-1.5 font-mono text-[10.5px]">
-                  <div className="flex justify-between"><span style={{ color: c.inkDim }}>Situation &amp; Task</span><span style={{ color: c.teal }}>Strong (9/10)</span></div>
-                  <div className="flex justify-between"><span style={{ color: c.inkDim }}>Action &amp; Agency</span><span style={{ color: c.emerald }}>Excellent (10/10)</span></div>
-                  <div className="flex justify-between"><span style={{ color: c.inkDim }}>Quantified Result</span><span style={{ color: c.amber }}>Partial (7.5/10)</span></div>
-                </div>
-              </div>
-              <div className="flex flex-col justify-between rounded-xl p-3.5" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                <div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: c.teal }}>LLM Agnostic Engine</div>
-                  <div className="mt-1 font-body text-[12.5px] leading-snug" style={{ color: c.ink }}>
-                    Bring your own key: OpenAI, Claude 3.5, Gemini 2.0, DeepSeek, or run local Ollama models.
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 pt-2 font-mono text-[10px]" style={{ color: c.inkMute }}>
-                  <Mic size={11} style={{ color: c.sky }} /> Real-time Speech-to-Text
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 4. SM-2 Spaced Repetition Quiz */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-5" style={modCardStyle()}>
-            <ModuleHeader index="04" title="SM-2 Active Recall Quiz" color={c.amber} />
-            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
-              Drill weak stories with SuperMemo-2 mathematical scheduling. Ease Factor ($EF$) updates keep review intervals optimal.
-            </p>
-            <div className="mt-5 space-y-2 font-mono text-[11px]">
-              <div className="flex items-center justify-between rounded-md px-3 py-2" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                <span style={{ color: c.ink }}>Panic → Lapse Reset</span>
-                <span className="font-bold" style={{ color: c.rose }}>1 Day</span>
-              </div>
-              <div className="flex items-center justify-between rounded-md px-3 py-2" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                <span style={{ color: c.ink }}>Nailed It → Compounded</span>
-                <span className="font-bold" style={{ color: c.emerald }}>I × EF (16d+)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 5. JD Matcher */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-4" style={modCardStyle()}>
-            <ModuleHeader index="05" title="JD Analyzer" color={c.teal} />
-            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
-              Paste a job description. Precept maps requirements against your inventory and surfaces gaps.
-            </p>
-            <div className="mt-5 space-y-1.5 font-mono text-[11px]">
-              {[
-                { skill: "Go",                cov: true,  note: "3 stories" },
-                { skill: "Kubernetes",        cov: true,  note: "2 stories" },
-                { skill: "Distributed locks", cov: false, note: "gap" },
-              ].map((g) => (
-                <div key={g.skill} className="flex items-center justify-between rounded-md px-3 py-1.5" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                  <span style={{ color: c.ink }}>{g.skill}</span>
-                  <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest" style={{ color: g.cov ? c.emerald : c.rose }}>
-                    {g.note} {g.cov ? <Check size={11} /> : <X size={11} />}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 6. Pipeline */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-4" style={modCardStyle()}>
-            <ModuleHeader index="06" title="Pipeline Tracker" color={c.emerald} />
-            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
-              Applications move through five stages with event history and follow-up alerts.
-            </p>
-            <div className="mt-5 grid grid-cols-4 gap-1 font-mono text-[10px] uppercase tracking-widest text-center">
-              {[
-                { l: "Applied",      n: 14, color: c.inkDim },
-                { l: "Screen",       n: 6,  color: c.sky },
-                { l: "Rounds",       n: 5,  color: c.amber },
-                { l: "Offer",        n: 2,  color: c.emerald },
-              ].map((s) => (
-                <div key={s.l} className="rounded-md p-2" style={{ background: c.bg2, border: `1px solid ${c.hair}` }}>
-                  <div className="font-display text-[20px] font-bold" style={{ color: s.color }}>{s.n}</div>
-                  <div className="mt-0.5" style={{ color: c.inkMute }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 7. Analytics */}
-          <div className="mod-card col-span-12 rounded-2xl p-6 sm:col-span-6 lg:col-span-4" style={modCardStyle()}>
-            <ModuleHeader index="07" title="Analytics & Velocity" color={c.violet} />
-            <p className="mt-3 font-body text-[14px]" style={{ color: c.inkDim }}>
-              Conversion velocity, readiness trajectory, and domain mastery over time.
-            </p>
-            <div className="mt-5 flex items-end gap-1.5 h-20">
-              {[40, 55, 65, 52, 78, 90, 84, 94].map((h, i) => (
-                <div key={i} className="flex-1 rounded-t-sm" style={{ height: `${h}%`, background: i >= 6 ? c.teal : c.tealDim, opacity: i >= 6 ? 1 : 0.7 }} />
-              ))}
-            </div>
-            <div className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-widest" style={{ color: c.inkMute }}>
-              <span>Wk 1</span><span>Wk 8 (Readiness 94%)</span>
-            </div>
-          </div>
-        </AnimatedSection>
-      </div>
-    </section>
-  );
-}
-
-function ModuleHeader({ index, title, color }: { index: string; title: string; color: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-[11px] tracking-[0.18em]" style={{ color: c.inkMute }}>{index}</span>
-        <h3 className="font-display text-[18px] font-semibold" style={{ color: c.ink }}>{title}</h3>
-      </div>
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-    </div>
-  );
-}
-
-function modCardStyle(): CSSProperties {
-  return {
-    background: `linear-gradient(180deg, ${c.bg1} 0%, ${c.bg0} 100%)`,
-    border: `1px solid ${c.hair}`,
-    boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset",
-  };
-}
-
-/* ─────────────────────────── CONFIDENCE LADDER — signature section ─────────────────────────── */
-
-function ConfidenceLadder() {
-  const [hovered, setHovered] = useState<number | null>(null);
-
-  return (
-    <section
-      id="ladder"
-      data-testid="ladder-section"
-      className="relative overflow-hidden py-32"
-      style={{
-        background: `radial-gradient(ellipse 70% 50% at 50% 100%, rgba(45,212,191,0.10), transparent 60%), ${c.bg1}`,
-      }}
-    >
-      <div className="mx-auto max-w-[1200px] px-6">
-        <div className="grid grid-cols-12 gap-10">
-          {/* LEFT — copy */}
-          <div className="col-span-12 lg:col-span-5">
-            <Eyebrow color={c.emerald}>The hook</Eyebrow>
-            <h2
-              className="mt-5 font-display font-bold leading-[1.04]"
-              style={{ fontSize: "clamp(34px, 5vw, 60px)", color: c.ink }}
-            >
-              The Confidence <span className="font-editorial" style={{ color: c.teal, fontWeight: 400 }}>Ladder.</span>
-            </h2>
-            <p className="mt-5 font-body text-[16px] leading-relaxed" style={{ color: c.inkDim }}>
-              After every drill, you rate your recall. Precept's <b style={{ color: c.teal }}>SuperMemo-2 (SM-2)</b> spaced-repetition
-              engine dynamically calculates per-story Ease Factors ($EF$), compounding intervals, and anti-bunching schedules so knowledge decays are caught before the interview.
-            </p>
-            <p className="mt-4 font-body text-[16px] leading-relaxed" style={{ color: c.inkDim }}>
-              It's <span className="font-editorial" style={{ color: c.ink }}>Anki engineered for software engineers.</span> You walk into the onsite having already
-              rehearsed the answer — out loud, with zero hesitation.
-            </p>
-
-            <div className="mt-7 flex flex-wrap items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: c.inkMute }}>
-              <span className="flex items-center gap-1.5"><Mic size={13} style={{ color: c.teal }} /> Voice STT practice</span>
-              <span className="opacity-30">/</span>
-              <span className="flex items-center gap-1.5"><Sparkles size={13} style={{ color: c.emerald }} /> SM-2 Algorithmic decay</span>
-            </div>
-          </div>
-
-          {/* RIGHT — ladder visual */}
-          <div className="col-span-12 lg:col-span-7">
-            <div
-              className="relative rounded-2xl p-6 md:p-8"
-              style={{
-                background: `linear-gradient(180deg, ${c.bg2} 0%, ${c.bg1} 100%)`,
-                border: `1px solid ${c.hair2}`,
-                boxShadow: `0 40px 80px -30px rgba(45,212,191,0.18)`,
-              }}
-            >
-              <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-widest" style={{ color: c.inkMute }}>
-                <span>Recall rating</span>
-                <span style={{ color: c.teal }}>5 rungs</span>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                {ConfidenceRungs.map((r, i) => {
-                  const isHover = hovered === i;
-                  return (
-                    <div
-                      key={r.key}
-                      data-testid={`ladder-rung-${r.key.toLowerCase()}`}
-                      onMouseEnter={() => setHovered(i)}
-                      onMouseLeave={() => setHovered(null)}
-                      className="group relative grid grid-cols-12 items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300 cursor-pointer"
-                      style={{
-                        background: isHover ? `${r.color}10` : c.bg0,
-                        border: `1px solid ${isHover ? r.color + "55" : c.hair}`,
-                        boxShadow: isHover ? `0 0 24px -4px ${r.color}88, inset 0 1px 0 ${r.color}22` : "none",
-                        transform: isHover ? "translateX(4px)" : "translateX(0)",
-                      }}
-                    >
-                      <div className="col-span-1 font-mono text-[11px]" style={{ color: c.inkMute }}>0{i + 1}</div>
-                      <div className="col-span-3 flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color, boxShadow: `0 0 10px ${r.color}` }} />
-                        <span className="font-display text-[17px] font-semibold" style={{ color: c.ink }}>{r.label}</span>
-                      </div>
-                      <div className="col-span-6">
-                        <div className="h-1.5 overflow-hidden rounded-full" style={{ background: c.hair }}>
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{ width: `${r.pct}%`, background: r.color, boxShadow: `0 0 12px ${r.color}` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="col-span-2 text-right font-mono text-[11px]" style={{ color: r.color }}>
-                        {r.pct}%
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* description swap on hover */}
-              <div className="mt-6 min-h-[58px] rounded-lg p-4 font-body text-[13.5px] leading-relaxed" style={{ background: c.bg0, border: `1px solid ${c.hair}`, color: c.inkDim }}>
-                {hovered === null && (
-                  <span><span className="font-mono text-[10.5px] uppercase tracking-widest" style={{ color: c.inkMute }}>Hover &nbsp;→&nbsp;</span> Hover a rung to see how Precept resurfaces stories at each level.</span>
-                )}
-                {hovered === 0 && <><b style={{ color: c.rose }}>Panic:</b> resurfaced first, every session. You haven't found the words yet.</>}
-                {hovered === 1 && <><b style={{ color: c.amber }}>Shaky:</b> resurfaced second. Recall is there but flow breaks under pressure.</>}
-                {hovered === 2 && <><b style={{ color: c.sky }}>Okay:</b> reviewed weekly. The structure holds — polish the delivery.</>}
-                {hovered === 3 && <><b style={{ color: c.teal }}>Solid:</b> reviewed bi-weekly. You'd ace it tomorrow.</>}
-                {hovered === 4 && <><b style={{ color: c.emerald }}>Can Teach:</b> reviewed monthly. You could explain it to a junior — and you have.</>}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────── HOW IT WORKS ─────────────────────────── */
-
-function HowItWorks() {
-  const steps = [
-    {
-      n: "01",
-      title: "Capture",
-      copy: "Drop your code snippets, write the explanation, and tag the category. Capture STAR stories the same way. Build the bank once.",
-      icon: <FileCode2 size={18} />,
-      color: c.teal,
-    },
-    {
-      n: "02",
-      title: "Analyze",
-      copy: "Paste a JD. Precept maps requirements against your inventory and surfaces gaps. Every status change is logged automatically.",
-      icon: <FileSearch size={18} />,
-      color: c.violet,
-    },
-    {
-      n: "03",
-      title: "Convert",
-      copy: "Drill weak stories in Quiz Mode. Rate your recall. Walk into the round having already said the answer out loud — last Thursday.",
-      icon: <Sparkles size={18} />,
-      color: c.emerald,
-    },
-  ];
-
-  const loopRef = useRef<HTMLDivElement>(null);
-
-  useGSAP(() => {
-    if (prefersReducedMotion() || !loopRef.current) return;
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ repeat: -1 });
-
-      // Story card moves in
-      tl.fromTo(".loop-story", 
-        { opacity: 0, x: -60, scale: 0.9 },
-        { opacity: 1, x: 0, scale: 1, duration: 0.8, ease: "power2.out" }
-      )
-      // Pause
-      .to({}, { duration: 0.5 })
-      // Story moves to quiz
-      .to(".loop-story", { x: 180, scale: 0.8, opacity: 0, duration: 0.8, ease: "power2.in" })
-      // Quiz pulses
-      .to(".loop-quiz", { scale: 1.15, duration: 0.2, yoyo: true, repeat: 1, ease: "power1.inOut" })
-      // Rating emerges from quiz
-      .fromTo(".loop-rating", 
-        { opacity: 0, x: -30, scale: 0.8 }, 
-        { opacity: 1, x: 0, scale: 1, duration: 0.8, ease: "power2.out" }, 
-        "-=0.1"
-      )
-      // Pause to show rating
-      .to({}, { duration: 1.2 })
-      // Rating returns to bank (moves left and fades)
-      .to(".loop-rating", { x: -250, opacity: 0, scale: 0.9, duration: 1, ease: "power2.inOut" });
-
-    }, loopRef);
-    return () => ctx.revert();
-  }, { scope: loopRef });
-
-  return (
-    <section
-      id="how"
-      data-testid="how-section"
-      className="relative overflow-hidden py-32"
-      style={{ background: c.bg0 }}
-    >
-      <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-50" />
-
-      <div className="relative mx-auto max-w-[1200px] px-6">
-        <div className="flex flex-col items-start">
-          <Eyebrow color={c.sky}>The loop</Eyebrow>
-          <h2
-            className="mt-5 max-w-[760px] font-display font-bold leading-[1.05]"
-            style={{ fontSize: "clamp(34px, 5vw, 60px)", color: c.ink }}
-          >
-            Capture. Analyze. <span className="font-editorial" style={{ color: c.emerald, fontWeight: 400 }}>Convert.</span>
-          </h2>
-        </div>
-
-        <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {steps.map((s, i) => (
-            <div key={s.n} className="relative">
-              <div
-                className="relative h-full rounded-2xl p-7 transition-transform hover:-translate-y-1"
-                style={{
-                  background: `linear-gradient(180deg, ${c.bg1}, ${c.bg0})`,
-                  border: `1px solid ${c.hair}`,
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <span
-                    className="grid h-9 w-9 place-items-center rounded-lg"
-                    style={{ background: `${s.color}1c`, color: s.color, border: `1px solid ${s.color}33` }}
-                  >
-                    {s.icon}
-                  </span>
-                  <span className="font-mono text-[40px] font-bold leading-none" style={{ color: c.bg3, opacity: 1 }}>
-                    {s.n}
-                  </span>
-                </div>
-                <h3 className="mt-6 font-display text-[22px] font-semibold" style={{ color: c.ink }}>
-                  {s.title}
-                </h3>
-                <p className="mt-2 font-body text-[14px] leading-relaxed" style={{ color: c.inkDim }}>
-                  {s.copy}
-                </p>
-              </div>
-              {/* connector arrow */}
-              {i < steps.length - 1 && (
-                <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 font-mono" style={{ color: c.inkMute }}>
-                  →
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Animated Story-to-Quiz Loop */}
-        <div 
-          ref={loopRef} 
-          className="relative mt-12 hidden md:flex items-center justify-center h-48 rounded-2xl overflow-hidden" 
-          style={{ background: `linear-gradient(90deg, ${c.bg1} 0%, ${c.bg2} 50%, ${c.bg1} 100%)`, border: `1px solid ${c.hair}` }}
-        >
-          {/* Background Track Line */}
-          <div className="absolute inset-x-12 top-1/2 -z-0 h-px -translate-y-1/2 border-t border-dashed" style={{ borderColor: c.hair2 }} />
-          
-          {/* Quiz Node in Center */}
-          <div className="loop-quiz z-10 grid h-[72px] w-[72px] place-items-center rounded-2xl shadow-2xl relative" style={{ background: `linear-gradient(135deg, ${c.bg1}, ${c.bg2})`, border: `1px solid ${c.hair2}` }}>
-            <div className="absolute inset-0 rounded-2xl opacity-20" style={{ background: `linear-gradient(135deg, ${c.teal}, ${c.violet})` }} />
-            <RefreshCw size={28} className="text-white relative z-10" />
-            <div className="absolute -bottom-7 w-max font-mono text-[10px] uppercase tracking-widest" style={{ color: c.inkMute }}>Quiz Engine</div>
-          </div>
-          
-          {/* Story Node (Left Side) */}
-          <div className="loop-story absolute left-[15%] z-20 flex w-48 items-center gap-3 rounded-xl p-3 shadow-xl" style={{ background: c.bg1, border: `1px solid ${c.hair2}` }}>
-            <div className="grid h-10 w-10 place-items-center rounded-lg" style={{ background: `${c.teal}1c`, color: c.teal }}>
-              <FileCode2 size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-display text-[13px] font-semibold truncate" style={{ color: c.ink }}>JWT Rotation</div>
-              <div className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: c.rose }}>Panic</div>
-            </div>
-          </div>
-          
-          {/* Rating Node (Right Side) */}
-          <div className="loop-rating absolute right-[15%] z-20 flex w-44 items-center gap-3 rounded-xl p-3 shadow-xl" style={{ background: c.bg1, border: `1px solid ${c.hair2}` }}>
-            <div className="grid h-10 w-10 place-items-center rounded-lg" style={{ background: `${c.emerald}1c`, color: c.emerald }}>
-              <Activity size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-display text-[13px] font-semibold truncate" style={{ color: c.ink }}>Confidence ↑</div>
-              <div className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: c.emerald }}>Solid</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────── TESTIMONIALS ─────────────────────────── */
-
-function Testimonials({ testimonials }: { testimonials: Testimonial[] }) {
-  const fallback: Testimonial[] = [
-    { id: "1", userId: "x", name: "Alex Chen",   handle: "SWE → Shopify", text: "I had 30+ STAR stories rotting in a Google Doc. Precept made me actually drill them. Two FAANG offers later, I'm a believer.", isApproved: true, dateSubmitted: "" },
-    { id: "2", userId: "x", name: "Jordan Smith", handle: "Full-Stack",   text: "The pipeline view alone is worth it. I went from 'wait, did Linear reply?' to a real-time trajectory in one weekend.", isApproved: true, dateSubmitted: "" },
-    { id: "3", userId: "x", name: "Morgan Lee",   handle: "New grad · UToronto", text: "No internships, no clue where to start. The story bank gave me structure. Landed my first SWE role in 3 months.", isApproved: true, dateSubmitted: "" },
-  ];
-  const list = (testimonials.length > 0 ? testimonials.slice(0, 3) : fallback);
-
-  return (
-    <section
-      data-testid="testimonials-section"
-      className="relative overflow-hidden py-32"
-      style={{
-        background: `radial-gradient(ellipse 70% 50% at 20% 30%, rgba(139,92,246,0.10), transparent 55%), ${c.bg1}`,
-      }}
-    >
-      <div className="mx-auto max-w-[1200px] px-6">
-        <div className="flex flex-col items-center text-center">
-          <Eyebrow color={c.amber}>Receipts</Eyebrow>
-          <h2
-            className="mt-5 max-w-[720px] font-display font-bold leading-[1.05]"
-            style={{ fontSize: "clamp(32px, 4.6vw, 54px)", color: c.ink }}
-          >
-            Engineers who stopped <span className="font-editorial" style={{ color: c.amber, fontWeight: 400 }}>winging it.</span>
-          </h2>
-        </div>
-
-        <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3">
-          {list.map((t, i) => (
-            <div
-              key={t.id}
-              data-testid={`testimonial-${i}`}
-              className="relative rounded-2xl p-7 transition-transform hover:-translate-y-1"
-              style={{
-                background: `linear-gradient(180deg, ${c.bg2} 0%, ${c.bg0} 100%)`,
-                border: `1px solid ${c.hair2}`,
-                boxShadow: "0 30px 60px -30px rgba(0,0,0,0.6)",
-              }}
-            >
-              <Quote size={22} style={{ color: c.teal, opacity: 0.7 }} />
-              <p className="mt-4 font-body text-[15px] leading-[1.6]" style={{ color: c.ink }}>
-                "{t.text}"
-              </p>
-              <div className="mt-6 flex items-center gap-3">
-                <div
-                  className="grid h-9 w-9 place-items-center rounded-full font-mono text-[12px] font-semibold"
-                  style={{
-                    background: i === 0 ? `${c.teal}22` : i === 1 ? `${c.violet}22` : `${c.emerald}22`,
-                    color: i === 0 ? c.teal : i === 1 ? c.violet : c.emerald,
-                    border: `1px solid ${c.hair}`,
-                  }}
-                >
-                  {t.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                </div>
-                <div>
-                  <div className="font-body text-[13.5px] font-semibold" style={{ color: c.ink }}>{t.name}</div>
-                  <div className="font-mono text-[11px]" style={{ color: c.inkMute }}>{t.handle}</div>
-                </div>
-                <div className="ml-auto flex gap-0.5">
-                  {[0,1,2,3,4].map(s => <Star key={s} size={11} fill={c.amber} stroke={c.amber} />)}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────── R2 — AI TEASER ─────────────────────────── */
-
-function R2Teaser() {
-  return (
-    <section
-      id="r2"
-      data-testid="r2-section"
-      className="relative overflow-hidden py-32"
-      style={{
-        background: c.bg0,
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-90" style={{
-        background: `radial-gradient(ellipse 60% 60% at 80% 20%, rgba(139,92,246,0.18), transparent 50%), radial-gradient(ellipse 50% 50% at 10% 80%, rgba(45,212,191,0.12), transparent 50%)`,
-      }} />
-
-      <div className="relative mx-auto max-w-[1200px] px-6">
-        <div className="grid grid-cols-12 gap-10">
-          <div className="col-span-12 lg:col-span-5">
-            <Eyebrow color={c.violet}>R2 · Shipping next</Eyebrow>
-            <h2 className="mt-5 font-display font-bold leading-[1.04]" style={{ fontSize: "clamp(34px, 5vw, 58px)", color: c.ink }}>
-              An AI interviewer that knows <span className="font-editorial" style={{ color: c.violet, fontWeight: 400 }}>your resume.</span>
-            </h2>
-            <p className="mt-5 font-body text-[16px] leading-relaxed" style={{ color: c.inkDim }}>
-              Upload a resume + a JD URL. An LLM generates tailored behavioral and technical questions, scores your live
-              voice responses, and tells you exactly where to drill next.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-2">
-              {["LLM-generated questions", "Voice simulation", "Scored feedback", "Resume parsing", "JD match scoring"].map((p) => (
-                <span
-                  key={p}
-                  className="rounded-full px-3 py-1.5 font-mono text-[11px]"
-                  style={{
-                    background: `${c.violet}14`,
-                    color: c.violet,
-                    border: `1px solid ${c.violet}33`,
-                  }}
-                >
-                  {p}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="col-span-12 lg:col-span-7">
-            {/* mock chat */}
-            <div className="rounded-2xl p-5 md:p-6" style={{
-              background: `linear-gradient(180deg, ${c.bg2} 0%, ${c.bg1} 100%)`,
-              border: `1px solid ${c.hair2}`,
-              boxShadow: `0 40px 80px -30px rgba(139,92,246,0.25)`,
-            }}>
-              <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-widest" style={{ color: c.inkMute }}>
-                <span><Mic size={11} className="-mt-0.5 inline" /> Voice round · 12:34 elapsed</span>
-                <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: c.rose, boxShadow: `0 0 8px ${c.rose}` }} /> REC</span>
-              </div>
-              <div className="mt-5 space-y-3">
-                {/* AI */}
-                <div className="flex items-start gap-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-full font-mono text-[11px] font-bold" style={{ background: `${c.violet}22`, color: c.violet, border: `1px solid ${c.violet}33` }}>AI</span>
-                  <div className="rounded-2xl rounded-tl-sm px-4 py-3 font-body text-[13.5px]" style={{ background: c.bg0, border: `1px solid ${c.hair}`, color: c.ink, maxWidth: 460 }}>
-                    Walk me through a time you owned a production incident from page to postmortem.
-                  </div>
-                </div>
-                {/* You */}
-                <div className="flex items-start justify-end gap-3">
-                  <div className="rounded-2xl rounded-tr-sm px-4 py-3 font-body text-[13.5px]" style={{ background: `${c.teal}1a`, border: `1px solid ${c.teal}44`, color: c.ink, maxWidth: 460 }}>
-                    Sure — last December our checkout API started returning 503s. I was on-call, paged at 2:47am…
-                    <span className="caret-blink" />
-                  </div>
-                  <span className="grid h-7 w-7 place-items-center rounded-full font-mono text-[10px] font-bold" style={{ background: `${c.teal}22`, color: c.teal, border: `1px solid ${c.teal}44` }}>You</span>
-                </div>
-              </div>
-
-              {/* score panel */}
-              <div className="mt-6 grid grid-cols-3 gap-2">
-                {[
-                  { l: "Structure",   v: 92, color: c.emerald },
-                  { l: "Specificity", v: 78, color: c.teal },
-                  { l: "Conciseness", v: 64, color: c.amber },
-                ].map((s) => (
-                  <div key={s.l} className="rounded-lg p-3" style={{ background: c.bg0, border: `1px solid ${c.hair}` }}>
-                    <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: c.inkMute }}>{s.l}</div>
-                    <div className="mt-1 font-display text-[24px] font-bold" style={{ color: s.color }}>{s.v}<span className="text-[12px]" style={{ color: c.inkMute }}>/100</span></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────── FINAL CTA ─────────────────────────── */
-
-function FinalCTA() {
-  const navigate = useNavigate();
-
-  return (
-    <section
-      data-testid="final-cta-section"
-      className="relative overflow-hidden py-28"
-      style={{ background: c.bg0 }}
-    >
-      <div className="mx-auto max-w-[1100px] px-6">
-        <div
-          className="relative overflow-hidden rounded-3xl px-8 py-20 text-center md:px-16"
-          style={{
-            background: `radial-gradient(ellipse 60% 100% at 50% 0%, rgba(45,212,191,0.18), transparent 60%), linear-gradient(180deg, ${c.bg2} 0%, ${c.bg0} 100%)`,
-            border: `1px solid ${c.hair2}`,
-            boxShadow: `0 60px 120px -40px rgba(45,212,191,0.3), inset 0 1px 0 rgba(255,255,255,0.06)`,
-          }}
-        >
-          <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-50" />
-          <div className="relative">
-            <Eyebrow color={c.emerald}>Stop winging it</Eyebrow>
-            <h2
-              className="mx-auto mt-6 max-w-[820px] font-display font-bold leading-[1.04]"
-              style={{ fontSize: "clamp(36px, 6vw, 72px)", color: c.ink }}
-            >
-              Ready to own your <span className="font-editorial" style={{ color: c.teal, fontWeight: 400 }}>job hunt?</span>
-            </h2>
-            <p className="mx-auto mt-5 max-w-[540px] font-body text-[16px] leading-relaxed" style={{ color: c.inkDim }}>
-              Free to start. No card. Your data exports as raw JSON, anytime. Built by developers, for developers.
-            </p>
-
-            <div className="mt-9 flex items-center justify-center">
-              <button
-                type="button"
-                data-testid="final-cta-primary"
-                onClick={() => navigate("/login", { state: { mode: "signup" } })}
-                className="inline-flex items-center gap-2 rounded-full px-7 py-4 font-mono text-[12.5px] font-semibold uppercase tracking-[0.16em] transition-shadow duration-300 hover:shadow-[0_0_24px_rgba(45,212,191,0.45)]"
-                style={{
-                  background: c.ink,
-                  color: c.bg0,
-                  boxShadow: `0 0 0 1px ${c.ink}, 0 20px 60px -10px rgba(45,212,191,0.5)`,
-                }}
-              >
-                Start banking your stories
-                <ArrowRight size={14} />
-              </button>
-            </div>
-
-            {/* tiny trust strip */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: c.inkMute }}>
-              <span><Check size={11} className="-mt-0.5 inline" style={{ color: c.emerald }} /> Open source · MIT</span>
-              <span>·</span>
-              <span><Check size={11} className="-mt-0.5 inline" style={{ color: c.emerald }} /> Self-host or hosted</span>
-              <span>·</span>
-              <span><Check size={11} className="-mt-0.5 inline" style={{ color: c.emerald }} /> JSON export, always</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────── FOOTER ─────────────────────────── */
 
 function Footer() {
   return (
-    <footer
-      data-testid="footer"
-      className="relative overflow-hidden border-t px-6 pb-10 pt-16"
-      style={{ background: c.bg0, borderColor: c.hair }}
-    >
-      <div className="mx-auto max-w-[1200px]">
-        <div className="grid grid-cols-12 gap-8">
-          <div className="col-span-12 md:col-span-5">
-            <div className="flex items-center gap-2">
-              <Terminal size={22} strokeWidth={2.2} className="shrink-0" style={{ color: c.teal }} />
-              <span className="font-display text-[18px] font-bold" style={{ color: c.ink }}>Precept</span>
-            </div>
-            <p className="mt-4 max-w-[360px] font-body text-[13.5px] leading-relaxed" style={{ color: c.inkDim }}>
-              The Career OS for software engineers. Built by developers, for developers.
-            </p>
-            <p className="mt-6 font-editorial text-[15px]" style={{ color: c.inkMute }}>
-              "Engineered for the modern developer."
-            </p>
-          </div>
-
-          <div className="col-span-6 md:col-span-2">
-            <div className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: c.inkMute }}>Product</div>
-            <ul className="mt-4 space-y-2 font-body text-[13px]">
-              {[["#modules","Modules"],["#ladder","Confidence Ladder"],["#how","How it works"],["#r2","R2 Roadmap"]].map(([h, l]) => (
-                <li key={l}><a href={h} className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>{l}</a></li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="col-span-6 md:col-span-2">
-            <div className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: c.inkMute }}>Resources</div>
-            <ul className="mt-4 space-y-2 font-body text-[13px]">
-              {[
-                ["https://github.com/austinchima/Precept", "GitHub"],
-                ["https://github.com/austinchima/Precept/blob/master/CHANGELOG.md", "Changelog"],
-              ].map(([h, l]) => (
-                <li key={l}>
-                  <a href={h} target="_blank" rel="noopener noreferrer" className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>{l}</a>
-                </li>
-              ))}
-              <li>
-                <Link to="/terms" className="transition-colors" style={{ color: c.inkDim }} onMouseEnter={e => e.currentTarget.style.color = c.ink} onMouseLeave={e => e.currentTarget.style.color = c.inkDim}>Terms of Service</Link>
-              </li>
-            </ul>
-          </div>
-
-          <div className="col-span-12 md:col-span-3">
-            <div className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: c.inkMute }}>Status</div>
-            <div className="mt-4 space-y-2 font-body text-[13px]" style={{ color: c.inkDim }}>
-              <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full" style={{ background: c.emerald, boxShadow: `0 0 8px ${c.emerald}` }}/> R1 shipped — production</div>
-              <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full" style={{ background: c.amber, boxShadow: `0 0 8px ${c.amber}` }}/> R2 in development</div>
-              <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full" style={{ background: c.violet }}/> R3 planning</div>
-            </div>
-          </div>
+    <footer className="border-t border-line">
+      <div className="mx-auto flex max-w-[1240px] flex-col gap-6 px-5 py-10 text-[13.5px] md:flex-row md:items-center md:justify-between md:px-8">
+        <div className="flex items-center gap-4">
+          <Logo />
+          <span className="text-fg-3">Interview prep for software engineers.</span>
         </div>
-
-        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t pt-6 sm:flex-row sm:items-center" style={{ borderColor: c.hair }}>
-          <div className="font-mono text-[11px]" style={{ color: c.inkMute }}>
-            © {new Date().getFullYear()} Precept · MIT License
-          </div>
-          <div className="font-mono text-[11px]" style={{ color: c.inkMute }}>
-            <span className="caret-blink" /> ready when you are
-          </div>
-        </div>
+        <ul className="flex flex-wrap items-center gap-5 text-fg-2">
+          <li><Link to="/login" className="hover:text-fg">Sign in</Link></li>
+          <li><Link to="/terms" className="hover:text-fg">Terms</Link></li>
+          <li>
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-fg">
+              <Github size={15} /> GitHub
+            </a>
+          </li>
+          <li className="text-fg-3">© {new Date().getFullYear()} Precept. MIT licence.</li>
+        </ul>
       </div>
     </footer>
   );
 }
 
-/* ─────────────────────────── MAGNETIC INITIALIZER ─────────────────────────── */
-
-function MagneticInitializer() {
-  useGSAP(() => {
-    if (prefersReducedMotion()) return;
-
-    const buttons = document.querySelectorAll(".gsap-magnetic");
-    const cleaners: (() => void)[] = [];
-
-    buttons.forEach((btn) => {
-      const el = btn as HTMLElement;
-      const strength = 0.22;
-
-      const onMove = (e: MouseEvent) => {
-        const rect = el.getBoundingClientRect();
-        const x = e.clientX - rect.left - rect.width / 2;
-        const y = e.clientY - rect.top - rect.height / 2;
-        gsap.to(el, { x: x * strength, y: y * strength, duration: 0.3, ease: "power2.out" });
-      };
-      const onLeave = () => {
-        gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
-      };
-
-      el.addEventListener("mousemove", onMove as EventListener);
-      el.addEventListener("mouseleave", onLeave);
-      cleaners.push(() => {
-        el.removeEventListener("mousemove", onMove as EventListener);
-        el.removeEventListener("mouseleave", onLeave);
-      });
-    });
-
-    return () => cleaners.forEach((c) => c());
-  }, []);
-
-  return null;
-}
-
-/* ─────────────────────────── LANDING PAGE ─────────────────────────── */
+/* ───────────────────────── Page ───────────────────────── */
 
 export default function Landing() {
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add(MOTION_OK, () => {
+        // Sections below the fold rise in once as they enter.
+        gsap.set('.reveal', { opacity: 0, y: 28 });
+        ScrollTrigger.batch('.reveal', {
+          start: 'top 88%',
+          once: true,
+          onEnter: (els) => gsap.to(els, { opacity: 1, y: 0, duration: 0.9, ease: 'expo.out', stagger: 0.07, overwrite: true }),
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: ref }
+  );
 
   useEffect(() => {
-    async function loadTestimonials() {
-      try {
-        const data = await api.get<Testimonial[]>("/api/testimonial/public", { skipAuth: true });
-        setTestimonials(data);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to load testimonials:", err);
-      }
-    }
-    loadTestimonials();
+    document.title = 'Precept - interview prep for software engineers';
   }, []);
 
-  useEffect(() => {
-    if (isAuthenticated) navigate("/dashboard");
-  }, [isAuthenticated, navigate]);
-
   return (
-    <>
-      {/* Navbar is outside SmoothScroll so Lenis transforms don't break position:fixed */}
-      <Navbar />
-      <SmoothScroll>
-      <PageTransition>
-        <div data-testid="landing-page" className="min-h-screen w-full" style={{ background: c.bg0, color: c.ink }}>
-          <MagneticInitializer />
+    <SmoothScroll>
+      <div ref={ref} className="grain min-h-[100dvh] bg-bg text-fg">
+        <Nav />
+        <main id="main">
           <Hero />
-          <Marquee />
-          <Wedge />
-          <Modules />
-          <ConfidenceLadder />
-          <HowItWorks />
-          <Testimonials testimonials={testimonials} />
-          <R2Teaser />
-          <FinalCTA />
-          <Footer />
-        </div>
-      </PageTransition>
-      </SmoothScroll>
-    </>
+          <Manifesto />
+          <ProductLoop />
+          <Features />
+          <Privacy />
+          <Testimonials />
+          <FinalCta />
+        </main>
+        <Footer />
+      </div>
+    </SmoothScroll>
   );
 }

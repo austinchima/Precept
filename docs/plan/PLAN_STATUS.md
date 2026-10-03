@@ -42,19 +42,19 @@ Status values: `todo`, `in progress`, `review`, `blocked`, `done`, `skipped`.
 | M0-F3 | Repository hygiene | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Moved 4 superseded docs to `docs/archive/`, deleted unrouted `HomePage.tsx`, removed unused `express`, `dotenv`, `tsx`, `@types/express`. Other files the plan listed (`precept.md`, `graphify-out/`, etc.) are not in the repository. Follow-up (founder approved): removed stray root `package.json` and `package-lock.json` (only `canvas-confetti`, already in `Precept.Web`), the `.gitignore` line for the archived testing strategy, and `server.js` from the `clean` script |
 | M0-F4 | Documentation truth pass | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Rewrote `PRECEPT_OVERVIEW.md` for cookie auth and current features; corrected `README.md` (trash UI, search, BYOK wording, OWASP link, rate limiting, SSRF, test layout, roadmap). README Postgres 16 already matched `docker-compose.yml`; `docker-compose.gcp.yml` uses 18 (now noted). CHANGELOG "Documentation corrections" added. 1.2.0 "154 tests" could not be reproduced (about 130 test methods at the nearest commit) |
 | M1-F1 | Google sign-in (D1) | done | claude/docs-folder-review-9ghmg4 | see log | 1 (replaced 1) | D1 default: removed endpoint, `GoogleAuthRequest`, frontend button, `googleLogin`, and the test that asserted the insecure path. New test `GoogleLogin_RouteRemoved_Returns404_AndDoesNotSignIn` verified to fail (200) against the old code. Not reviewed by a separate agent; include in the M1 milestone review. Out of scope, noted: unused `GithubIcon` in `sign-in.tsx`; hard-coded sample testimonial in `Landing.tsx` (M1-F8) |
-| M1-F2 | Demo isolation (D7) | todo | | | | Critical |
-| M1-F3 | AI usage guard and spend caps (D6) | todo | | | | Migration |
+| M1-F2 | Demo isolation (D7) | done | claude/docs-folder-review-9ghmg4 | see log | 10 | Migration `M1F2_DemoIsolation`. Deviation: demo accounts have no password (spec said random password); password login is refused for all demo accounts. Billing and email-sending endpoints do not exist yet, so "blocked" is satisfied by exclusion from the digest only. Reviewer (separate agent) found 1 blocking issue: per-IP limit is one shared bucket behind Cloud Run. Fixed with opt-in `ForwardedHeaders:TrustAllProxies` (right-most `X-Forwarded-For`, `ForwardLimit = 1`, verified against Microsoft Learn ASP.NET Core 10 docs) plus per-IP tests. **Merge gate:** before or with deploying to Cloud Run, set `ForwardedHeaders__TrustAllProxies=true` on the service and confirm in logs that Cloud Run appends the client IP as the right-most `X-Forwarded-For` entry (could not verify; Google docs blocked from the agent environment). Apply the migration before the new image serves traffic (`RunMigrationsOnStartup` is not set by `deploy-api.yml`); without it every login fails. Non-blocking review items fixed: legacy account password and security stamp cleared, opportunistic cleanup, testimonials blocked, demo banner, sample labels, wider cleanup test, Warning-level log |
+| M1-F3 | AI usage guard and spend caps (D6) | todo | | | | Migration. From M1-F2 review: the decorator over `ILlmClientFactory` must refuse demo users centrally (today only `MockInterviewService` checks), with a test |
 | M1-F4 | Data Protection keys and forwarded headers | todo | | | | Migration |
-| M1-F5 | Email verification and password reset (D8) | todo | | | | |
+| M1-F5 | Email verification and password reset (D8) | todo | | | | From M1-F2 review: demo accounts are created with `EmailConfirmed = true`; block demo users from every email send (verify, reset, resend) and from the confirmed-email gate |
 | M1-F6 | Partitioned rate limiting | todo | | | | |
 | M1-F7 | SSRF hardening | todo | | | | |
 | M1-F8 | Integrity fixes | todo | | | | |
 | M1-F9 | Frontend test runner | todo | | | | |
 | M1-F10 | Health checks, logging, migrations | todo | | | | |
-| M2-F1 | Production stack (D2) | todo | | | | Founder runs deploy |
+| M2-F1 | Production stack (D2) | todo | | | | Founder runs deploy. First `deploy-api.yml` run (2026-10-03, PR #16 merge) failed at Google auth: secrets `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT` are not set, so nothing was deployed |
 | M2-F2 | Backups | todo | | | | Restore drill required |
 | M2-F3 | Monitoring and alerts | todo | | | | |
-| M2-F4 | Background jobs single-runner | todo | | | | |
+| M2-F4 | Background jobs single-runner | todo | | | | Include `DemoCleanupService`. From M1-F2 review: expired demo sessions are not rejected at request time; Cloud Run may rarely run background jobs |
 | M2-F5 | Privacy policy, terms, AI disclosure | todo | | | | Founder reviews copy |
 | M2-F6 | Export and deletion completeness | todo | | | | |
 | M2-F7 | Invite-only access | todo | | | | Migration |
@@ -87,7 +87,7 @@ Status values: `todo`, `in progress`, `review`, `blocked`, `done`, `skipped`.
 | M6-F5 | Interviews page | todo | | | | |
 | M6-F6 | Product usage events | todo | | | | Migration |
 | M7-F1 | Plans and entitlements (D4) | todo | | | | Migration |
-| M7-F2 | Checkout and webhooks (D3) | todo | | | | Migration |
+| M7-F2 | Checkout and webhooks (D3) | todo | | | | Migration. From M1-F2 review: reject `IsDemo` users explicitly |
 | M7-F3 | Gating in the UI | todo | | | | |
 | M7-F4 | Billing settings | todo | | | | |
 | M7-F5 | Pricing page | todo | | | | |
@@ -106,6 +106,24 @@ Status values: `todo`, `in progress`, `review`, `blocked`, `done`, `skipped`.
 | M10-F6 | Measure retention | todo | | | | |
 
 M9 items get a row here when the founder picks them.
+
+S-tier layer (`docs/plan/S_TIER_PLAN.md`):
+
+| ID | Feature | Status | Branch | Commit | Tests added | Notes |
+|---|---|---|---|---|---|---|
+| S1 | Defend mode: follow-up probe drills | todo | | | | Deterministic version with M3-F5 (needs M3-F1); AI probes with M5 (needs M1-F3, D9). ADR for probe storage |
+| S2 | Recall forecast: real FSRS | todo | | | | After M3-F4. Formulas and default weights from official FSRS sources only, cited in ADR. Replaces M9 item 10 |
+| S3 | Interview kit (set cover) | todo | | | | After M4-F4. ADR for Strong/Partial weights |
+| S4 | Answer replay and delivery metrics | todo | | | | With M5 (needs M5-F1). Check browser speech recognition support first |
+| S5 | Story drift check | todo | | | | With M5-F3; shares number extraction with the fabricated-number guard |
+| S6 | Visible loop: debrief, what changed | todo | | | | After M6-F3 |
+| S7 | Proof on every number | todo | | | | Starts with M3; needs M1-F9 for the enforcing test |
+| S-Q1 | Accessibility (WCAG 2.2 AA, axe in E2E) | todo | | | | Record baseline first |
+| S-Q2 | Performance budgets (Lighthouse CI) | todo | | | | Record baseline first |
+| S-Q3 | API contract: generated TS types | todo | | | | Record baseline first; ADR for generator |
+| S-Q4 | Security headers and threat model | todo | | | | Headers depend on M2-F1 |
+| S-Q5 | Architecture decision records | todo | | | | Backfill alongside M1 |
+
 
 ## Milestone reviews
 
@@ -130,6 +148,7 @@ M9 items get a row here when the founder picks them.
 
 Newest first. One line per orchestrator run: date, target, result, next step.
 
+- 2026-10-03, target `M1-F2`: done after one review round; build, 145/145 backend tests, frontend type check and build pass. Founder actions before merge: Cloud Run forwarded-headers setting and migration (see M1-F2 notes). Next: M1-F3 AI usage guard.
 - 2026-10-03, target `M1-F1`: done; build, 136/136 backend tests, frontend type check and build pass. Next: M1-F2 demo isolation (D7 default).
 - 2026-10-03, target `M0`: M0-F1 done (deploy trigger on `master`, founder approved), M0-F4 done. Repository is public, so M1-F1 (Google sign-in removal) runs next as the most urgent item.
 - 2026-10-03, target `next`: gates D1 to D12 recorded (defaults, D2 = GCP). M0-F3 done; build, 136/136 backend tests, frontend type check and build pass. M0-F1 waits on the founder's `deploy-api.yml` edit. Next: M0-F4 documentation truth pass.

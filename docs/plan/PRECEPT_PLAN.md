@@ -1,6 +1,6 @@
 # Precept implementation plan
 
-Version 1.0, written 2026-10-02. Source material: `docs/research/precept-market-and-product-strategy.md` (market and competitor research plus a codebase audit of the working copy on 2026-10-02). Track progress in `docs/plan/PLAN_STATUS.md`. Run the work with the prompt in `docs/plan/AGENT_ORCHESTRATOR_PROMPT.md`.
+Version 1.0, written 2026-10-02. Source material: `docs/research/precept-market-and-product-strategy.md` (market and competitor research plus a codebase audit of the working copy on 2026-10-02). Track progress in `docs/plan/PLAN_STATUS.md`. Run the work with the prompt in `docs/plan/AGENT_ORCHESTRATOR_PROMPT.md`. The S-tier layer in `docs/plan/S_TIER_PLAN.md` (added 2026-10-03) extends these milestones with signature features and quality bars without changing their order.
 
 File paths in this plan come from a read-only audit that could not build, run tests or use git. Every implementer must confirm a path exists before editing it and must treat the audit as a map, not ground truth.
 
@@ -321,7 +321,7 @@ This is the paid core and the main differentiator.
 - **Do:** wrap user-provided text (JD, transcript, story fields) in clear delimiters, instruct the model to treat it as data, cap input lengths, and validate every output against a schema. Add a test corpus of injection strings.
 - **Tests:** injection strings do not change output shape or leak system prompt text into fields.
 
-### M5-F7 Offline evaluation harness (optional, portfolio value)
+### M5-F7 Offline evaluation harness (required since 2026-10-03, see S_TIER_PLAN.md section 4)
 - **Do:** a console project or test category (excluded from CI) that runs fixture transcripts through the evaluator and records levels per prompt version to a CSV, so prompt changes can be compared before release.
 
 ### M5-F8 Voice stays local
@@ -424,7 +424,7 @@ Founder picks one item at a time. Each needs its own short spec in `PLAN_STATUS.
 7. AI-voiced interviewer as a speech-to-text, LLM, text-to-speech cascade with its own caps (voice costs many times more than text).
 8. Team tier for coaches and bootcamps (software seats only; no employer screening).
 9. CLI (`precept extract`), calendar and email integrations, PDF export, graph search (concept screen 9).
-10. Replace the `FsrsAlgorithm` stub or remove it.
+10. Replace the `FsrsAlgorithm` stub or remove it. Moved to S2 in `S_TIER_PLAN.md` (real FSRS after M3-F4).
 
 ---
 
@@ -463,4 +463,4 @@ Hypothesis to test, not a proven model: engineers will keep a paid or free accou
 | Users distrust AI scoring | Rejected suggestion rate, feedback | Levels with quotes, no percentages, user confirms everything |
 | Employer confidentiality with evidence capture | User questions, opt-in rate | Summaries only, redaction, local model option |
 | Price too low or too high | Beta interviews, checkout conversion | Test D4 ranges; passes are easy to reprice |
-| Solo founder bandwidth | Milestones slipping | Ship M0 to M2 first; cut M3-F7, M5-F7 and M9 items freely |
+| Solo founder bandwidth | Milestones slipping | Ship M0 to M2 first; cut M3-F7 and M9 items freely (M5-F7 is now required) |

@@ -12,7 +12,7 @@ namespace Precept.Api.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [EnableRateLimiting("general")]
-    public class TestimonialController(PreceptDbContext context, ICurrentUser currentUser) : ControllerBase
+    public class TestimonialController(PreceptDbContext context, ICurrentUser currentUser, IDemoAccountService demoAccountService) : ControllerBase
     {
         /// <summary>
         /// Gets 10 auto-approved testimonials for the landing page.
@@ -47,6 +47,10 @@ namespace Precept.Api.Controllers
         {
             if (string.IsNullOrEmpty(currentUser.UserId))
                 return Unauthorized();
+
+            // Demo visitors are not real users; their testimonials must never reach the landing page.
+            if (await demoAccountService.IsDemoUserAsync(currentUser.UserId))
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Testimonials are not available in demo mode." });
 
             var testimonial = new Testimonial
             {

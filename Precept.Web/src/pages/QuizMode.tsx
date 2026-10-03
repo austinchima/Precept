@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Story, BehavioralStory, ConfidenceLevel, StoryCategory, QuizStoryResponse, ReviewResult } from '../types';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { ArrowRight, Check, Eye, Mic, MicOff, X } from 'lucide-react';
+import { BehavioralStory, QuizStoryResponse, ReviewResult, Story, StoryCategory } from '../types';
 import { formatCategoryName } from '../lib/skills';
 import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
-import { AnimatedSection } from '../components/animation/AnimatedSection';
-import { C, cardStyle, Eyebrow } from '../components/stories/storyTheme';
-import { Mic, MicOff, ArrowRight, Eye, X, CheckCircle2, Minus, AlertTriangle, Brain, Loader2, Check } from 'lucide-react';
+import { Button, Kbd, Logo, Segmented, Skeleton, Textarea } from '../components/ui/kit';
+import { cn } from '../lib/utils';
 
 const VALID_CATEGORIES: StoryCategory[] = ['Auth', 'Database', 'Ai', 'ML', 'DevOps', 'Frontend', 'Backend', 'SystemDesign', 'Security', 'Testing', 'Cloud', 'Architecture'];
 type QuizSource = 'technical' | 'behavioral';
@@ -15,24 +16,38 @@ function isBehavioralStory(story: Story | BehavioralStory): story is BehavioralS
   return 'situation' in story;
 }
 
+function formatNextDue(dateStr: string | null | undefined) {
+  if (!dateStr) return 'later';
+  const diffHrs = (new Date(dateStr).getTime() - Date.now()) / 3_600_000;
+  if (diffHrs < 1) return 'in less than an hour';
+  if (diffHrs < 24) return `in ${Math.round(diffHrs)} hours`;
+  const days = Math.round(diffHrs / 24);
+  return `in ${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
+const RATINGS: { label: string; hint: string; action: ReviewResult; key: string; testid: string; tone: string }[] = [
+  { label: 'Nailed it', hint: 'Told it clearly without notes', action: 'NailedIt', key: '1', testid: 'quiz-nailed', tone: 'hover:border-accent-text' },
+  { label: 'Partial', hint: 'Got there with gaps', action: 'Partial', key: '2', testid: 'quiz-partial', tone: 'hover:border-warning' },
+  { label: 'Blank', hint: 'Could not recall it', action: 'BlankPanic', key: '3', testid: 'quiz-panic', tone: 'hover:border-danger' },
+];
+
 export default function QuizMode() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
-  const sourceParam = searchParams.get('source');
-  const category: StoryCategory | undefined = categoryParam && VALID_CATEGORIES.includes(categoryParam as StoryCategory)
-    ? (categoryParam as StoryCategory)
-    : undefined;
-  const source: QuizSource = sourceParam === 'behavioral' ? 'behavioral' : 'technical';
+  const category: StoryCategory | undefined =
+    categoryParam && VALID_CATEGORIES.includes(categoryParam as StoryCategory) ? (categoryParam as StoryCategory) : undefined;
+  const source: QuizSource = searchParams.get('source') === 'behavioral' ? 'behavioral' : 'technical';
 
   const [phase, setPhase] = useState<'prompt' | 'reveal'>('prompt');
   const [quizState, setQuizState] = useState<QuizStoryResponse<Story | BehavioralStory> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRating, setIsRating] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
-  const toast = useToast();
-
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const toast = useToast();
   const navigate = useNavigate();
+  const reduce = useReducedMotion();
 
   const loadNextStory = async () => {
     setIsLoading(true);
@@ -40,12 +55,10 @@ export default function QuizMode() {
     setUserAnswer('');
     try {
       if (source === 'behavioral') {
-        const data = await api.get<QuizStoryResponse<BehavioralStory>>('/api/behavioralstory/quiz');
-        setQuizState(data);
+        setQuizState(await api.get<QuizStoryResponse<BehavioralStory>>('/api/behavioralstory/quiz'));
       } else {
         const url = category ? `/api/story/quiz?category=${encodeURIComponent(category)}` : '/api/story/quiz';
-        const data = await api.get<QuizStoryResponse<Story>>(url);
-        setQuizState(data);
+        setQuizState(await api.get<QuizStoryResponse<Story>>(url));
       }
     } catch (err) {
       console.error('Quiz story fetch failed:', err);
@@ -60,357 +73,309 @@ export default function QuizMode() {
     setPhase('prompt');
     setUserAnswer('');
     try {
-      if (source === 'behavioral') {
-        const data = await api.get<BehavioralStory>('/api/behavioralstory/random');
-        setQuizState({ story: data, dueCount: 0, nextDueAt: null, totalStories: quizState?.totalStories || 1 });
-      } else {
-        const url = category ? `/api/story/random?category=${encodeURIComponent(category)}` : '/api/story/random';
-        const data = await api.get<Story>(url);
-        setQuizState({ story: data, dueCount: 0, nextDueAt: null, totalStories: quizState?.totalStories || 1 });
-      }
+      const story =
+        source === 'behavioral'
+          ? await api.get<BehavioralStory>('/api/behavioralstory/random')
+          : await api.get<Story>(category ? `/api/story/random?category=${encodeURIComponent(category)}` : '/api/story/random');
+      setQuizState({ story, dueCount: 0, nextDueAt: null, totalStories: quizState?.totalStories || 1 });
     } catch (err) {
       console.error('Random story fetch failed:', err);
-      toast.error('Failed to load random story');
+      toast.error('Could not load a story to practise.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => { loadNextStory(); }, [category, source]);
+  useEffect(() => {
+    loadNextStory();
+  }, [category, source]);
 
   useEffect(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SR) {
-      const rec = new SR();
-      rec.continuous = true; rec.interimResults = false; rec.lang = 'en-US';
-      rec.onresult = (event: any) => {
-        const resultText = event.results[event.results.length - 1][0].transcript;
-        setUserAnswer((prev) => prev + (prev ? ' ' : '') + resultText);
-      };
-      rec.onend = () => setIsRecording(false);
-      rec.onerror = () => setIsRecording(false);
-      recognitionRef.current = rec;
-    }
+    if (!SR) return;
+    const rec = new SR();
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+    rec.onresult = (event: any) => {
+      const resultText = event.results[event.results.length - 1][0].transcript;
+      setUserAnswer((prev) => prev + (prev ? ' ' : '') + resultText);
+    };
+    rec.onend = () => setIsRecording(false);
+    rec.onerror = () => setIsRecording(false);
+    recognitionRef.current = rec;
+    return () => rec.abort?.();
   }, []);
+
+  const stopRecording = () => {
+    if (isRecording && recognitionRef.current) recognitionRef.current.stop();
+  };
 
   const toggleRecording = () => {
     if (!recognitionRef.current) {
-      toast.warning('Voice transcription is not supported in this browser. Try Chrome or Edge.');
+      toast.warning('Voice input is not supported in this browser. Chrome and Edge support it.');
       return;
     }
     if (isRecording) recognitionRef.current.stop();
-    else { setIsRecording(true); recognitionRef.current.start(); }
+    else {
+      setIsRecording(true);
+      recognitionRef.current.start();
+    }
   };
 
   const handleAssessment = async (result: ReviewResult) => {
-    if (!quizState?.story) return;
-    setIsLoading(true);
+    if (!quizState?.story || isRating) return;
+    setIsRating(true);
     try {
-      if (source === 'behavioral') {
-        await api.post(`/api/behavioralstory/${quizState.story.id}/review`, { rating: result });
-      } else {
-        await api.post(`/api/story/${quizState.story.id}/review`, { rating: result });
-      }
+      const base = source === 'behavioral' ? '/api/behavioralstory' : '/api/story';
+      await api.post(`${base}/${quizState.story.id}/review`, { rating: result });
       await loadNextStory();
     } catch (err) {
       console.error('Failed to submit assessment:', err);
-      toast.error((err as Error).message || 'Failed to save assessment.');
-      setIsLoading(false);
+      toast.error((err as Error).message || 'Could not save your rating.');
+    } finally {
+      setIsRating(false);
     }
   };
 
   const setSource = (next: QuizSource) => {
     const params: Record<string, string> = {};
-    if (next === 'behavioral') {
-      params.source = 'behavioral';
-    } else if (category) {
-      params.category = category;
-    }
+    if (next === 'behavioral') params.source = 'behavioral';
+    else if (category) params.category = category;
     setSearchParams(params);
   };
 
-  if (isLoading && !quizState?.story) {
+  // Keyboard: R reveals, 1-3 rate. Ignored while typing in the answer box.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || e.metaKey || e.ctrlKey) return;
+      if (phase === 'prompt' && e.key.toLowerCase() === 'r' && quizState?.story) {
+        stopRecording();
+        setPhase('reveal');
+      } else if (phase === 'reveal') {
+        const rating = RATINGS.find((r) => r.key === e.key);
+        if (rating) handleAssessment(rating.action);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const story = quizState?.story;
+  const exit = () => {
+    stopRecording();
+    navigate('/story-bank');
+  };
+
+  const header = (
+    <header className="sticky top-0 z-10 border-b border-line bg-bg/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 md:px-6">
+        <div className="flex items-center gap-3">
+          <Logo className="hidden sm:inline-flex" />
+          <span className="hidden h-4 w-px bg-line sm:block" />
+          <span className="text-[14px] font-medium text-fg">Drill</span>
+          {story && <span className="num text-[13px] text-fg-3">{quizState?.dueCount || 0} due</span>}
+        </div>
+        <Segmented
+          size="sm"
+          ariaLabel="Story type"
+          value={source}
+          onChange={setSource}
+          options={[
+            { value: 'technical', label: 'Technical' },
+            { value: 'behavioral', label: 'Behavioral' },
+          ]}
+        />
+        <Button variant="ghost" size="sm" icon={<X size={16} />} onClick={exit} data-testid="quiz-exit">
+          <span className="hidden sm:inline">Exit</span>
+        </Button>
+      </div>
+    </header>
+  );
+
+  if (isLoading && !story) {
     return (
-      <div className="font-body h-full flex items-center justify-center" style={{ background: C.bg0, color: C.ink }}>
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-12 h-12 animate-spin" style={{ color: C.teal }} />
-          <span className="font-mono text-[12px] uppercase tracking-[0.18em]" style={{ color: C.inkDim }}>Loading next drill…</span>
+      <div className="min-h-[100dvh] bg-bg" data-testid="quiz-page">
+        {header}
+        <div className="mx-auto max-w-2xl px-4 pt-12">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="mt-6 h-48" />
+          <Skeleton className="mt-6 h-32" />
         </div>
       </div>
     );
   }
 
-  const story = quizState?.story;
-
   if (!story) {
     const isBehavioral = source === 'behavioral';
     const total = quizState?.totalStories || 0;
-    const isDoneForNow = total > 0;
-    
-    // Formatting relative time for NextDueAt
-    const formatNextDue = (dateStr: string | null | undefined) => {
-      if (!dateStr) return 'later';
-      const d = new Date(dateStr);
-      const now = new Date();
-      const diffMs = d.getTime() - now.getTime();
-      const diffHrs = diffMs / (1000 * 60 * 60);
-      if (diffHrs < 1) return 'in less than an hour';
-      if (diffHrs < 24) return `in ${Math.round(diffHrs)} hours`;
-      return `in ${Math.round(diffHrs / 24)} days`;
-    };
+    const caughtUp = total > 0;
     return (
-      <div className="font-body h-full flex flex-col items-center justify-center px-6 isolate relative overflow-hidden" style={{ background: C.bg0, color: C.ink }}>
-        <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-50 z-0" />
-        <div className="relative z-10 max-w-[480px] w-full p-10 text-center opacity-0 animate-fade-in-up" style={cardStyle()}>
-          <div className="mx-auto w-14 h-14 rounded-xl grid place-items-center mb-5" style={{ background: isDoneForNow ? `${C.emerald}14` : `${C.teal}14`, border: isDoneForNow ? `1px solid ${C.emerald}33` : `1px solid ${C.teal}33` }}>
-            {isDoneForNow ? <Check size={24} style={{ color: C.emerald }} /> : <Brain size={24} style={{ color: C.teal }} />}
-          </div>
-          <Eyebrow color={isDoneForNow ? C.emerald : C.teal}>Quiz mode{category && !isBehavioral ? ` · ${formatCategoryName(category)}` : ''}</Eyebrow>
-          <h2 className="mt-5 font-display text-3xl font-bold leading-[1.05]" style={{ color: C.ink }}>
-            {isDoneForNow ? (
-              <>You're all <span className="font-editorial" style={{ color: C.emerald, fontWeight: 400 }}>caught up!</span></>
-            ) : isBehavioral ? (
-              <>No behavioral <span className="font-editorial" style={{ color: C.amber, fontWeight: 400 }}>STAR stories</span> yet.</>
-            ) : category ? (
-              <>No <span className="font-editorial" style={{ color: C.amber, fontWeight: 400 }}>{formatCategoryName(category)}</span> stories yet.</>
-            ) : (
-              <>Story bank is <span className="font-editorial" style={{ color: C.amber, fontWeight: 400 }}>empty.</span></>
-            )}
-          </h2>
-          <p className="mt-4 font-body text-[14.5px] leading-relaxed" style={{ color: C.inkDim }}>
-            {isDoneForNow
-              ? `You've reviewed all ${total} ${isBehavioral ? 'behavioral ' : ''}stories. Your next drill is due ${formatNextDue(quizState?.nextDueAt)}.`
-              : isBehavioral
-              ? 'Bank some STAR narratives first — Precept will drill them once they exist.'
-              : category
-                ? `Bank some ${formatCategoryName(category)} narratives first, or clear the filter to drill all categories.`
-                : 'Bank some technical narratives first — Precept will drill them with spaced repetition once they exist.'}
+      <div className="min-h-[100dvh] bg-bg" data-testid="quiz-page">
+        {header}
+        <main className="mx-auto flex max-w-xl flex-col items-start px-6 pt-[14vh]">
+          <span className={cn('grid h-10 w-10 place-items-center rounded-lg', caughtUp ? 'bg-accent text-accent-ink' : 'border border-line bg-surface-2 text-fg-2')}>
+            <Check size={18} />
+          </span>
+          <h1 className="display-md mt-6 text-fg">
+            {caughtUp ? 'You are caught up.' : isBehavioral ? 'No STAR stories yet.' : category ? `No ${formatCategoryName(category)} stories yet.` : 'Your story bank is empty.'}
+          </h1>
+          <p className="mt-3 text-[15px] leading-relaxed text-fg-2">
+            {caughtUp
+              ? `All ${total} ${isBehavioral ? 'STAR ' : ''}stories are reviewed. The next one is due ${formatNextDue(quizState?.nextDueAt)}.`
+              : 'Add a story first. Precept schedules it for review once it exists.'}
           </p>
-          <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button onClick={() => navigate('/story-bank')} data-testid="quiz-go-storybank"
-              className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
-              style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}>
-              Go to story bank <ArrowRight size={12} />
-            </button>
-            {isDoneForNow ? (
-              <button onClick={loadRandomStory}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
-                style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = `${C.teal}22`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = `${C.teal}14`; }}>
-                Practice anyway <ArrowRight size={12} />
-              </button>
+          <div className="mt-8 flex flex-wrap gap-2">
+            {caughtUp ? (
+              <Button variant="primary" onClick={loadRandomStory} iconRight={<ArrowRight size={16} />}>Practise one anyway</Button>
             ) : (
-              <button onClick={() => navigate('/story-bank')}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
-                style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = `${C.teal}22`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = `${C.teal}14`; }}>
-                Start from a template <ArrowRight size={12} />
-              </button>
+              <Button variant="primary" to="/story-bank" data-testid="quiz-go-storybank">Go to STAR Bank</Button>
             )}
-            {!isBehavioral && category && (
-              <button onClick={() => setSearchParams({})}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-mono text-[11.5px] font-semibold uppercase tracking-[0.16em] cursor-pointer"
-                style={{ background: 'transparent', color: C.inkDim, border: `1px solid ${C.hair2}` }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = C.ink; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = C.inkDim; }}>
-                Clear filter <X size={12} />
-              </button>
-            )}
+            {caughtUp && <Button variant="secondary" to="/story-bank" data-testid="quiz-go-storybank">STAR Bank</Button>}
+            {!isBehavioral && category && <Button variant="ghost" onClick={() => setSearchParams({})}>Clear filter</Button>}
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   const behavioral = isBehavioralStory(story);
-  const tags = behavioral && story.tags
-    ? story.tags.split(',').map(t => t.trim()).filter(Boolean)
-    : [];
+  const tags = behavioral && story.tags ? story.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
   return (
-    <div className="font-body h-full flex flex-col relative isolate overflow-hidden" style={{ background: C.bg0, color: C.ink }} data-testid="quiz-page">
-      <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-40 z-0" />
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[1100px] -translate-x-1/2 rounded-[50%] z-0"
-        style={{ background: `radial-gradient(closest-side, rgba(45,212,191,0.10), rgba(139,92,246,0.06) 45%, transparent 75%)`, filter: 'blur(4px)' }} />
-
-      {/* Top bar */}
-      <header className="relative z-10 flex items-center justify-between px-6 md:px-12 h-20 backdrop-blur-md sticky top-0" style={{ background: 'rgba(2,5,10,0.7)', borderBottom: `1px solid ${C.hair}` }}>
-        <div className="flex flex-col">
-          <div className="flex items-center gap-3">
-            <Eyebrow color={C.teal}>Drill · {behavioral ? 'Behavioral' : formatCategoryName(story.category)}</Eyebrow>
-            {source === 'technical' && category && (
-              <button
-                onClick={() => setSearchParams({})}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
-                style={{ background: `${C.teal}14`, color: C.teal, border: `1px solid ${C.teal}33` }}
-                title="Clear category filter">
-                {formatCategoryName(category)} <X size={10} />
-              </button>
-            )}
-          </div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.16em] mt-1" style={{ color: C.inkDim }}>
-            {quizState?.dueCount || 0} remaining
-          </div>
-        </div>
-        <button onClick={() => { if (isRecording && recognitionRef.current) recognitionRef.current.stop(); navigate('/story-bank'); }}
-          data-testid="quiz-exit"
-          className="group inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer transition-colors"
-          style={{ background: 'transparent', color: C.inkDim, border: `1px solid ${C.hair2}` }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = C.ink; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = C.inkDim; }}
-        >
-          Exit drill <X size={12} />
-        </button>
-      </header>
-
-      {/* Main */}
-      <main className="relative z-10 flex-1 flex flex-col items-center py-10 px-6 md:px-12 w-full">
-        <div className="w-full max-w-[860px] flex flex-col gap-6">
-
-          {/* Source toggle */}
-          <div className="flex items-center justify-center gap-1 p-1 rounded-full self-center" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.hair}` }}>
-            <button onClick={() => setSource('technical')}
-              className="rounded-full px-4 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] cursor-pointer transition-all"
-              style={source === 'technical'
-                ? { background: C.ink, color: C.bg0 }
-                : { background: 'transparent', color: C.inkDim }}>
-              Technical
-            </button>
-            <button onClick={() => setSource('behavioral')}
-              className="rounded-full px-4 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] cursor-pointer transition-all"
-              style={source === 'behavioral'
-                ? { background: C.violet, color: C.ink }
-                : { background: 'transparent', color: C.inkDim }}>
-              Behavioral
-            </button>
-          </div>
-
-          <AnimatedSection animation="fadeUp" className="p-6 md:p-8 flex flex-col gap-6 relative overflow-hidden" >
-            <div style={cardStyle()} className="absolute inset-0 -z-10" />
-
-            {/* Prompt card */}
-            <div className="overflow-hidden" style={{ background: C.bg0, border: `1px solid ${C.hair}`, borderRadius: 14 }}>
-              <div className="flex items-center justify-between px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest" style={{ borderBottom: `1px solid ${C.hair}`, color: C.inkMute }}>
-                <span>{behavioral ? 'STAR prompt' : formatCategoryName((story as Story).category)}</span>
-                <span>quiz mode</span>
+    <div className="min-h-[100dvh] bg-bg pb-24" data-testid="quiz-page">
+      {header}
+      <main className="mx-auto max-w-2xl px-4 pt-10 md:pt-14">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={story.id}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, y: -12 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col gap-6"
+          >
+            <div>
+              <div className="flex flex-wrap items-center gap-2 text-[13px] text-fg-3">
+                <span>{behavioral ? 'Behavioral' : formatCategoryName((story as Story).category)}</span>
+                {category && !behavioral && (
+                  <button type="button" onClick={() => setSearchParams({})} className="chip hover:text-fg" title="Clear category filter">
+                    {formatCategoryName(category)} <X size={12} />
+                  </button>
+                )}
               </div>
-              {behavioral ? (
-                <div className="p-6 md:p-8 flex flex-col gap-4 text-center">
-                  <div className="mx-auto w-12 h-12 rounded-full grid place-items-center" style={{ background: `${C.violet}14`, border: `1px solid ${C.violet}33` }}>
-                    <span className="font-mono text-[18px] font-bold" style={{ color: C.violet }}>?</span>
-                  </div>
-                  <h3 className="font-display text-[22px] md:text-[26px] font-semibold leading-tight" style={{ color: C.ink }}>
-                    Tell me about a time when…
-                  </h3>
-                  <p className="font-body text-[15px] leading-relaxed" style={{ color: C.inkDim }}>
-                    {story.title}
-                  </p>
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap justify-center gap-2 mt-1">
-                      {tags.map(tag => (
-                        <span key={tag} className="px-2.5 py-1 rounded-full font-mono text-[9.5px] uppercase tracking-wider" style={{ background: `${C.violet}10`, border: `1px solid ${C.violet}33`, color: C.inkDim }}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+              <h1 className="mt-2 text-[24px] font-semibold leading-tight tracking-[-0.025em] text-fg md:text-[28px]">
+                {behavioral ? `Tell me about a time: ${story.title.charAt(0).toLowerCase()}${story.title.slice(1)}` : story.title}
+              </h1>
+              {tags.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {tags.map((tag) => <span key={tag} className="chip">{tag}</span>)}
                 </div>
-              ) : (
-                <pre className="p-5 font-mono text-[12.5px] leading-relaxed overflow-x-auto whitespace-pre-wrap custom-scrollbar" style={{ color: C.teal }}>
-                  <code>{(story as Story).codeSnippet}</code>
-                </pre>
               )}
             </div>
 
+            {!behavioral && (story as Story).codeSnippet && (
+              <pre className="max-h-[42vh] overflow-auto rounded-xl border border-line bg-surface-1 p-5 font-mono text-[12.5px] leading-relaxed text-fg">
+                <code>{(story as Story).codeSnippet}</code>
+              </pre>
+            )}
+
             <div>
-              <h2 className="font-display text-[20px] font-semibold mb-1" style={{ color: C.ink }}>
-                {behavioral ? (
-                  <>Respond with the full <span className="font-editorial" style={{ color: C.violet, fontWeight: 400 }}>STAR</span> structure.</>
-                ) : (
-                  <>Explain what this code does — out <span className="font-editorial" style={{ color: C.teal, fontWeight: 400 }}>loud.</span></>
-                )}
-              </h2>
-              <p className="font-body text-[13.5px]" style={{ color: C.inkDim }}>
-                {behavioral
-                  ? 'Cover Situation, Task, Action, and Result. Type or speak — your answer never leaves the page.'
-                  : 'Type or speak. Your answer never leaves the page.'}
-              </p>
-              <div className="relative mt-3">
-                <textarea value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} disabled={phase === 'reveal'}
-                  rows={5} data-testid="quiz-answer-input"
-                  className="w-full p-4 pr-16 disabled:opacity-80 font-body text-[14px] focus:outline-none transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.hair}`, color: C.ink, borderRadius: 14, resize: 'vertical', minHeight: 140 }}
-                  placeholder={behavioral ? "Situation: ...\nTask: ...\nAction: ...\nResult: ..." : "A debouncer is used to..."}
+              <label htmlFor="quiz-answer" className="field-label">
+                {behavioral ? 'Answer it with situation, task, action and result' : 'Explain what this does and why, as you would out loud'}
+              </label>
+              <div className="relative">
+                <Textarea
+                  id="quiz-answer"
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  disabled={phase === 'reveal'}
+                  rows={5}
+                  data-testid="quiz-answer-input"
+                  className="pr-14"
+                  placeholder="Type or use the microphone."
                 />
-                <button onClick={toggleRecording} disabled={phase === 'reveal'} data-testid="quiz-mic-btn"
-                  className="absolute bottom-3 right-3 min-w-[44px] min-h-[44px] rounded-full grid place-items-center cursor-pointer transition-all"
-                  style={{
-                    background: isRecording ? `${C.rose}22` : 'rgba(255,255,255,0.025)',
-                    color: isRecording ? C.rose : C.inkDim,
-                    border: `1px solid ${isRecording ? `${C.rose}55` : C.hair2}`,
-                    boxShadow: isRecording ? `0 0 14px ${C.rose}55` : 'none',
-                  }}>
-                  {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
-                </button>
+                <Button
+                  variant={isRecording ? 'danger' : 'ghost'}
+                  size="sm"
+                  className="absolute bottom-2 right-2"
+                  icon={isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+                  onClick={toggleRecording}
+                  disabled={phase === 'reveal'}
+                  aria-label={isRecording ? 'Stop voice input' : 'Start voice input'}
+                  aria-pressed={isRecording}
+                  data-testid="quiz-mic-btn"
+                />
               </div>
+              <p className="field-help">Your answer stays in this browser. Recordings are not sent to Precept. Voice input uses your browser’s speech recognition.</p>
             </div>
 
             {phase === 'prompt' ? (
-              <button onClick={() => { if (isRecording && recognitionRef.current) recognitionRef.current.stop(); setPhase('reveal'); }}
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                icon={<Eye size={16} />}
+                onClick={() => {
+                  stopRecording();
+                  setPhase('reveal');
+                }}
                 data-testid="quiz-reveal-btn"
-                className="group w-full inline-flex items-center justify-center gap-2 rounded-full py-3.5 font-mono text-[12px] font-semibold uppercase tracking-[0.16em] cursor-pointer transition-all"
-                style={{ background: behavioral ? C.violet : C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${behavioral ? C.violet : C.ink}, 0 18px 60px -20px ${behavioral ? 'rgba(139,92,246,0.5)' : 'rgba(45,212,191,0.5)'}` }}>
-                <Eye size={13} /> Reveal {behavioral ? 'STAR breakdown' : 'explanation'}
-              </button>
+              >
+                Reveal your notes <Kbd>R</Kbd>
+              </Button>
             ) : (
-              <>
-                <div className="opacity-0 animate-fade-in-up">
-                  <div className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: behavioral ? C.violet : C.teal }}>
-                    <CheckCircle2 size={12} /> {behavioral ? 'STAR breakdown' : 'Correct explanation'}
-                  </div>
+              <motion.div
+                initial={reduce ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="flex flex-col gap-6"
+              >
+                <section className="panel p-5">
+                  <h2 className="text-[13px] font-medium text-fg-3">{behavioral ? 'Your STAR notes' : 'Your explanation'}</h2>
                   {behavioral ? (
-                    <div className="flex flex-col gap-3">
-                      {[
-                        { label: 'Situation', value: (story as BehavioralStory).situation },
-                        { label: 'Task', value: (story as BehavioralStory).task },
-                        { label: 'Action', value: (story as BehavioralStory).action },
-                        { label: 'Result', value: (story as BehavioralStory).result },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="p-4 font-body text-[13.5px] leading-relaxed whitespace-pre-wrap" style={{ background: C.bg2, borderLeft: `2px solid ${C.violet}`, color: C.inkDim, borderRadius: 12 }}>
-                          <span className="font-mono text-[10px] uppercase tracking-[0.18em] block mb-1" style={{ color: C.violet }}>{label}</span>
-                          {value}
+                    <dl className="mt-3 grid gap-4">
+                      {(['situation', 'task', 'action', 'result'] as const).map((k) => (
+                        <div key={k}>
+                          <dt className="text-[12.5px] font-medium capitalize text-fg">{k}</dt>
+                          <dd className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-fg-2">{(story as BehavioralStory)[k]}</dd>
                         </div>
                       ))}
-                    </div>
+                    </dl>
                   ) : (
-                    <div className="p-4 font-body text-[13.5px] leading-relaxed whitespace-pre-wrap" style={{ background: C.bg2, borderLeft: `2px solid ${C.teal}`, color: C.inkDim, borderRadius: 12 }}>
-                      {(story as Story).explanation}
-                    </div>
+                    <p className="mt-3 whitespace-pre-wrap text-[14px] leading-relaxed text-fg-2">{(story as Story).explanation}</p>
                   )}
-                </div>
+                </section>
 
-                <div className="p-5 flex flex-col gap-3" style={{ background: C.bg2, border: `1px solid ${C.hair}`, borderRadius: 16 }}>
-                  <div className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-center" style={{ color: C.inkMute }}>How did you do?</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {[
-                      { label: 'Nailed it', icon: <CheckCircle2 size={14} />, color: C.emerald, action: 'NailedIt' as ReviewResult, testid: 'quiz-nailed' },
-                      { label: 'Partial', icon: <Minus size={14} />, color: C.amber, action: 'Partial' as ReviewResult, testid: 'quiz-partial' },
-                      { label: 'Blank panic', icon: <AlertTriangle size={14} />, color: C.rose, action: 'BlankPanic' as ReviewResult, testid: 'quiz-panic' },
-                    ].map((opt) => (
-                      <button key={opt.label} onClick={() => handleAssessment(opt.action)} data-testid={opt.testid}
-                        className="rounded-full py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] flex items-center justify-center gap-2 transition-all cursor-pointer"
-                        style={{ background: `${opt.color}1c`, color: opt.color, border: `1px solid ${opt.color}55`, boxShadow: `0 0 12px ${opt.color}22` }}>
-                        {opt.icon} {opt.label}
+                <section aria-labelledby="rate-heading">
+                  <h2 id="rate-heading" className="field-label">How did it go?</h2>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {RATINGS.map((r) => (
+                      <button
+                        key={r.action}
+                        type="button"
+                        onClick={() => handleAssessment(r.action)}
+                        disabled={isRating}
+                        data-testid={r.testid}
+                        className={cn(
+                          'flex flex-col items-start gap-1 rounded-xl border border-line bg-surface-1 p-4 text-left transition-colors active:translate-y-px disabled:opacity-50',
+                          r.tone
+                        )}
+                      >
+                        <span className="flex w-full items-center justify-between">
+                          <span className="text-[14px] font-medium text-fg">{r.label}</span>
+                          <Kbd>{r.key}</Kbd>
+                        </span>
+                        <span className="text-[12.5px] text-fg-3">{r.hint}</span>
                       </button>
                     ))}
                   </div>
-                </div>
-              </>
+                </section>
+              </motion.div>
             )}
-          </AnimatedSection>
-        </div>
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

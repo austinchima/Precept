@@ -9,11 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Removed `POST /api/auth/google` and the "Continue with Google" button. The endpoint signed in or created an account from an email address without validating a Google ID token. A test now asserts the route returns 404 and issues no session cookie.
+- **Per-visitor demo accounts**: `POST /api/auth/demo-login` now creates a separate, seeded demo account for each visitor (`demo-<id>@demo.invalid`, no password) that expires after 24 hours, instead of signing everyone into one shared account with a password in source. Demo accounts get fixed, labelled sample responses from the mock interview endpoints and never call an LLM provider, receive no digest email, and cannot sign in with a password. Demo creation is limited to 5 per client IP per hour (`Demo:MaxCreationsPerIpPerHour`).
+- The old shared `demo@precept.app` account is marked as an expired demo by migration `M1F2_DemoIsolation`, its password is removed and its security stamp rotated, so existing shared sessions end and the new hourly `DemoCleanupService` deletes it with its data. Expired demo accounts are also cleaned up in small batches on each demo login.
+- Demo accounts cannot submit testimonials, and the app shows a banner saying the account is a demo with sample data and when it will be deleted.
+- New opt-in setting `ForwardedHeaders:TrustAllProxies`: when the API runs behind a reverse proxy that appends `X-Forwarded-For` (such as Cloud Run), it takes the client IP from the right-most entry so per-IP limits see real visitors. Off by default, because enabling it where clients can reach the API directly would let them spoof their address.
 
 ### Added
 - `docs/plan/` (implementation plan, status tracker, agent orchestrator prompt) and `docs/research/` (market and product strategy research).
 
 ### Changed
+- **Frontend redesign**: new design system and every screen rebuilt on it (landing, sign-in, terms, 404, app shell and all app pages).
+  - Dark and light themes with a system default, set before first paint and switchable from the top bar, Settings and the landing page. One lime accent, Geist and Geist Mono self-hosted through Fontsource, so no font or icon CDN calls remain.
+  - Shared UI kit (`src/components/ui/kit.tsx`) and domain components (`src/components/domain.tsx`) replace per-page styling; collapsible sidebar, mobile drawer and a command palette that also jumps between pages.
+  - Landing page uses GSAP (ScrollTrigger, SplitText) with Lenis smooth scrolling, a pinned four-step product tour and real screenshots of the app taken with fictional data. All motion is skipped when the visitor prefers reduced motion.
+  - Quiz Mode has keyboard shortcuts (R to reveal, 1 to 3 to rate). Save-to-bank from a mock interview now stores your own answer instead of the AI critique.
+- **Honesty fixes in the UI**: removed the sample-data confidence trend chart and application velocity funnel, the hard-coded fallback testimonials, the notification bell with nothing behind it, the "Gemini Flash Powered" badge and the "Forgot?" link (the reset endpoint does not send email yet). Copy now says deleted stories move to trash, voice input uses the browser's speech recognition, and the job post score counts skills that are on your list.
+- Removed unused frontend code and the `framer-motion`, `recharts`, `react-is`, `class-variance-authority`, `@radix-ui/react-slot` and `@paper-design/shaders-react` dependencies.
 - Moved superseded planning and design docs (`R1_Implementation_Plan.md`, `precept_testing_strategy.md`, `auth_reuse_detection_cascade_revocation.md`, `Precept_Technical_Report.docx`) to `docs/archive/`.
 
 ### Documentation corrections

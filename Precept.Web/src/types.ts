@@ -95,6 +95,8 @@ export interface User {
   digestIncludeFollowUps?: boolean;
   digestIncludeReviews?: boolean;
   digestHourUtc?: number;
+  isDemo?: boolean;
+  demoExpiresAt?: string | null;
 }
 
 export interface UserContextType {
@@ -215,6 +217,7 @@ export interface MockQuestionResponse {
   category: string;
   focusArea: string;
   contextTips: string;
+  isDemoSample?: boolean;
 }
 
 export interface StarBreakdown {
@@ -231,5 +234,6 @@ export interface MockInterviewEvaluation {
   areasForImprovement: string[];
   modelAnswer: string;
   deliveryFeedback: string;
+  isDemoSample?: boolean;
 }
 

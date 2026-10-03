@@ -12,12 +12,19 @@ namespace Precept.Api.Services;
 /// </summary>
 public class MockInterviewService(
     ILlmClientFactory llmFactory,
+    IDemoAccountService demoAccountService,
     PreceptDbContext dbContext,
     ILogger<MockInterviewService> logger)
     : IMockInterviewService
 {
     public async Task<MockQuestionResponse> GenerateQuestionAsync(GenerateMockQuestionRequest request, string userId)
     {
+        // Demo visitors never reach an LLM provider, so they cannot spend AI budget.
+        if (await demoAccountService.IsDemoUserAsync(userId))
+        {
+            return DemoSamples.Question();
+        }
+
         string storyContext = "";
         if (!string.IsNullOrEmpty(request.StoryId) && Guid.TryParse(request.StoryId, out var storyGuid))
         {
@@ -77,6 +84,11 @@ Return strictly valid JSON with this schema (no markdown, no other text):
                 Strengths = [],
                 AreasForImprovement = ["Please provide an answer before requesting evaluation."]
             };
+        }
+
+        if (await demoAccountService.IsDemoUserAsync(userId))
+        {
+            return DemoSamples.Evaluation();
         }
 
         var llm = llmFactory.GetClient();

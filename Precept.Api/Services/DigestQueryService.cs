@@ -17,7 +17,7 @@ public class DigestQueryService : IDigestQueryService
     public async Task<DigestContent?> GetDigestAsync(string userId, DateTime utcNow)
     {
         var user = await _dbContext.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || !user.EmailDigestEnabled)
+        if (user == null || !user.EmailDigestEnabled || user.IsDemo)
         {
             return null;
         }

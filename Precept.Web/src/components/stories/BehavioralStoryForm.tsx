@@ -2,189 +2,106 @@ import React, { useState } from 'react';
 import { BehavioralStory } from '../../types';
 import { api } from '../../api';
 import type { BehavioralStoryTemplate } from '../../data/behavioralStoryTemplates';
-import { C, cardStyle, inputStyle, textareaBodyStyle, Eyebrow } from './storyTheme';
-import { X, Loader2, Brain } from 'lucide-react';
+import { Button, Dialog, Field, Input, Textarea } from '../ui/kit';
 
 interface BehavioralStoryFormProps {
+  open: boolean;
   story?: BehavioralStory | null;
   template?: BehavioralStoryTemplate | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export const BehavioralStoryForm: React.FC<BehavioralStoryFormProps> = ({ story, template, onSuccess, onCancel }) => {
+const STAR_FIELDS = [
+  { key: 'situation', label: 'Situation', help: 'The context. Where were you and what was going on?' },
+  { key: 'task', label: 'Task', help: 'Your responsibility or the problem you owned.' },
+  { key: 'action', label: 'Action', help: 'What you did, in the order you did it.' },
+  { key: 'result', label: 'Result', help: 'The outcome. Use real numbers only if you have them.' },
+] as const;
+
+type StarKey = (typeof STAR_FIELDS)[number]['key'];
+
+function BehavioralStoryFormBody({ story, template, onSuccess, onCancel }: Omit<BehavioralStoryFormProps, 'open'>) {
   const [title, setTitle] = useState(story?.title || template?.title || '');
-  const [situation, setSituation] = useState(story?.situation || template?.situation || '');
-  const [task, setTask] = useState(story?.task || template?.task || '');
-  const [action, setAction] = useState(story?.action || template?.action || '');
-  const [result, setResult] = useState(story?.result || template?.result || '');
+  const [fields, setFields] = useState<Record<StarKey, string>>({
+    situation: story?.situation || template?.situation || '',
+    task: story?.task || template?.task || '',
+    action: story?.action || template?.action || '',
+    result: story?.result || template?.result || '',
+  });
   const [tags, setTags] = useState(story?.tags || template?.tags || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !situation.trim() || !task.trim() || !action.trim() || !result.trim()) {
-      setError('Title, Situation, Task, Action, and Result are all required.');
+    if (!title.trim() || STAR_FIELDS.some((f) => !fields[f.key].trim())) {
+      setError('Fill in the title and all four STAR sections.');
       return;
     }
-
     setIsSubmitting(true);
     setError('');
-
     try {
       const payload = {
         title: title.trim(),
-        situation: situation.trim(),
-        task: task.trim(),
-        action: action.trim(),
-        result: result.trim(),
-        tags: tags.trim()
+        situation: fields.situation.trim(),
+        task: fields.task.trim(),
+        action: fields.action.trim(),
+        result: fields.result.trim(),
+        tags: tags.trim(),
       };
-
-      if (story) {
-        await api.put(`/api/behavioralstory/${story.id}`, payload);
-      } else {
-        await api.post('/api/behavioralstory', payload);
-      }
+      if (story) await api.put(`/api/behavioralstory/${story.id}`, payload);
+      else await api.post('/api/behavioralstory', payload);
       onSuccess();
     } catch (err) {
       console.error('Failed to save behavioral story:', err);
-      setError('Failed to save story. Please try again.');
+      setError('The story could not be saved. Try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="relative overflow-hidden opacity-0 animate-fade-in-up" style={cardStyle()}>
-      <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${C.hair}` }}>
-        <Eyebrow color={story ? C.amber : C.teal}>
-          <span className="flex items-center gap-2">
-            <Brain size={12} />
-            {story ? 'Edit STAR story' : 'New STAR story'}
-          </span>
-        </Eyebrow>
-        <button title="Close Form" aria-label="Close Form" onClick={onCancel} className="min-h-[40px] min-w-[40px] rounded-lg grid place-items-center transition-colors cursor-pointer"
-          style={{ color: C.inkDim }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = C.ink; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = C.inkDim; }}>
-          <X size={16} />
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col">
-        <div className="p-6 space-y-4">
-          {error && (
-            <div className="px-3 py-2.5 rounded-lg font-mono text-[11.5px]" style={{ background: `${C.rose}10`, border: `1px solid ${C.rose}33`, color: C.rose }}>
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Story Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Resolved Production DB Outage"
-              style={inputStyle}
+    <form id="behavioral-story-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger" role="alert">{error}</p>}
+      <Field label="Title" htmlFor="bs-title">
+        <Input id="bs-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Resolved a production outage under pressure" required />
+      </Field>
+      <div className="grid gap-5 md:grid-cols-2">
+        {STAR_FIELDS.map((f) => (
+          <Field key={f.key} label={f.label} htmlFor={`bs-${f.key}`} help={f.help}>
+            <Textarea
+              id={`bs-${f.key}`}
+              rows={4}
+              value={fields[f.key]}
+              onChange={(e) => setFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
               required
             />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>
-                  <span style={{ color: C.teal, fontWeight: 700 }}>S</span>ituation
-                </label>
-                <textarea
-                  value={situation}
-                  onChange={(e) => setSituation(e.target.value)}
-                  rows={4}
-                  placeholder="What was the context or background? Set the scene."
-                  style={textareaBodyStyle}
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>
-                  <span style={{ color: C.teal, fontWeight: 700 }}>T</span>ask
-                </label>
-                <textarea
-                  value={task}
-                  onChange={(e) => setTask(e.target.value)}
-                  rows={4}
-                  placeholder="What was your specific responsibility or challenge?"
-                  style={textareaBodyStyle}
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>
-                  <span style={{ color: C.teal, fontWeight: 700 }}>A</span>ction
-                </label>
-                <textarea
-                  value={action}
-                  onChange={(e) => setAction(e.target.value)}
-                  rows={4}
-                  placeholder="What specific steps did YOU take to solve the problem?"
-                  style={textareaBodyStyle}
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>
-                  <span style={{ color: C.teal, fontWeight: 700 }}>R</span>esult
-                </label>
-                <textarea
-                  value={result}
-                  onChange={(e) => setResult(e.target.value)}
-                  rows={4}
-                  placeholder="What was the final outcome? (Use metrics if possible!)"
-                  style={textareaBodyStyle}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: C.inkMute }}>Tags (comma separated)</label>
-            <input
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="leadership, conflict, optimization"
-              style={{ ...inputStyle, fontFamily: 'Geist, Inter, sans-serif' }}
-            />
-          </div>
-        </div>
-
-        <div className="p-4 flex justify-end gap-3 shrink-0" style={{ borderTop: `1px solid ${C.hair}` }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] cursor-pointer"
-            style={{ background: 'transparent', color: C.inkDim, border: `1px solid ${C.hair2}` }}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-full px-5 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] cursor-pointer disabled:opacity-60"
-            style={{ background: C.ink, color: C.bg0, boxShadow: `0 0 0 1px ${C.ink}` }}
-          >
-            {isSubmitting && <Loader2 size={12} className="animate-spin" />}
-            {story ? 'Save changes' : 'Bank story'}
-          </button>
-        </div>
-      </form>
-    </div>
+          </Field>
+        ))}
+      </div>
+      <Field label="Tags" htmlFor="bs-tags" help="Comma separated, for example: ownership, conflict" optional>
+        <Input id="bs-tags" value={tags} onChange={(e) => setTags(e.target.value)} />
+      </Field>
+      <div className="flex justify-end gap-2 border-t border-line pt-4">
+        <Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
+        <Button type="submit" variant="primary" loading={isSubmitting}>{story ? 'Save changes' : 'Save story'}</Button>
+      </div>
+    </form>
   );
-};
+}
+
+export function BehavioralStoryForm({ open, story, template, onSuccess, onCancel }: BehavioralStoryFormProps) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      size="lg"
+      title={story ? 'Edit STAR story' : 'New STAR story'}
+      description="Write it the way you would say it in an interview."
+      testId="behavioral-story-dialog"
+    >
+      {open && <BehavioralStoryFormBody key={story?.id ?? template?.title ?? 'new'} story={story} template={template} onSuccess={onSuccess} onCancel={onCancel} />}
+    </Dialog>
+  );
+}
