@@ -218,51 +218,6 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Authenticates or registers a user via Google OAuth identity.
-    /// </summary>
-    [HttpPost("google")]
-    [EnableRateLimiting("auth")]
-    public async Task<IActionResult> GoogleLogin([FromBody] GoogleAuthRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Email))
-            return BadRequest(new { message = "Email is required for Google authentication." });
-
-        var normalizedEmail = NormalizeEmail(request.Email);
-        var user = await userManager.FindByEmailAsync(normalizedEmail);
-
-        if (user == null)
-        {
-            user = new ApplicationUser
-            {
-                UserName = normalizedEmail,
-                Email = normalizedEmail,
-                FirstName = string.IsNullOrWhiteSpace(request.FirstName) ? "Google" : request.FirstName.Trim(),
-                LastName = string.IsNullOrWhiteSpace(request.LastName) ? "User" : request.LastName.Trim(),
-                EmailConfirmed = true
-            };
-
-            var createResult = await userManager.CreateAsync(user);
-            if (!createResult.Succeeded)
-            {
-                return BadRequest(new { message = string.Join("; ", createResult.Errors.Select(e => e.Description)) });
-            }
-
-            await storyService.SeedExampleStoriesAsync(user.Id);
-            await behavioralStoryService.SeedExampleStoriesAsync(user.Id);
-        }
-
-        await signInManager.SignInAsync(user, isPersistent: true);
-
-        return Ok(new
-        {
-            Email = user.Email ?? string.Empty,
-            UserId = user.Id,
-            user.FirstName,
-            user.LastName
-        });
-    }
-
-    /// <summary>
     /// Returns the profile of the currently authenticated user.
     /// </summary>
     [Authorize]

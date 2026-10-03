@@ -3,7 +3,7 @@ name: Deploy API to Google Cloud Run
 on:
   push:
     branches:
-      - main
+      - master
     # Only trigger when the API code changes
     paths:
       - 'Precept.Api/**'

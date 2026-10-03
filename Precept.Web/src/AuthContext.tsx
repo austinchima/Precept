@@ -104,24 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const googleLogin = async (email: string, firstName?: string, lastName?: string, idToken?: string) => {
-    try {
-      await api.post('/api/auth/google', {
-        email,
-        firstName,
-        lastName,
-        idToken
-      }, { skipAuth: true });
-      setIsAuthenticated(true);
-      const profile = await api.get<User>('/api/auth/me');
-      setUser(profile);
-    } catch (err) {
-      setIsAuthenticated(false);
-      setUser(null);
-      throw err;
-    }
-  };
-
   const updateProfile = async (firstName: string, lastName: string, emailDigestEnabled?: boolean, digestIncludeFollowUps?: boolean, digestIncludeReviews?: boolean, digestHourUtc?: number) => {
     const payload: any = { firstName, lastName };
     if (emailDigestEnabled !== undefined) {
@@ -172,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, register, demoLogin, googleLogin, updateProfile, logout, deleteAccount }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, register, demoLogin, updateProfile, logout, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

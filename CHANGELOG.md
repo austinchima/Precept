@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Removed `POST /api/auth/google` and the "Continue with Google" button. The endpoint signed in or created an account from an email address without validating a Google ID token. A test now asserts the route returns 404 and issues no session cookie.
+
+### Added
+- `docs/plan/` (implementation plan, status tracker, agent orchestrator prompt) and `docs/research/` (market and product strategy research).
+
+### Changed
+- Moved superseded planning and design docs (`R1_Implementation_Plan.md`, `precept_testing_strategy.md`, `auth_reuse_detection_cascade_revocation.md`, `Precept_Technical_Report.docx`) to `docs/archive/`.
+
+### Documentation corrections
+Earlier entries overstated some features. They are left as written; the facts as of this release:
+- **Google OAuth / social sign-in (1.2.0)**: the endpoint does not validate a Google ID token, so it was not real OAuth. It is removed in this release (see Security above).
+- **Full-text search (1.1.0)**: search uses case-insensitive `ILIKE` matching, not PostgreSQL full-text search, and covers applications, technical stories and skills only (not job descriptions).
+- **Soft delete and trash recovery (1.1.0)**: stories and applications are soft-deleted with API restore endpoints, but skills are hard-deleted and there is no Trash tab in Settings.
+- **Confidence trajectory (1.2.0)**: the trend chart shows fixed sample values, not your review history. Fix planned (M1-F8, M3-F4).
+- **Test count (1.2.0)**: the "154 tests" figure could not be reproduced; the commit nearest that release has about 130 test methods. As of this release the suite runs 136 test cases.
+- `README.md` linked to an `OWASP-SECURITY-AUDIT.md` file that does not exist; the link is removed. `README.md` and `PRECEPT_OVERVIEW.md` were rewritten to match the code.
+
+### Removed
+- Unrouted `Precept.Web/src/pages/HomePage.tsx`.
+- Unused frontend packages `express`, `dotenv`, `tsx` and `@types/express`.
+
 ## [1.3.0] - 2026-09-21
 
 _M1 / Authentication Simplification Milestone._

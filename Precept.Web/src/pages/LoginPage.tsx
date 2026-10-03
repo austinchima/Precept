@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
-  const { login, register, demoLogin, googleLogin, isAuthenticated } = useAuth();
+  const { login, register, demoLogin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -102,27 +102,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // In production with Google GIS Client or standard OAuth popup,
-      // you pass Google credential idToken. Here we prompt or authenticate seamlessly.
-      const promptedEmail = window.prompt("Enter your Google Account email:", "alex.engineer@gmail.com");
-      if (!promptedEmail) {
-        setIsLoading(false);
-        return;
-      }
-      await googleLogin(promptedEmail, "Alex", "Chen");
-      navigate('/dashboard');
-    } catch (err: any) {
-      console.error('Google Sign-In failed:', err);
-      setError(err?.message || 'Google authentication encountered an issue.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <SignInPage 
       isLogin={isLogin}
@@ -133,7 +112,6 @@ export default function LoginPage() {
         setError(null);
       }}
       onSubmit={handleSubmit}
-      onGoogleSignIn={handleGoogleSignIn}
       onDemoLogin={handleDemoLogin}
       onBack={() => navigate('/')}
       testimonials={testimonials}

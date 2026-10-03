@@ -2,8 +2,9 @@
 
 ![CI](https://github.com/austinchima/Precept/actions/workflows/ci.yml/badge.svg)
 
-Precept is a self-hostable job-search and career-prep platform. You own the database, you
-run the stack, nobody sees your data but you. It tracks applications, stores behavioral
+Precept is a self-hostable job-search and career-prep platform. You own the database and
+run the stack. AI features send the text they work on to the LLM provider you configure;
+everything else stays in your database. It tracks applications, stores behavioral
 stories in STAR format, maps skills against job descriptions, and runs AI-assisted mock
 interviews with spaced-repetition review scheduling — one coherent system instead of five
 disconnected tools.
@@ -30,14 +31,14 @@ hardware or a cheap VPS.
 
 | Module | What it does |
 | ------ | ------------ |
-| **Application Tracker** | Kanban + list of applications, follow-up dates, status history, notes, resume version per application |
+| **Application Tracker** | Kanban + list of applications, follow-up dates, status history, notes, resume version label per application |
 | **Behavioral Story Bank** | STAR stories with tags, confidence ratings, templates, and quiz mode |
 | **Spaced Repetition** | SM-2 algorithm schedules story reviews so high-value stories surface before you forget them |
-| **JD Skill Mapper** | Paste a job description; server-side keyword extraction scores your skills against it |
-| **AI Mock Interviews** | Vendor-agnostic LLM client (OpenAI, Anthropic, Gemini, Groq, DeepSeek, Ollama) generates questions and scores STAR answers; browser-native STT/TTS |
+| **JD Skill Mapper** | Paste a job description; a server-side dictionary keyword extractor finds known skills and scores them against your skills by exact name match |
+| **AI Mock Interviews** | Vendor-agnostic LLM client (OpenAI, Anthropic and Gemini clients, plus OpenAI-compatible endpoints such as Groq, DeepSeek and Ollama) generates questions and scores STAR answers; speech-to-text runs in the browser |
 | **Daily Digest Email** | Resend/SMTP email each morning with due reviews and upcoming follow-ups |
 | **One-click Job Capture** | Bookmarklet scrapes a posting URL into a draft application |
-| **Settings & Recovery** | Sign out of all other devices (security-stamp revocation) and recover soft-deleted items |
+| **Settings** | Sign out of all other devices (security-stamp revocation) and delete your account. Deleted stories and applications are soft-deleted and can be restored through the API; there is no trash screen yet |
 
 ---
 
@@ -47,11 +48,11 @@ hardware or a cheap VPS.
 | ----- | ------ |
 | Backend | ASP.NET Core 10 Web API, EF Core 10, ASP.NET Core Identity cookie auth, `System.Threading.RateLimiting` |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, GSAP, Framer Motion, Recharts, lucide-react, React Router 7 |
-| Database | PostgreSQL 16 (containerized), EF Core migrations |
+| Database | PostgreSQL 16 in `docker-compose.yml` (`docker-compose.gcp.yml` uses 18), EF Core migrations |
 | Email | Resend API with SMTP fallback |
 | Observability | Serilog (console + rolling file), Scalar OpenAPI in dev |
-| Testing | xUnit, FluentAssertions, WebApplicationFactory, Testcontainers.PostgreSql |
-| DevOps | Docker Compose, GitHub Actions CI |
+| Testing | xUnit, FluentAssertions, NSubstitute, WebApplicationFactory, Testcontainers.PostgreSql |
+| DevOps | Docker Compose, GitHub Actions CI, GitHub Actions deploy of the API to Google Cloud Run |
 
 ---
 
@@ -101,7 +102,8 @@ erDiagram
 ```
 ├── Precept.Api/                ASP.NET Core 10 Web API
 │   ├── Controllers/            Auth, Application, Story, Dashboard, Search, Skill,
-│   │                           JobDescription, BehavioralStory, MockInterview, Testimonial
+│   │                           JobDescription, BehavioralStory, MockInterview,
+│   │                           Testimonial, System
 │   ├── Services/               Business logic + Interfaces/
 │   ├── Models/                 Entity models
 │   ├── DTOs/                   Request/response contracts
@@ -110,8 +112,9 @@ erDiagram
 │   └── Dockerfile
 │
 ├── Precept.Web/                React 19 + TypeScript + Vite
-│   ├── src/pages/              Dashboard, Applications, Stories, Quiz, JDs, Readiness,
-│   │                           MockInterview, Settings, Login, Landing
+│   ├── src/pages/              Dashboard, AppTracker, StoryBank, QuizMode, JDMatcher,
+│   │                           Readiness, MockInterview, Capture, Settings, LoginPage,
+│   │                           Landing, TermsOfService
 │   ├── src/components/         UI + animation primitives
 │   ├── src/lib/                animations.ts + utilities
 │   ├── src/api.ts              fetch wrapper (credentials: include, CSRF header)
@@ -120,15 +123,19 @@ erDiagram
 │   └── Dockerfile              build → nginx final stage
 │
 ├── Precept.Tests/              xUnit test suite
-│   ├── Integration/            Auth, Story, Application endpoint tests
-│   ├── Unit/                   Story, Application, Digest, Search, Skill services
+│   ├── Integration/            Auth, Story, Application, Dashboard, Search, Skill,
+│   │                           MockInterview endpoint tests
+│   ├── Unit/                   Services, SM-2, keyword and page extractors, LLM factory
 │   └── Infrastructure/         WebApplicationFactory + Testcontainers fixture
 │
 ├── docker-compose.yml          db + api + web, zero-config boot
 ├── docker-compose.gcp.yml      GCP-flavoured variant
 ├── design-system/              Design tokens and reference styles
-├── auth_reuse_detection_cascade_revocation.md   Auth design-history artifact (superseded in M1)
-├── OWASP-SECURITY-AUDIT.md     Full OWASP Top-10 audit
+├── docs/
+│   ├── plan/                   Implementation plan, status tracker, agent prompt
+│   ├── research/               Market and product strategy research
+│   └── archive/                Superseded planning and design docs
+├── PRECEPT_OVERVIEW.md         Product overview
 ├── CHANGELOG.md
 └── README.md
 ```
@@ -203,9 +210,10 @@ AI_BASE_URL=                # e.g. http://localhost:11434/v1 for Ollama
 
 ## Security
 
-Precept handles personal career data; the security model is overbuilt on purpose.
+Precept handles personal career data. Known security gaps are tracked as milestone M1 in
+[docs/plan/PRECEPT_PLAN.md](./docs/plan/PRECEPT_PLAN.md).
 (The earlier refresh-token design is preserved in
-[auth_reuse_detection_cascade_revocation.md](./auth_reuse_detection_cascade_revocation.md)
+[docs/archive/auth_reuse_detection_cascade_revocation.md](./docs/archive/auth_reuse_detection_cascade_revocation.md)
 as a superseded design-history artifact.) Highlights:
 
 - **Session cookies**: ASP.NET Core Identity cookie authentication. The `precept_auth` cookie is `HttpOnly` + `Secure` + `SameSite=Strict` (Lax outside production), with a 14-day expiration and sliding renewal — no client-side token handling at all.
@@ -214,13 +222,11 @@ as a superseded design-history artifact.) Highlights:
 - **CSRF defense**: `SameSite=Strict` is the primary control; additionally, all mutating `/api/*` requests must carry the `X-Requested-With: XMLHttpRequest` header (cross-site forms cannot set custom headers).
 - **Data Protection**: cookie payloads are encrypted and signed by ASP.NET Core Data Protection — no shared JWT signing secret (`JWT_SECRET_KEY`) to manage or rotate.
 - **Passwords**: PBKDF2 via ASP.NET Core Identity. Lockout: 5 failed attempts → 15 minutes.
-- **Rate limiting**: `auth` policy 10 req/min sliding window; `general` 100 req/min fixed window, applied per controller.
+- **Rate limiting**: `auth` policy 10 req/min sliding window; `general` 100 req/min fixed window, applied per controller. Both are currently single global buckets (not partitioned by user or IP).
 - **Row-level tenancy**: every domain entity carries a global `HasQueryFilter` scoped to the requesting user, in addition to explicit service-layer WHERE clauses.
 - **CORS**: Environment-gated. `AllowViteDev` in development. The `Production` policy reads allowed origins from the `CORS_ORIGINS` env var and only permits `Content-Type`, `Authorization`, `X-Requested-With` headers and a fixed verb set.
 - **Headers**: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, CSP, `Permissions-Policy` on every response; production error responses redact exception details.
-- **SSRF guard** on the job-capture endpoint: URL scheme validation, private/loopback host rejection, 2 MB page cap.
-
-See [OWASP-SECURITY-AUDIT.md](./OWASP-SECURITY-AUDIT.md) for the full audit.
+- **SSRF guard** on the job-capture endpoint: URL scheme validation, private/loopback check on the requested host, 10-second timeout, 2 MB page cap. Redirect and DNS hardening is planned (M1-F7).
 
 ---
 
@@ -232,7 +238,8 @@ dotnet test        # xUnit + Testcontainers (spins up PostgreSQL automatically)
 
 - **Unit tests** cover SM-2 scheduling math, story/application/digest/search/skill services, and LLM factory resolution.
 - **Integration tests** boot the real API via `WebApplicationFactory` against a per-class Testcontainers PostgreSQL database (or `ConnectionStrings__PreceptDb` in CI) and exercise the full HTTP surface: register → login → cookie session → logout, lockout, sign-out-everywhere, CSRF header enforcement, and every domain endpoint.
-- CI (GitHub Actions) runs the suite plus `dotnet list package --vulnerable` and `npm audit`.
+- CI (GitHub Actions) runs the suite plus `dotnet list package --vulnerable`, `npm audit` and a frontend type check (`npm run lint`, which runs `tsc --noEmit`).
+- There are no frontend tests yet (planned as M1-F9).
 
 ---
 
@@ -245,21 +252,10 @@ With the API running in **Development**, browse the interactive Scalar UI at
 
 ## Roadmap
 
-- **R1 (shipped)** — tracker, story bank, JD matcher, security baseline.
-- **R1.5 (shipped)** — SM-2 spaced repetition, AI mock interviews, digest emails, demo mode.
-- **M1 (this branch)** — authentication simplification: Identity cookie auth replaces the hand-rolled JWT/RTR stack.
-- **R2 candidates** — scoped programmatic API tokens (MCP/CLI access), NLP-based JD keyword extraction, FSRS scheduler, per-session AI cost ceilings (≤ $0.005), credit ledger with atomic decrement, `AI_FEATURES_ENABLED` kill switch.
-
-### R2 scope notes
-
-- **AI Mock Interviewer**: small-model question generation (Gemini Flash or Claude Haiku tier)
-  tailored to the user's resume and a JD, with prompt caching for the static resume/JD context
-  and a per-session token budget enforced server-side.
-- **Voice mock rounds**: browser-native STT/TTS for free tier. Optional `whisper-1` for paid.
-- **Scored feedback**: structured rubric (Structure / Specificity / Conciseness) returned per
-  response and persisted against the relevant Story for the spaced-repetition loop.
-- **Resume parser**: upload → extract → prefill profile. Small-model summarization only; no
-  embeddings store in v1.
+The current plan is [docs/plan/PRECEPT_PLAN.md](./docs/plan/PRECEPT_PLAN.md), with progress in
+[docs/plan/PLAN_STATUS.md](./docs/plan/PLAN_STATUS.md). Shipped so far: tracker, story bank, JD
+matcher, SM-2 spaced repetition, AI mock interviews, digest emails, demo mode, and (1.3.0)
+Identity cookie authentication in place of the earlier JWT and refresh-token design.
 
 ### Known limitations
 
@@ -270,6 +266,9 @@ With the API running in **Development**, browse the interactive Scalar UI at
 - Single-node deployment: Data Protection keys are ephemeral by default in containers;
   mount a persistent key ring for multi-replica or restart-surviving sessions.
 - No centralized audit log / SIEM integration.
+- Search covers applications, technical stories and skills, not behavioral stories or job
+  descriptions.
+- AI calls have no per-user quota or spend cap yet (planned as M1-F3).
 
 ---
 
