@@ -259,7 +259,7 @@ public class AuthEndpointTests : IAsyncLifetime
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  Demo Login & Google OAuth
+    //  Demo Login & removed Google sign-in
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
@@ -294,39 +294,22 @@ public class AuthEndpointTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GoogleLogin_Returns200_AndRegistersUser()
+    public async Task GoogleLogin_RouteRemoved_Returns404_AndDoesNotSignIn()
     {
-        var client = _factory.CreateCookieClient();
+        // The old endpoint signed in any account from a bare email address.
+        // It must stay gone until real Google ID-token validation exists.
         var email = UniqueEmail();
+        await RegisterAsync(email: email);
 
-        var response = await client.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest
+        var client = _factory.CreateCookieClient();
+        var response = await client.PostAsJsonAsync("/api/auth/google", new
         {
             Email = email,
-            FirstName = "Google",
-            LastName = "Dev",
-            IdToken = "mock-id-token"
+            IdToken = "forged-token"
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        ExtractAuthCookieHeader(response).Should().NotBeNull(
-            "precept_auth cookie must be set on Google login");
-
-        // Verify user created in DB
-        await using var db = _factory.CreateDbContext();
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
-        user.Should().NotBeNull();
-        user!.FirstName.Should().Be("Google");
-
-        // Repeat login with same email returns OK
-        var client2 = _factory.CreateCookieClient();
-        var response2 = await client2.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest
-        {
-            Email = email,
-            FirstName = "Google",
-            LastName = "Dev"
-        });
-
-        response2.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        ExtractAuthCookieHeader(response).Should().BeNull(
+            "no session cookie may be issued by the removed Google route");
     }
 }
