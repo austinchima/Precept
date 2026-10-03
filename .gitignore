@@ -102,7 +102,6 @@ precept.md
 # Project Analysis file
 Precept_Codebase_Analysis.md
 
-precept_testing_strategy.md
 *.env
 credentials.json
 *.pem
