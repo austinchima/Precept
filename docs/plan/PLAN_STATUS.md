@@ -8,13 +8,13 @@ Status values: `todo`, `in progress`, `review`, `blocked`, `done`, `skipped`.
 
 | Item | Value |
 |---|---|
-| Date | |
-| Default branch | |
-| Backend build | |
-| Backend tests (passed / failed / skipped) | |
-| Frontend lint | |
-| Frontend build | |
-| Notes | |
+| Date | 2026-10-03 |
+| Default branch | `master` (commit `d468ef6`, after PR #15 cookie-auth merge) |
+| Backend build | Pass. 0 errors, 4 warnings (all CS8602 in tests: `ApplicationServiceTests.cs` lines 237 and 247, `JobDescriptionServiceTests.cs` line 151, `StoryServiceTests.cs` line 217). About 19 s |
+| Backend tests (passed / failed / skipped) | 136 / 0 / 0. About 40 s (Testcontainers PostgreSQL) |
+| Frontend lint | Pass. Note: `npm run lint` is `tsc --noEmit` (type check only); there is no ESLint |
+| Frontend build | Pass (`vite build`, about 4 s) |
+| Notes | Run in a Linux cloud container with .NET SDK 10.0.112 and Node 22. No frontend `test` script yet (M1-F9). The plan's audit read a local working copy that was 49 commits behind `origin/master`; several M0 audit findings do not apply to the remote branch (see M0-F1 notes) |
 
 ## Decision gates
 
@@ -37,8 +37,8 @@ Status values: `todo`, `in progress`, `review`, `blocked`, `done`, `skipped`.
 
 | ID | Feature | Status | Branch | Commit | Tests added | Notes |
 |---|---|---|---|---|---|---|
-| M0-F1 | Git state reconciliation | todo | | | | Founder confirms all git ops |
-| M0-F2 | Baseline build and test record | todo | | | | |
+| M0-F1 | Git state reconciliation | blocked | | | | Remote `master` already has `Precept.Web/package.json`, and the auth files listed for deletion are gone (PR #15). CI (`ci.yml`) runs on `master`. Open: `deploy-api.yml` triggers on `main`, so it never runs; changing it to `master` would turn on automatic Cloud Run deploys, which touches gate D2. Waiting on founder. Founder's local clone was behind remote; run `git pull origin master` locally |
+| M0-F2 | Baseline build and test record | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Baseline recorded above. Nothing blocked the build, so no fixes made |
 | M0-F3 | Repository hygiene | todo | | | | |
 | M0-F4 | Documentation truth pass | todo | | | | |
 | M1-F1 | Google sign-in (D1) | todo | | | | Critical |
@@ -129,3 +129,5 @@ M9 items get a row here when the founder picks them.
 ## Log
 
 Newest first. One line per orchestrator run: date, target, result, next step.
+
+- 2026-10-03, target `next`: M0-F2 done (baseline green: build, 136/136 backend tests, frontend type check and build). M0-F1 blocked on the founder decision about the `deploy-api.yml` trigger. Next: M0-F3 repository hygiene (needs founder answers on which root files to delete or ignore).
