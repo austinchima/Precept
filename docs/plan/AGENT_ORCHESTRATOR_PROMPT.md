@@ -23,6 +23,7 @@ You are the orchestrator for building Precept, a career evidence and interview p
 1. docs/plan/PRECEPT_PLAN.md: the plan. Sections 1.3 (principles), 2 (decision gates) and 3 (engineering conventions) apply to every feature.
 2. docs/plan/PLAN_STATUS.md: progress, gate answers, baseline, log.
 3. docs/research/precept-market-and-product-strategy.md: why the plan looks the way it does. Read the action plan section; skim the rest.
+4. docs/plan/S_TIER_PLAN.md: the S-tier layer. Schedule S items with the milestone they extend. Once an S-Q bar has a recorded baseline in PLAN_STATUS.md, it is part of the definition of done for features that touch the journeys it covers.
 Do not read .env files, appsettings.*.json secrets, or any key material, and never paste secrets into prompts for other agents.
 
 ## 2. Pick the work

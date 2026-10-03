@@ -107,6 +107,24 @@ Status values: `todo`, `in progress`, `review`, `blocked`, `done`, `skipped`.
 
 M9 items get a row here when the founder picks them.
 
+S-tier layer (`docs/plan/S_TIER_PLAN.md`):
+
+| ID | Feature | Status | Branch | Commit | Tests added | Notes |
+|---|---|---|---|---|---|---|
+| S1 | Defend mode: follow-up probe drills | todo | | | | Deterministic version with M3-F5 (needs M3-F1); AI probes with M5 (needs M1-F3, D9). ADR for probe storage |
+| S2 | Recall forecast: real FSRS | todo | | | | After M3-F4. Formulas and default weights from official FSRS sources only, cited in ADR. Replaces M9 item 10 |
+| S3 | Interview kit (set cover) | todo | | | | After M4-F4. ADR for Strong/Partial weights |
+| S4 | Answer replay and delivery metrics | todo | | | | With M5 (needs M5-F1). Check browser speech recognition support first |
+| S5 | Story drift check | todo | | | | With M5-F3; shares number extraction with the fabricated-number guard |
+| S6 | Visible loop: debrief, what changed | todo | | | | After M6-F3 |
+| S7 | Proof on every number | todo | | | | Starts with M3; needs M1-F9 for the enforcing test |
+| S-Q1 | Accessibility (WCAG 2.2 AA, axe in E2E) | todo | | | | Record baseline first |
+| S-Q2 | Performance budgets (Lighthouse CI) | todo | | | | Record baseline first |
+| S-Q3 | API contract: generated TS types | todo | | | | Record baseline first; ADR for generator |
+| S-Q4 | Security headers and threat model | todo | | | | Headers depend on M2-F1 |
+| S-Q5 | Architecture decision records | todo | | | | Backfill alongside M1 |
+
+
 ## Milestone reviews
 
 | Milestone | Review date | Reviewer findings | Open blockers | Founder sign-off |
