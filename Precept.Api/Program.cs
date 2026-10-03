@@ -10,6 +10,7 @@ using Scalar.AspNetCore;
 using Serilog;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -188,6 +189,7 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 // ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IDigestQueryService, DigestQueryService>();
 builder.Services.AddHostedService<DailyDigestService>();
+builder.Services.AddHostedService<DemoCleanupService>();
 builder.Services.AddSingleton<ISpacedRepetitionAlgorithm, Sm2Algorithm>();
 builder.Services.AddSingleton<IReviewScheduler, ReviewScheduler>();
 builder.Services.AddScoped<IStoryService, StoryService>();
@@ -208,6 +210,8 @@ builder.Services.Configure<AiSettings>(builder.Configuration.GetSection(AiSettin
 builder.Services.AddSingleton<ILlmClientFactory, LlmClientFactory>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IMockInterviewService, MockInterviewService>();
+builder.Services.Configure<DemoSettings>(builder.Configuration.GetSection(DemoSettings.SectionName));
+builder.Services.AddScoped<IDemoAccountService, DemoAccountService>();
 
 // ─────────────────────────────────────────────────────────────
 //  8. Rate Limiting (prevents brute-force and abuse)
@@ -231,6 +235,21 @@ builder.Services.AddRateLimiter(options =>
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
+    });
+
+    // Demo account creation: partitioned by client IP so one visitor cannot mint unlimited tenants.
+    // Behind a reverse proxy this needs forwarded headers (M1-F4) to see the real client IP.
+    options.AddPolicy("demo", httpContext =>
+    {
+        var demoSettings = httpContext.RequestServices.GetRequiredService<IOptions<DemoSettings>>().Value;
+        return RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = demoSettings.MaxCreationsPerIpPerHour,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0
+            });
     });
 
     options.OnRejected = async (context, token) =>

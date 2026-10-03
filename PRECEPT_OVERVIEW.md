@@ -52,7 +52,7 @@ Applied → PhoneScreen → Interviewing → Offer / Rejected / Ghosted
 | **Job capture** | Bookmarklet that sends a posting URL to the API, which fetches the page and drafts an application. |
 | **Search** | Text search (case-insensitive `ILIKE`) over applications, technical stories and skills. |
 | **Data export** | `GET /api/dashboard/export` returns your data as JSON. |
-| **Demo mode** | A shared demo account seeded with sample data. |
+| **Demo mode** | Each visitor gets their own seeded demo account that is deleted after 24 hours. Mock interviews in the demo return labelled sample responses; no AI provider is called. |
 | **Testimonials** | Signed-in users can submit testimonials; an admin approves them for the landing page. |
 
 Endpoints require authentication and are scoped to the signed-in user through EF Core global query filters.

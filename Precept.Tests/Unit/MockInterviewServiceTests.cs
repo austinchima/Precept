@@ -76,7 +76,7 @@ public class MockInterviewServiceTests : IAsyncLifetime
         var llmFactory = Substitute.For<ILlmClientFactory>();
         llmFactory.GetClient().Returns(llmClient);
 
-        var service = new MockInterviewService(llmFactory, db, NullLogger<MockInterviewService>.Instance);
+        var service = new MockInterviewService(llmFactory, Substitute.For<IDemoAccountService>(), db, NullLogger<MockInterviewService>.Instance);
         var result = await service.GenerateQuestionAsync(new GenerateMockQuestionRequest
         {
             RoleTitle = "Staff Security Engineer"
@@ -103,7 +103,7 @@ public class MockInterviewServiceTests : IAsyncLifetime
         var llmFactory = Substitute.For<ILlmClientFactory>();
         llmFactory.GetClient().Returns(llmClient);
 
-        var service = new MockInterviewService(llmFactory, db, NullLogger<MockInterviewService>.Instance);
+        var service = new MockInterviewService(llmFactory, Substitute.For<IDemoAccountService>(), db, NullLogger<MockInterviewService>.Instance);
         var result = await service.GenerateQuestionAsync(new GenerateMockQuestionRequest
         {
             RoleTitle = "Principal Architect"
@@ -129,7 +129,7 @@ public class MockInterviewServiceTests : IAsyncLifetime
         var llmFactory = Substitute.For<ILlmClientFactory>();
         llmFactory.GetClient().Returns(llmClient);
 
-        var service = new MockInterviewService(llmFactory, db, NullLogger<MockInterviewService>.Instance);
+        var service = new MockInterviewService(llmFactory, Substitute.For<IDemoAccountService>(), db, NullLogger<MockInterviewService>.Instance);
         var result = await service.EvaluateAnswerAsync(new EvaluateMockAnswerRequest
         {
             Question = "Tell me about resolving service outages.",
@@ -149,7 +149,7 @@ public class MockInterviewServiceTests : IAsyncLifetime
         await using var db = MakeDb(userId);
 
         var llmFactory = Substitute.For<ILlmClientFactory>();
-        var service = new MockInterviewService(llmFactory, db, NullLogger<MockInterviewService>.Instance);
+        var service = new MockInterviewService(llmFactory, Substitute.For<IDemoAccountService>(), db, NullLogger<MockInterviewService>.Instance);
 
         var result = await service.EvaluateAnswerAsync(new EvaluateMockAnswerRequest
         {
@@ -161,5 +161,29 @@ public class MockInterviewServiceTests : IAsyncLifetime
         result.Score.Should().Be(0);
         result.DeliveryFeedback.Should().Contain("No response transcript");
         llmFactory.DidNotReceive().GetClient();
+    }
+
+    [Fact]
+    public async Task DemoUser_GetsLabelledSamples_AndNeverReachesLlmFactory()
+    {
+        var userId = Guid.NewGuid().ToString();
+        await using var db = MakeDb(userId);
+
+        var llmFactory = Substitute.For<ILlmClientFactory>();
+        var demoAccounts = Substitute.For<IDemoAccountService>();
+        demoAccounts.IsDemoUserAsync(userId).Returns(true);
+        var service = new MockInterviewService(llmFactory, demoAccounts, db, NullLogger<MockInterviewService>.Instance);
+
+        var question = await service.GenerateQuestionAsync(new GenerateMockQuestionRequest { RoleTitle = "Backend Engineer" }, userId);
+        var evaluation = await service.EvaluateAnswerAsync(new EvaluateMockAnswerRequest
+        {
+            Question = question.Question,
+            AnswerTranscript = "I rolled back the deploy and added an alert."
+        }, userId);
+
+        question.IsDemoSample.Should().BeTrue();
+        evaluation.IsDemoSample.Should().BeTrue();
+        evaluation.Score.Should().Be(0);
+        llmFactory.ReceivedCalls().Should().BeEmpty();
     }
 }

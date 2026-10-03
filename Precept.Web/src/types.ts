@@ -215,6 +215,7 @@ export interface MockQuestionResponse {
   category: string;
   focusArea: string;
   contextTips: string;
+  isDemoSample?: boolean;
 }
 
 export interface StarBreakdown {
@@ -231,5 +232,6 @@ export interface MockInterviewEvaluation {
   areasForImprovement: string[];
   modelAnswer: string;
   deliveryFeedback: string;
+  isDemoSample?: boolean;
 }
 

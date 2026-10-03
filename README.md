@@ -204,6 +204,12 @@ AI_PROVIDER=Auto            # Auto | OpenAI | Claude | Gemini | Groq | DeepSeek 
 AI_MODEL=gpt-4o-mini
 AI_API_KEY= / OPENAI_API_KEY= / ANTHROPIC_API_KEY= / GEMINI_API_KEY=
 AI_BASE_URL=                # e.g. http://localhost:11434/v1 for Ollama
+
+# Demo accounts (optional API settings, defaults shown). docker-compose.yml does not
+# forward these; set them on the API process or container if you need to change them.
+Demo__LifetimeHours=24
+Demo__MaxCreationsPerIpPerHour=5
+Demo__CleanupIntervalMinutes=60
 ```
 
 ---

@@ -34,4 +34,8 @@ public class ApplicationUser : IdentityUser
     public bool DigestIncludeReviews { get; set; } = true;
     public int DigestHourUtc { get; set; } = 13;
     public DateTime? LastDigestSentAt { get; set; }
+
+    // Ephemeral per-visitor demo accounts (deleted by DemoCleanupService after DemoExpiresAt)
+    public bool IsDemo { get; set; }
+    public DateTime? DemoExpiresAt { get; set; }
 }

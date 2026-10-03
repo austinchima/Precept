@@ -26,6 +26,12 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
 
     private string ConnectionString => containerFixture.GetConnectionString(_databaseName);
 
+    /// <summary>
+    /// Optional extra service registrations applied after the defaults
+    /// (for example, replacing an external client with a substitute).
+    /// </summary>
+    public Action<IServiceCollection>? ConfigureTestServices { get; init; }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -45,6 +51,8 @@ public class PreceptWebApplicationFactory(PostgresContainerFixture containerFixt
 
             services.AddDbContext<PreceptDbContext>(options =>
                 options.UseNpgsql(ConnectionString));
+
+            ConfigureTestServices?.Invoke(services);
         });
     }
 

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Removed `POST /api/auth/google` and the "Continue with Google" button. The endpoint signed in or created an account from an email address without validating a Google ID token. A test now asserts the route returns 404 and issues no session cookie.
+- **Per-visitor demo accounts**: `POST /api/auth/demo-login` now creates a separate, seeded demo account for each visitor (`demo-<id>@demo.invalid`, no password) that expires after 24 hours, instead of signing everyone into one shared account with a password in source. Demo accounts get fixed, labelled sample responses from the mock interview endpoints and never call an LLM provider, receive no digest email, and cannot sign in with a password. Demo creation is limited to 5 per client IP per hour (`Demo:MaxCreationsPerIpPerHour`).
+- The old shared `demo@precept.app` account is marked as an expired demo by migration `M1F2_DemoIsolation`; password login to it is refused and the new hourly `DemoCleanupService` deletes it with its data.
 
 ### Added
 - `docs/plan/` (implementation plan, status tracker, agent orchestrator prompt) and `docs/research/` (market and product strategy research).

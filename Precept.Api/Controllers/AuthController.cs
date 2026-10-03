@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
-using Precept.Api.Data;
 using Precept.Api.DTOs;
 using Precept.Api.Models;
 using Precept.Api.Services.Interfaces;
@@ -19,7 +17,7 @@ public class AuthController(
     IWebHostEnvironment environment,
     IStoryService storyService,
     IBehavioralStoryService behavioralStoryService,
-    PreceptDbContext dbContext,
+    IDemoAccountService demoAccountService,
     ILogger<AuthController> logger) : ControllerBase
 {
     private static string NormalizeEmail(string email) =>
@@ -90,7 +88,7 @@ public class AuthController(
         request.Email = NormalizeEmail(request.Email);
 
         var user = await userManager.FindByEmailAsync(request.Email);
-        if (user == null)
+        if (user == null || user.IsDemo)
         {
             return Unauthorized(new { message = "Invalid credentials." });
         }
@@ -122,90 +120,17 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Authenticates into an instant, pre-seeded hosted demo session without requiring registration.
+    /// Creates a fresh, seeded demo account for this visitor and signs into it.
+    /// Each visitor gets an isolated tenant that expires automatically.
     /// </summary>
     [HttpPost("demo-login")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting("demo")]
     public async Task<IActionResult> DemoLogin()
     {
-        const string demoEmail = "demo@precept.app";
-        var user = await userManager.FindByEmailAsync(demoEmail);
+        var user = await demoAccountService.CreateDemoUserAsync();
 
-        if (user == null)
-        {
-            user = new ApplicationUser
-            {
-                UserName = demoEmail,
-                Email = demoEmail,
-                FirstName = "Alex",
-                LastName = "Chen",
-                EmailConfirmed = true
-            };
-
-            var createResult = await userManager.CreateAsync(user, "DemoSessionPass2026!");
-            if (createResult.Succeeded)
-            {
-                // Seed stories & behavioral templates
-                await storyService.SeedExampleStoriesAsync(user.Id);
-                await behavioralStoryService.SeedExampleStoriesAsync(user.Id);
-
-                // Seed demo applications
-                if (!await dbContext.Applications.IgnoreQueryFilters().AnyAsync(a => a.UserId == user.Id))
-                {
-                    dbContext.Applications.AddRange(
-                        new Application
-                        {
-                            UserId = user.Id,
-                            CompanyName = "Stripe",
-                            RoleTitle = "Staff Systems Engineer",
-                            Location = "San Francisco, CA (Hybrid)",
-                            SalaryRange = "$240k - $310k",
-                            Status = ApplicationStatus.Interviewing,
-                            DateApplied = DateTime.UtcNow.AddDays(-12),
-                            FollowUpDate = DateTime.UtcNow.AddDays(2),
-                            ResumeVersion = "v4.2-Infrastructure",
-                            Notes = "Completed technical screen with bar raiser. Final round loop scheduled for Thursday.",
-                            IsRemote = false,
-                            Source = "Referral"
-                        },
-                        new Application
-                        {
-                            UserId = user.Id,
-                            CompanyName = "Vercel",
-                            RoleTitle = "Senior Frontend Architect",
-                            Location = "Remote (US)",
-                            SalaryRange = "$210k - $270k",
-                            Status = ApplicationStatus.PhoneScreen,
-                            DateApplied = DateTime.UtcNow.AddDays(-5),
-                            FollowUpDate = DateTime.UtcNow.AddDays(1),
-                            ResumeVersion = "v4.1-Frontend",
-                            Notes = "Recruiter chat about Next.js performance and design system architecture.",
-                            IsRemote = true,
-                            Source = "LinkedIn"
-                        },
-                        new Application
-                        {
-                            UserId = user.Id,
-                            CompanyName = "Datadog",
-                            RoleTitle = "Senior Software Engineer",
-                            Location = "New York, NY (Remote)",
-                            SalaryRange = "$195k - $250k",
-                            Status = ApplicationStatus.Offer,
-                            DateApplied = DateTime.UtcNow.AddDays(-28),
-                            FollowUpDate = DateTime.UtcNow.AddDays(-2),
-                            ResumeVersion = "v3.9",
-                            Notes = "Offer letter received ($220k base + $80k equity). Negotiating start date.",
-                            IsRemote = true,
-                            Source = "Company Site"
-                        }
-                    );
-                    await dbContext.SaveChangesAsync();
-                }
-            }
-        }
-
-        // SignInAsync establishes the session cookie without checking a password —
-        // the demo account is intentionally shared and pre-seeded.
+        // SignInAsync establishes the session cookie without a password;
+        // demo accounts have no password and cannot be entered any other way.
         await signInManager.SignInAsync(user, isPersistent: true);
 
         return Ok(new

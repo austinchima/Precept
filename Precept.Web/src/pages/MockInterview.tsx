@@ -550,14 +550,15 @@ export default function MockInterview() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4" style={{ borderColor: C.hair }}>
               <div>
                 <span className="font-mono text-[11px] uppercase tracking-[0.18em]" style={{ color: C.emerald }}>
-                  Step 3 · AI Evaluation & STAR Breakdown
+                  {evaluation.isDemoSample ? 'Step 3 · Demo sample feedback' : 'Step 3 · AI Evaluation & STAR Breakdown'}
                 </span>
                 <h3 className="text-xl font-bold font-display mt-1" style={{ color: C.ink }}>
                   Performance Assessment
                 </h3>
               </div>
 
-              {/* Score Badge */}
+              {/* Score Badge (demo samples are not scored) */}
+              {!evaluation.isDemoSample && (
               <div className="flex items-center gap-3 self-start sm:self-auto">
                 <div
                   className="px-4 py-2 rounded-xl flex items-center gap-2 font-mono"
@@ -572,6 +573,7 @@ export default function MockInterview() {
                   <span className="text-xs uppercase text-slate-400">/ 100</span>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Delivery Feedback */}
