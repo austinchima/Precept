@@ -40,7 +40,7 @@ Status values: `todo`, `in progress`, `review`, `blocked`, `done`, `skipped`.
 | M0-F1 | Git state reconciliation | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Remote `master` already had `Precept.Web/package.json`, and the auth files listed for deletion were gone (PR #15). Default branch is `master`; `ci.yml` and now `deploy-api.yml` trigger on it (founder approved 2026-10-03). Merging a change to `deploy-api.yml` or `Precept.Api/**` into `master` deploys to Cloud Run. Founder's local clone was behind remote; run `git pull origin master` locally |
 | M0-F2 | Baseline build and test record | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Baseline recorded above. Nothing blocked the build, so no fixes made |
 | M0-F3 | Repository hygiene | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Moved 4 superseded docs to `docs/archive/`, deleted unrouted `HomePage.tsx`, removed unused `express`, `dotenv`, `tsx`, `@types/express`. Other files the plan listed (`precept.md`, `graphify-out/`, etc.) are not in the repository. Follow-up (founder approved): removed stray root `package.json` and `package-lock.json` (only `canvas-confetti`, already in `Precept.Web`), the `.gitignore` line for the archived testing strategy, and `server.js` from the `clean` script |
-| M0-F4 | Documentation truth pass | todo | | | | |
+| M0-F4 | Documentation truth pass | done | claude/docs-folder-review-9ghmg4 | see log | 0 | Rewrote `PRECEPT_OVERVIEW.md` for cookie auth and current features; corrected `README.md` (trash UI, search, BYOK wording, OWASP link, rate limiting, SSRF, test layout, roadmap). README Postgres 16 already matched `docker-compose.yml`; `docker-compose.gcp.yml` uses 18 (now noted). CHANGELOG "Documentation corrections" added. 1.2.0 "154 tests" could not be reproduced (about 130 test methods at the nearest commit) |
 | M1-F1 | Google sign-in (D1) | todo | | | | Critical |
 | M1-F2 | Demo isolation (D7) | todo | | | | Critical |
 | M1-F3 | AI usage guard and spend caps (D6) | todo | | | | Migration |
@@ -111,7 +111,7 @@ M9 items get a row here when the founder picks them.
 
 | Milestone | Review date | Reviewer findings | Open blockers | Founder sign-off |
 |---|---|---|---|---|
-| M0 | | | | |
+| M0 | 2026-10-03 | Self-reviewed (docs and config only) | None | Pending |
 | M1 | | | | |
 | M2 | | | | |
 | M3 | | | | |
@@ -130,5 +130,6 @@ M9 items get a row here when the founder picks them.
 
 Newest first. One line per orchestrator run: date, target, result, next step.
 
+- 2026-10-03, target `M0`: M0-F1 done (deploy trigger on `master`, founder approved), M0-F4 done. Repository is public, so M1-F1 (Google sign-in removal) runs next as the most urgent item.
 - 2026-10-03, target `next`: gates D1 to D12 recorded (defaults, D2 = GCP). M0-F3 done; build, 136/136 backend tests, frontend type check and build pass. M0-F1 waits on the founder's `deploy-api.yml` edit. Next: M0-F4 documentation truth pass.
 - 2026-10-03, target `next`: M0-F2 done (baseline green: build, 136/136 backend tests, frontend type check and build). M0-F1 blocked on the founder decision about the `deploy-api.yml` trigger. Next: M0-F3 repository hygiene (needs founder answers on which root files to delete or ignore).
