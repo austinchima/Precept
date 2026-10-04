@@ -64,7 +64,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Same major as the production image (Precept.Web/Dockerfile); Vitest 5 needs 22.12 or newer.
+          node-version: '24'
 
       - name: Install frontend dependencies
         working-directory: ./Precept.Web
@@ -77,6 +78,10 @@ jobs:
       - name: Type check frontend
         working-directory: ./Precept.Web
         run: npm run lint
+
+      - name: Frontend tests
+        working-directory: ./Precept.Web
+        run: npm test
 
       - name: Build frontend
         working-directory: ./Precept.Web

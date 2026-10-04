@@ -178,8 +178,9 @@ translation of the query filters, `ILIKE` search, cascade deletes, numeric types
 migration that does not apply. These tests also exercise the cookie, CSRF header and
 rate-limit middleware end to end.
 
-**Weak spot.** The suite needs Docker and takes about a minute. There are no frontend tests
-yet (plan item M1-F9).
+**Weak spot.** The suite needs Docker and takes about a minute. Frontend tests (Vitest) stub
+`fetch`, so the browser journeys in `Precept.Web/e2e/` are what prove the two halves work
+together, and they are not in CI yet.
 
 ### 6. Nothing on screen is invented
 
@@ -360,8 +361,22 @@ dotnet test        # xUnit + Testcontainers (spins up PostgreSQL automatically)
 
 - **Unit tests** cover SM-2 scheduling math, story/application/digest/search/skill services, and LLM factory resolution.
 - **Integration tests** boot the real API via `WebApplicationFactory` against a per-class Testcontainers PostgreSQL database (or `ConnectionStrings__PreceptDb` in CI) and exercise the full HTTP surface: register → login → cookie session → logout, lockout, sign-out-everywhere, CSRF header enforcement, and every domain endpoint.
-- CI (GitHub Actions) runs the suite plus `dotnet list package --vulnerable`, `npm audit` and a frontend type check (`npm run lint`, which runs `tsc --noEmit`).
-- There are no frontend tests yet (planned as M1-F9).
+- CI (GitHub Actions) runs the backend suite plus `dotnet list package --vulnerable`, `npm audit`, a frontend type check (`npm run lint`, which runs `tsc --noEmit`) and the frontend tests (`npm test`) on Node 24.
+- **Frontend tests** (Vitest, React Testing Library, jsdom) run with `npm test` in `Precept.Web`
+  and in CI. They cover the API client (paging, error messages, CSRF header, session expiry),
+  company logos, sign-in and sign-up, the quiz keyboard flow, mock interview feedback and
+  limits, and dashboard counts. `fetch` is stubbed per route (`src/test/utils.tsx`).
+- **End-to-end journeys** (Playwright) in `Precept.Web/e2e/` run against a live stack: sign up,
+  bank a story, drill it. Start PostgreSQL, the API and the web app, then:
+
+  ```bash
+  cd Precept.Web
+  npm run test:e2e                      # E2E_BASE_URL defaults to http://127.0.0.1:3000
+  # with an already-installed Chromium:
+  PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chrome npm run test:e2e
+  ```
+
+  They are not part of CI yet.
 
 ---
 

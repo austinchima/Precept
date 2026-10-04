@@ -108,3 +108,7 @@ credentials.json
 *.key
 .credentials
 *.hintrc
+
+# Playwright end-to-end output (Precept.Web/e2e)
+test-results/
+playwright-report/
