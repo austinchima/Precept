@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 import LoginPage from './LoginPage';
 import { mockApi, renderPage, testUser } from '../test/utils';
 
+// Generated per run so no credential-like literal is committed.
+const password = `Aa1!${crypto.randomUUID()}`;
+
 /** /api/auth/me answers 401 until a login succeeds, like the real API. */
 function authApi(loginReply: { status?: number; body?: unknown } = { body: {} }) {
   let signedIn = false;
@@ -22,12 +25,12 @@ describe('LoginPage', () => {
     renderPage(<LoginPage />, { route: '/login' });
 
     await userEvent.type(screen.getByTestId('signin-email'), 'ines@example.com');
-    await userEvent.type(screen.getByTestId('signin-password'), 'Secret-pass-1!');
+    await userEvent.type(screen.getByTestId('signin-password'), password);
     await userEvent.click(screen.getByTestId('signin-submit'));
 
     expect(await screen.findByText('Dashboard route')).toBeInTheDocument();
     const login = calls.find((c) => c.method === 'POST' && c.path === '/api/auth/login');
-    expect(login?.body).toEqual({ email: 'ines@example.com', password: 'Secret-pass-1!', rememberMe: true });
+    expect(login?.body).toEqual({ email: 'ines@example.com', password, rememberMe: true });
   });
 
   it('rejects an email without a domain before calling the API', async () => {
@@ -62,7 +65,7 @@ describe('LoginPage', () => {
     await userEvent.type(screen.getByTestId('signin-firstname'), 'Ines');
     await userEvent.type(screen.getByTestId('signin-lastname'), 'Adeyemi');
     await userEvent.type(screen.getByTestId('signin-email'), 'ines@example.com');
-    await userEvent.type(screen.getByTestId('signin-password'), 'Secret-pass-1!');
+    await userEvent.type(screen.getByTestId('signin-password'), password);
     await userEvent.click(screen.getByTestId('signin-submit'));
 
     expect(await screen.findByTestId('signin-error')).toHaveTextContent('Agree to the Terms of Service');

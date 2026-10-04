@@ -5,7 +5,8 @@ import { expect, test, type Page } from '@playwright/test';
  * Each test signs up a fresh account so tests never share data.
  */
 
-const password = 'E2e-journey-pass-1!';
+// Generated per run: the accounts are throwaway, and a literal would read as a committed credential.
+const password = `Aa1!${crypto.randomUUID()}`;
 const uniqueEmail = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
 
 async function signUp(page: Page) {
