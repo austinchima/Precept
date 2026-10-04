@@ -117,7 +117,7 @@ A forgotten `WHERE` in a new endpoint becomes an empty result instead of a data 
 user ID into a local variable first would bake the first caller's ID into EF's cached model
 and silently apply it to everyone; the code comment in `PreceptDbContext` explains this.
 System jobs (cleanup, digests) must call `IgnoreQueryFilters()` deliberately. Integration
-tests check that another user's records return 404.
+tests check that one user cannot read, change or delete another user's stories or applications.
 
 ### 2. Session cookie instead of JWT
 
