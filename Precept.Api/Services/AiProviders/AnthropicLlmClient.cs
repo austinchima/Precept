@@ -7,17 +7,17 @@ namespace Precept.Api.Services.AiProviders;
 /// <summary>
 /// Anthropic Claude API client.
 /// </summary>
-public class AnthropicLlmClient(HttpClient httpClient, string apiKey, string model) : ILlmClient
+public class AnthropicLlmClient(HttpClient httpClient, string apiKey, string model, int maxOutputTokens) : ILlmProviderClient
 {
     public string ProviderName => "Anthropic";
-    private readonly string _model = string.IsNullOrWhiteSpace(model) ? "claude-3-5-haiku-20241022" : model;
+    public string Model { get; } = string.IsNullOrWhiteSpace(model) ? "claude-3-5-haiku-20241022" : model;
 
-    public async Task<string> GenerateCompletionAsync(string prompt, string? systemPrompt = null, CancellationToken ct = default)
+    public async Task<LlmCompletion> CompleteAsync(string prompt, string? systemPrompt, CancellationToken ct)
     {
         var requestBody = new
         {
-            model = _model,
-            max_tokens = 2048,
+            model = Model,
+            max_tokens = maxOutputTokens,
             system = systemPrompt ?? "You are an elite engineering interviewer.",
             messages = new[] { new { role = "user", content = prompt } }
         };
@@ -38,9 +38,17 @@ public class AnthropicLlmClient(HttpClient httpClient, string apiKey, string mod
 
         var json = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(json);
-        return doc.RootElement
-            .GetProperty("content")[0]
-            .GetProperty("text")
-            .GetString() ?? string.Empty;
+        var root = doc.RootElement;
+        var text = root.GetProperty("content")[0].GetProperty("text").GetString() ?? string.Empty;
+
+        // Usage field names checked against the official @anthropic-ai/sdk 0.131.0 type definitions.
+        int? input = null, output = null;
+        if (root.TryGetProperty("usage", out var usage))
+        {
+            input = LlmUsageJson.ReadInt(usage, "input_tokens");
+            output = LlmUsageJson.ReadInt(usage, "output_tokens");
+        }
+
+        return new LlmCompletion(text, input, output);
     }
 }

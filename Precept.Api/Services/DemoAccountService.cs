@@ -82,13 +82,14 @@ public class DemoAccountService(
         return deleted;
     }
 
+    // Company names are fictional, so the demo never implies a real employer's hiring process.
     private async Task SeedSampleApplicationsAsync(string userId, DateTime utcNow)
     {
         dbContext.Applications.AddRange(
             new Application
             {
                 UserId = userId,
-                CompanyName = "Stripe",
+                CompanyName = "Kestrel Pay",
                 RoleTitle = "Staff Systems Engineer",
                 Location = "San Francisco, CA (Hybrid)",
                 SalaryRange = "$240k - $310k",
@@ -103,7 +104,7 @@ public class DemoAccountService(
             new Application
             {
                 UserId = userId,
-                CompanyName = "Vercel",
+                CompanyName = "Orbitform",
                 RoleTitle = "Senior Frontend Architect",
                 Location = "Remote (US)",
                 SalaryRange = "$210k - $270k",
@@ -118,7 +119,7 @@ public class DemoAccountService(
             new Application
             {
                 UserId = userId,
-                CompanyName = "Datadog",
+                CompanyName = "Brightlane Analytics",
                 RoleTitle = "Senior Software Engineer",
                 Location = "New York, NY (Remote)",
                 SalaryRange = "$195k - $250k",

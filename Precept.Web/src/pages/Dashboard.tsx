@@ -8,7 +8,8 @@ import { useToast } from '../components/ui/Toast';
 import SkillRadar from '../components/SkillRadar';
 import { computeSkillAxes, formatCategoryName, READINESS_TARGET } from '../lib/skills';
 import PageShell from '../components/PageShell';
-import { Button, EmptyState, Monogram, Panel, PanelHeader, Reveal, Segmented, Select, Skeleton } from '../components/ui/kit';
+import { CompanyLogo } from '../components/CompanyLogo';
+import { Button, EmptyState, Panel, PanelHeader, Reveal, Segmented, Select, Skeleton } from '../components/ui/kit';
 import { ConfidenceMeter, ConfidencePicker, STATUS_META, STATUS_ORDER, confidenceMeta, isDue, overdueLabel } from '../components/domain';
 import { cn } from '../lib/utils';
 
@@ -368,7 +369,7 @@ export default function Dashboard() {
                     const due = overdueLabel(app.followUpDate);
                     return (
                       <li key={app.id} data-testid={`followup-row-${app.id}`} className="flex items-center gap-3 px-5 py-3">
-                        <Monogram name={app.companyName} size={32} />
+                        <CompanyLogo name={app.companyName} size={32} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[13.5px] font-medium text-fg">{app.companyName}</p>
                           <p className={cn('text-[12.5px]', due.overdue ? 'text-danger' : 'text-warning')}>{due.text}</p>
@@ -423,7 +424,7 @@ export default function Dashboard() {
                   <ul className="mt-4 divide-y divide-line border-t border-line">
                     {recentApps.map((a) => (
                       <li key={a.id} className="flex items-center gap-3 px-5 py-3">
-                        <Monogram name={a.companyName} size={32} />
+                        <CompanyLogo name={a.companyName} size={32} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[13.5px] font-medium text-fg">{a.companyName}</p>
                           <p className="truncate text-[12.5px] text-fg-3">{a.roleTitle}</p>

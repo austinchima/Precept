@@ -283,8 +283,8 @@ public class AuthEndpointTests : IAsyncLifetime
 
         var demoApps = await db.Applications.IgnoreQueryFilters().Where(a => a.UserId == demoUser!.Id).ToListAsync();
         demoApps.Should().NotBeEmpty("demo applications must be seeded");
-        demoApps.Should().Contain(a => a.CompanyName == "Stripe");
-        demoApps.Should().Contain(a => a.CompanyName == "Vercel");
+        demoApps.Should().Contain(a => a.CompanyName == "Kestrel Pay");
+        demoApps.Should().Contain(a => a.CompanyName == "Orbitform");
 
         var demoStories = await db.Stories.IgnoreQueryFilters().Where(s => s.UserId == demoUser!.Id).ToListAsync();
         demoStories.Should().NotBeEmpty("demo stories must be seeded");

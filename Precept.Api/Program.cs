@@ -4,6 +4,7 @@ using Precept.Api.Data;
 using Precept.Api.DTOs;
 using Precept.Api.Models;
 using Precept.Api.Services;
+using Precept.Api.Services.Usage;
 using Precept.Api.Services.Interfaces;
 using Precept.Api.Services.SpacedRepetition;
 using Scalar.AspNetCore;
@@ -208,7 +209,11 @@ builder.Services.AddHttpClient("AiClient", client =>
     client.Timeout = TimeSpan.FromSeconds(60);
 });
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection(AiSettings.SectionName));
-builder.Services.AddSingleton<ILlmClientFactory, LlmClientFactory>();
+builder.Services.Configure<UsageSettings>(builder.Configuration.GetSection(UsageSettings.SectionName));
+builder.Services.AddSingleton<ILlmProviderFactory, LlmProviderFactory>();
+builder.Services.AddScoped<IUsageGuard, UsageGuard>();
+// Scoped: every client it returns is metered through the request's usage guard (M1-F3).
+builder.Services.AddScoped<ILlmClientFactory, LlmClientFactory>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IMockInterviewService, MockInterviewService>();
 builder.Services.Configure<DemoSettings>(builder.Configuration.GetSection(DemoSettings.SectionName));
@@ -298,7 +303,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options => options.Filters.Add<AiCallRefusedExceptionFilter>())
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());

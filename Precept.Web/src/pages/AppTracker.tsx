@@ -8,7 +8,8 @@ import { api } from '../api';
 import { useToast } from '../components/ui/Toast';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import PageShell from '../components/PageShell';
-import { Button, Dialog, EmptyState, Field, Input, Monogram, Panel, Segmented, Select, Skeleton, Textarea } from '../components/ui/kit';
+import { CompanyLogo } from '../components/CompanyLogo';
+import { Button, Dialog, EmptyState, Field, Input, Panel, Segmented, Select, Skeleton, Textarea } from '../components/ui/kit';
 import { STATUS_META, STATUS_ORDER, StatusBadge, overdueLabel } from '../components/domain';
 import { cn } from '../lib/utils';
 
@@ -47,7 +48,7 @@ function AppCard({ app, dragging, onOpen, onDragStart, onDragEnd }: { app: Appli
         )}
       >
         <div className="flex items-center gap-2.5">
-          <Monogram name={app.companyName} size={28} />
+          <CompanyLogo name={app.companyName} size={28} />
           <div className="min-w-0">
             <p className="truncate text-[13.5px] font-medium text-fg">{app.companyName}</p>
             <p className="truncate text-[12.5px] text-fg-3">{app.roleTitle}</p>
@@ -346,7 +347,7 @@ export default function AppTracker() {
                   <tr key={app.id} onClick={() => handleOpenEditModal(app)} className="cursor-pointer transition-colors hover:bg-surface-2/60">
                     <td className="px-5 py-3">
                       <span className="flex items-center gap-3">
-                        <Monogram name={app.companyName} size={28} />
+                        <CompanyLogo name={app.companyName} size={28} />
                         <span className="font-medium text-fg">{app.companyName}</span>
                       </span>
                     </td>
@@ -363,7 +364,7 @@ export default function AppTracker() {
             {apps.map((app) => (
               <li key={app.id}>
                 <button type="button" onClick={() => handleOpenEditModal(app)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                  <Monogram name={app.companyName} size={32} />
+                  <CompanyLogo name={app.companyName} size={32} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-medium text-fg">{app.companyName}</span>
                     <span className="block truncate text-[12.5px] text-fg-3">{app.roleTitle}</span>
