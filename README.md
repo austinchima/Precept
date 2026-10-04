@@ -91,9 +91,107 @@ erDiagram
     ApplicationUser ||--o{ JobDescription    : owns
     ApplicationUser ||--o{ Skill             : owns
     ApplicationUser ||--o{ Testimonial       : owns
+    ApplicationUser ||--o{ UsageLedgerEntry  : "AI calls"
     JobDescription  ||--o{ Application       : "matched against"
     Application     ||--o{ ApplicationEvent  : tracks
 ```
+
+---
+
+## Design decisions
+
+The choices below are the ones a reviewer is most likely to ask about. Each lists what was
+chosen, why, and its known weak spot. Longer-form records are planned in `docs/adr/`
+(plan item S-Q5).
+
+### 1. Tenancy through EF Core global query filters
+
+**Decision.** Every user-owned entity has a `UserId` and a `HasQueryFilter` that limits
+queries to the signed-in user (`Precept.Api/Data/PreceptDbContext.cs`). Services still add
+their own `WHERE UserId = ...`; the filter is a second line of defence.
+
+**Why.** In a multi-tenant app the expensive bug is one user reading another user's data.
+A forgotten `WHERE` in a new endpoint becomes an empty result instead of a data leak.
+
+**Weak spot.** The filter reads the user from a context property on every query. Copying the
+user ID into a local variable first would bake the first caller's ID into EF's cached model
+and silently apply it to everyone; the code comment in `PreceptDbContext` explains this.
+System jobs (cleanup, digests) must call `IgnoreQueryFilters()` deliberately. Integration
+tests check that another user's records return 404.
+
+### 2. Session cookie instead of JWT
+
+**Decision.** ASP.NET Core Identity cookie auth: an `HttpOnly`, `Secure`, `SameSite=Strict`
+cookie with a 14-day sliding expiry (`Program.cs`, section 4). An earlier JWT and
+refresh-token design was replaced in 1.3.0 and is kept in `docs/archive/`.
+
+**Why.** The only client is a browser on the same site. A cookie keeps the token away from
+JavaScript, needs no refresh-token rotation code, and rotating the user's security stamp
+signs out every session at once (used by "sign out everywhere", password reset and account
+deletion).
+
+**Weak spot.** Cookies are encrypted with ASP.NET Data Protection keys, which are
+in-memory by default in a container. A restart or a second instance logs everyone out until
+the keys are persisted (plan item M1-F4). Cookie auth also does not suit a CLI or API
+clients; scoped API tokens are future work.
+
+### 3. Per-visitor demo accounts
+
+**Decision.** "Try the demo" creates a fresh seeded account per visitor that expires after
+24 hours, has no password, and never calls an AI provider
+(`Precept.Api/Services/DemoAccountService.cs`, `DemoCleanupService.cs`). Creation is
+rate-limited per client IP.
+
+**Why.** It replaced one shared demo login whose password was in source: visitors could see
+and change each other's data, and anyone could spend the AI budget.
+
+**Weak spot.** Behind a proxy such as Cloud Run every request comes from the proxy's address,
+so the per-IP limit becomes one shared bucket. The opt-in `ForwardedHeaders:TrustAllProxies`
+setting takes the client IP from the right-most `X-Forwarded-For` entry; enabling it where
+clients can reach the API directly would let them spoof their IP.
+
+### 4. Every AI call is metered
+
+**Decision.** Application code can only get an `ILlmClient` from `ILlmClientFactory`, which
+returns a `MeteredLlmClient` (`Precept.Api/Services/Usage/`). Its only method requires a
+usage context (user, feature, prompt version). It refuses demo users, checks per-user daily
+and monthly limits and a global daily cap, calls the provider, and writes a `UsageLedger`
+row for every attempt, failed calls included.
+
+**Why.** An LLM call costs real money per request. Making the limit check part of the only
+call path means a new feature cannot forget it.
+
+**Weak spot.** Check and record are separate steps, so two requests arriving together at the
+limit can both pass; the overshoot is at most the number of concurrent requests. No model
+prices are built in because they change, so the USD budget only covers models given a price
+in configuration; the daily call cap always applies.
+
+### 5. Integration tests against real PostgreSQL
+
+**Decision.** Tests run against PostgreSQL in Docker through Testcontainers
+(`Precept.Tests/Infrastructure/`). Each test class gets its own database, created and
+migrated with the real migrations, and `WebApplicationFactory` boots the real API for HTTP
+tests.
+
+**Why.** An in-memory provider would not catch PostgreSQL-specific behaviour: SQL
+translation of the query filters, `ILIKE` search, cascade deletes, numeric types, or a
+migration that does not apply. These tests also exercise the cookie, CSRF header and
+rate-limit middleware end to end.
+
+**Weak spot.** The suite needs Docker and takes about a minute. There are no frontend tests
+yet (plan item M1-F9).
+
+### 6. Nothing on screen is invented
+
+**Decision.** The UI only shows numbers computed from the user's data, and empty states when
+there is not enough data. Earlier sample-data charts, hard-coded testimonials and claims
+about features that did not exist were removed (see the CHANGELOG).
+
+**Why.** The product asks engineers to be precise about their own work; it should hold
+itself to the same standard.
+
+**Weak spot.** Some planned views, such as a confidence trend over time, stay hidden until
+the review history they need exists (plan items M3-F4 and S7).
 
 ---
 
@@ -292,7 +390,6 @@ Identity cookie authentication in place of the earlier JWT and refresh-token des
 - No centralized audit log / SIEM integration.
 - Search covers applications, technical stories and skills, not behavioral stories or job
   descriptions.
-- AI calls have no per-user quota or spend cap yet (planned as M1-F3).
 
 ---
 
