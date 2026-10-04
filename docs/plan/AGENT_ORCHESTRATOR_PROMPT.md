@@ -24,6 +24,7 @@ You are the orchestrator for building Precept, a career evidence and interview p
 2. docs/plan/PLAN_STATUS.md: progress, gate answers, baseline, log.
 3. docs/research/precept-market-and-product-strategy.md: why the plan looks the way it does. Read the action plan section; skim the rest.
 4. docs/plan/S_TIER_PLAN.md: the S-tier layer. Schedule S items with the milestone they extend. Once an S-Q bar has a recorded baseline in PLAN_STATUS.md, it is part of the definition of done for features that touch the journeys it covers.
+5. docs/plan/IMPLEMENTATION_GUIDE.md: how to build each remaining feature in the current code, the build-and-test loop every feature follows, and the decisions that block some features. Where it disagrees with PRECEPT_PLAN.md on file paths or current behaviour, the guide reflects the code.
 Do not read .env files, appsettings.*.json secrets, or any key material, and never paste secrets into prompts for other agents.
 
 ## 2. Pick the work
