@@ -283,13 +283,18 @@ export default function MockInterview() {
             <Panel>
               <div className="flex items-start justify-between gap-4 border-b border-line p-5 md:p-6">
                 <div>
-                  <h2 className="text-[17px] font-semibold tracking-tight text-fg">{evaluation.isDemoSample ? 'Sample feedback' : 'Feedback'}</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-[17px] font-semibold tracking-tight text-fg">{evaluation.isDemoSample ? 'Sample feedback' : 'Feedback'}</h2>
+                    {evaluation.isHeuristic && (
+                      <Chip tone="warning" data-testid="mock-heuristic-label">Offline heuristic, not an AI evaluation</Chip>
+                    )}
+                  </div>
                   {evaluation.deliveryFeedback && <p className="mt-1.5 max-w-[60ch] text-[13.5px] leading-relaxed text-fg-2">{evaluation.deliveryFeedback}</p>}
                 </div>
                 {!evaluation.isDemoSample && (
                   <div className="shrink-0 text-right">
                     <p className="num text-[34px] font-semibold leading-none tracking-tight text-fg">{evaluation.score}</p>
-                    <p className="mt-1 text-[12px] text-fg-3">out of 100</p>
+                    <p className="mt-1 text-[12px] text-fg-3">{evaluation.isHeuristic ? 'heuristic, out of 100' : 'out of 100'}</p>
                   </div>
                 )}
               </div>

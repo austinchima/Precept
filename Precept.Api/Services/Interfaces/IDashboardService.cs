@@ -8,4 +8,5 @@ namespace Precept.Api.Services.Interfaces;
 public interface IDashboardService
 {
     Task<DashboardStatsResponse> GetDashboardStatsAsync(string userId);
+    Task<ReviewQueueResponse> GetReviewQueueAsync(string userId, int limit);
 }

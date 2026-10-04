@@ -81,7 +81,7 @@ public class MockInterviewEndpointTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task EvaluateAnswer_Returns200_WithSTARFeedbackAndModelAnswer()
+    public async Task EvaluateAnswer_WithoutAiProvider_Returns200_WithLabelledHeuristicFeedback()
     {
         var (client, _) = await _factory.CreateAuthenticatedClientAsync(email: UniqueEmail());
 
@@ -103,9 +103,12 @@ public class MockInterviewEndpointTests : IAsyncLifetime
         result.StarBreakdown.Action.Should().NotBeNullOrWhiteSpace();
         result.StarBreakdown.Result.Should().NotBeNullOrWhiteSpace();
         result.Strengths.Should().NotBeEmpty();
-        result.AreasForImprovement.Should().NotBeEmpty();
-        result.ModelAnswer.Should().NotBeNullOrWhiteSpace();
-        result.DeliveryFeedback.Should().NotBeNullOrWhiteSpace();
+        // No AI provider is configured in tests, so this is the offline check (M1-F8): it is labelled,
+        // writes no model answer, and has nothing to criticise in an answer that passes all three checks.
+        result.IsHeuristic.Should().BeTrue();
+        result.ModelAnswer.Should().BeEmpty();
+        result.AreasForImprovement.Should().BeEmpty();
+        result.DeliveryFeedback.Should().Contain("offline check");
     }
 
     [Fact]

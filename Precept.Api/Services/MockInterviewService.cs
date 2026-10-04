@@ -270,13 +270,15 @@ Return strictly valid JSON with this exact schema:
         };
     }
 
-    private static MockInterviewEvaluationResponse EvaluateFallbackAnswer(EvaluateMockAnswerRequest request, string transcript)
+    /// <summary>
+    /// Used only when no AI provider answered. It checks three observable things (length,
+    /// first-person action words, and any numbers) and says nothing it did not measure: no model
+    /// answer, no default praise, and no figures that are not in the transcript. The response is
+    /// flagged <see cref="MockInterviewEvaluationResponse.IsHeuristic"/> so the UI labels it.
+    /// </summary>
+    internal static MockInterviewEvaluationResponse EvaluateFallbackAnswer(EvaluateMockAnswerRequest request, string transcript)
     {
         var wordCount = transcript.Split(new[] { ' ', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
-        int score = 70;
-
-        var strengths = new List<string>();
-        var improvements = new List<string>();
 
         bool hasAction = transcript.Contains("I ", StringComparison.OrdinalIgnoreCase) ||
                          transcript.Contains("we decided", StringComparison.OrdinalIgnoreCase) ||
@@ -285,57 +287,44 @@ Return strictly valid JSON with this exact schema:
 
         bool hasMetrics = transcript.Any(char.IsDigit) ||
                           transcript.Contains("percent", StringComparison.OrdinalIgnoreCase) ||
-                          transcript.Contains("%") ||
-                          transcript.Contains("reduced", StringComparison.OrdinalIgnoreCase) ||
-                          transcript.Contains("improved", StringComparison.OrdinalIgnoreCase);
+                          transcript.Contains('%');
+
+        // Fixed formula over the three checks above; shown in the UI as an offline heuristic.
+        int score = 70 + (wordCount >= 80 ? 10 : -10) + (hasAction ? 10 : 0) + (hasMetrics ? 10 : 0);
+
+        var strengths = new List<string>();
+        var improvements = new List<string>();
 
         if (wordCount >= 80)
-        {
-            score += 10;
-            strengths.Add("Good depth and detail in explaining the context and workflow.");
-        }
+            strengths.Add("The answer is long enough to cover context, actions and outcome.");
         else
-        {
-            score -= 10;
-            improvements.Add("Answer is somewhat brief (under 80 words). Aim for a 90-120 second response with complete STAR steps.");
-        }
+            improvements.Add("The answer is under 80 words. A full STAR answer usually runs 90 to 120 seconds when spoken.");
 
         if (hasAction)
-        {
-            score += 10;
-            strengths.Add("Clearly articulated personal ownership and specific actions taken.");
-        }
+            strengths.Add("It describes actions in the first person.");
         else
-        {
-            improvements.Add("Emphasize your individual contribution using 'I chose', 'I designed', or 'I executed' rather than passive phrasing.");
-        }
+            improvements.Add("Say what you did yourself: \"I chose\", \"I designed\", \"I rolled back\".");
 
         if (hasMetrics)
-        {
-            score += 10;
-            strengths.Add("Included quantifiable metrics or business impact in the result.");
-        }
+            strengths.Add("It includes at least one number.");
         else
-        {
-            improvements.Add("Quantify the final result (e.g. latency reduced by X%, saved Y hours, improved reliability).");
-        }
-
-        score = Math.Clamp(score, 45, 95);
+            improvements.Add("Add a measured result if you have one, such as latency, error rate, time saved or users affected.");
 
         return new MockInterviewEvaluationResponse
         {
             Score = score,
+            IsHeuristic = true,
             StarBreakdown = new StarBreakdown
             {
-                Situation = wordCount > 40 ? "Clear context established." : "Context was brief; provide more background.",
-                Task = "Defined the core objective and challenge.",
-                Action = hasAction ? "Strong demonstration of proactive problem solving." : "Add more specific technical actions taken.",
-                Result = hasMetrics ? "Impact clearly demonstrated with quantifiable results." : "Result could be strengthened with concrete numbers or metrics."
+                Situation = wordCount > 40 ? "Long enough to include context." : "Too short to include much context.",
+                Task = "Not checked by the offline heuristic.",
+                Action = hasAction ? "First-person actions found." : "No first-person actions found.",
+                Result = hasMetrics ? "A number appears in the answer." : "No number appears in the answer."
             },
-            Strengths = strengths.Count > 0 ? strengths : new List<string> { "Direct answer to the prompt", "Conversational delivery" },
-            AreasForImprovement = improvements.Count > 0 ? improvements : new List<string> { "Pace yourself to stay between 90 and 120 seconds." },
-            ModelAnswer = $"In my previous role, our system faced a high-stakes challenge when {request.Question.Replace("Tell me about a time you", "I had to").Replace("?", "")}. I took ownership by diagnosing the root bottleneck, aligning stakeholders on a phased mitigation plan, and implementing automated safeguards. As a result, we eliminated system downtime and improved delivery speed by 35%.",
-            DeliveryFeedback = $"Transcript contained {wordCount} words. Delivery is articulate and direct. Structure your final punchline to highlight lasting organizational impact."
+            Strengths = strengths,
+            AreasForImprovement = improvements,
+            ModelAnswer = string.Empty,
+            DeliveryFeedback = $"AI feedback was unavailable, so this is an offline check of length, first-person actions and numbers only. Your answer has {wordCount} words."
         };
     }
 }

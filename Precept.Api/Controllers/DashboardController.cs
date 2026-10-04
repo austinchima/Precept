@@ -37,6 +37,15 @@ public class DashboardController(IDashboardService dashboardService, PreceptDbCo
     }
 
     /// <summary>
+    /// Stories due for review across technical and STAR stories, weakest first, with the total due count.
+    /// </summary>
+    [HttpGet("review-queue")]
+    public async Task<ActionResult<ReviewQueueResponse>> GetReviewQueue([FromQuery] int limit = 10)
+    {
+        return Ok(await dashboardService.GetReviewQueueAsync(GetUserId(), limit));
+    }
+
+    /// <summary>
     /// Exports all raw user data (Skills, Stories, Applications, JDs) as a JSON payload.
     /// </summary>
     [HttpGet("export")]

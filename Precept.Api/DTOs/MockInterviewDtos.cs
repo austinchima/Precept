@@ -45,4 +45,10 @@ public class MockInterviewEvaluationResponse
 
     /// <summary>True when this is a fixed demo sample; the answer was not evaluated.</summary>
     public bool IsDemoSample { get; set; }
+
+    /// <summary>
+    /// True when no AI provider was reachable and the answer was scored by the offline keyword
+    /// heuristic instead. The UI must label it as such.
+    /// </summary>
+    public bool IsHeuristic { get; set; }
 }
