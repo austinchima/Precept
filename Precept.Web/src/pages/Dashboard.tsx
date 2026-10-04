@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, ChevronRight, Layers, Plus } from 'lucide-react';
 import { api } from '../api';
-import { Application, ApplicationStatus, BehavioralStory, ConfidenceLevel, DashboardStats, PagedResponse, Skill, Story } from '../types';
+import { Application, ApplicationStatus, BehavioralStory, ConfidenceLevel, DashboardStats, PagedResponse, ReviewQueue, Skill, Story } from '../types';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
 import SkillRadar from '../components/SkillRadar';
@@ -10,10 +10,8 @@ import { computeSkillAxes, formatCategoryName, READINESS_TARGET } from '../lib/s
 import PageShell from '../components/PageShell';
 import { CompanyLogo } from '../components/CompanyLogo';
 import { Button, EmptyState, Panel, PanelHeader, Reveal, Segmented, Select, Skeleton } from '../components/ui/kit';
-import { ConfidenceMeter, ConfidencePicker, STATUS_META, STATUS_ORDER, confidenceMeta, isDue, overdueLabel } from '../components/domain';
+import { ConfidenceMeter, ConfidencePicker, STATUS_META, STATUS_ORDER, confidenceMeta, overdueLabel } from '../components/domain';
 import { cn } from '../lib/utils';
-
-type QueueItem = { id: string; title: string; kind: 'Technical' | 'Behavioral'; confidence: ConfidenceLevel; nextReviewAt: string | null };
 
 function greeting() {
   const h = new Date().getHours();
@@ -46,6 +44,7 @@ export default function Dashboard() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [behavioralStories, setBehavioralStories] = useState<BehavioralStory[]>([]);
   const [followUpsDue, setFollowUpsDue] = useState<Application[]>([]);
+  const [reviewQueue, setReviewQueue] = useState<ReviewQueue>({ total: 0, items: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [spotlightType, setSpotlightType] = useState<'technical' | 'behavioral'>('technical');
@@ -55,18 +54,22 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [statsData, appsRes, storiesRes, skillsRes, behavioralStoriesRes, followUpsRes] = await Promise.all([
+      // Counts come from the server (/api/dashboard, /review-queue). The paged lists below only feed
+      // the story spotlight and the five most recent applications, which never need more than a page.
+      const [statsData, queueRes, appsRes, storiesRes, allSkills, behavioralStoriesRes, followUpsRes] = await Promise.all([
         api.get<DashboardStats>('/api/dashboard'),
+        api.get<ReviewQueue>('/api/dashboard/review-queue?limit=6'),
         api.get<PagedResponse<Application>>('/api/application'),
         api.get<PagedResponse<Story>>('/api/story'),
-        api.get<PagedResponse<Skill>>('/api/skill'),
+        api.getAll<Skill>('/api/skill'),
         api.get<PagedResponse<BehavioralStory>>('/api/behavioralstory'),
         api.get<{ items: Application[]; count: number }>('/api/application/followups-due'),
       ]);
       setStats(statsData);
+      setReviewQueue(queueRes);
       setApplications(appsRes.items ?? []);
       setStories(storiesRes.items ?? []);
-      setSkills(skillsRes.items ?? []);
+      setSkills(allSkills);
       setBehavioralStories(behavioralStoriesRes.items ?? []);
       setFollowUpsDue(followUpsRes.items ?? []);
       if (statsData.applicationStats.totalApplications === 0 && statsData.storyStats.totalReviewed === 0) {
@@ -84,26 +87,21 @@ export default function Dashboard() {
     loadDashboardData();
   }, []);
 
-  const activeApps = applications.filter((a) => ['Applied', 'PhoneScreen', 'Interviewing'].includes(a.status));
   const recentApps = [...applications]
     .sort((a, b) => new Date(b.dateApplied || b.followUpDate).getTime() - new Date(a.dateApplied || a.followUpDate).getTime())
     .slice(0, 5);
   const skillAxes = computeSkillAxes(skills);
 
-  const queue: QueueItem[] = useMemo(() => {
-    const now = new Date();
-    const items: QueueItem[] = [
-      ...stories.filter((s) => isDue(s.nextReviewAt, now)).map((s) => ({ id: s.id, title: s.title, kind: 'Technical' as const, confidence: s.confidenceLevel, nextReviewAt: s.nextReviewAt })),
-      ...behavioralStories.filter((s) => isDue(s.nextReviewAt, now)).map((s) => ({ id: s.id, title: s.title, kind: 'Behavioral' as const, confidence: s.confidenceLevel, nextReviewAt: s.nextReviewAt })),
-    ];
-    return items.sort((a, b) => confidenceMeta(a.confidence).step - confidenceMeta(b.confidence).step);
-  }, [stories, behavioralStories]);
+  const queue = reviewQueue.items;
+  const dueCount = reviewQueue.total;
 
   const statusCounts = useMemo(() => {
-    const counts = new Map<ApplicationStatus, number>();
-    applications.forEach((a) => counts.set(a.status, (counts.get(a.status) ?? 0) + 1));
-    return STATUS_ORDER.map((s) => ({ status: s, count: counts.get(s) ?? 0 })).filter((x) => x.count > 0);
-  }, [applications]);
+    const breakdown = stats?.applicationStats.statusBreakdown ?? {};
+    return STATUS_ORDER.map((s) => ({ status: s, count: breakdown[s] ?? 0 })).filter((x) => x.count > 0);
+  }, [stats]);
+  const totalApplications = stats?.applicationStats.totalApplications ?? 0;
+  const totalTechnical = stats?.storyStats.totalStories ?? 0;
+  const totalBehavioral = stats?.storyStats.totalBehavioralStories ?? 0;
 
   const handleUpdateConfidence = async (newRung: ConfidenceLevel) => {
     if (spotlightType === 'behavioral') return;
@@ -124,6 +122,8 @@ export default function Dashboard() {
       await api.patch(`/api/application/${appId}/status`, { status: newStatus });
       setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, status: newStatus } : a)));
       setFollowUpsDue((prev) => prev.filter((a) => a.id !== appId));
+      // Pipeline and active counts are server-side; refresh them rather than recomputing from one page.
+      api.get<DashboardStats>('/api/dashboard').then(setStats).catch(() => undefined);
       toast.success(`Moved to ${STATUS_META[newStatus].label}.`);
     } catch (err) {
       console.error(err);
@@ -169,14 +169,14 @@ export default function Dashboard() {
   const spotlightCount = spotlightType === 'technical' ? stories.length : behavioralStories.length;
 
   const summary = [
-    { label: 'Reviews due', value: queue.length, to: '/story-bank/quiz' },
+    { label: 'Reviews due', value: dueCount, to: '/story-bank/quiz' },
     { label: 'Follow-ups due', value: followUpsDue.length, to: '/applications' },
-    { label: 'Active applications', value: activeApps.length, to: '/applications' },
-    { label: 'Stories banked', value: stories.length + behavioralStories.length, to: '/story-bank' },
+    { label: 'Active applications', value: stats?.applicationStats.activeApplications ?? 0, to: '/applications' },
+    { label: 'Stories banked', value: totalTechnical + totalBehavioral, to: '/story-bank' },
   ];
 
   const subtitleParts = [
-    queue.length ? `${queue.length} ${queue.length === 1 ? 'story is' : 'stories are'} due for review` : 'No stories are due for review',
+    dueCount ? `${dueCount} ${dueCount === 1 ? 'story is' : 'stories are'} due for review` : 'No stories are due for review',
     followUpsDue.length ? `${followUpsDue.length} ${followUpsDue.length === 1 ? 'follow-up' : 'follow-ups'} waiting` : null,
   ].filter(Boolean);
 
@@ -268,14 +268,14 @@ export default function Dashboard() {
                           <p className="truncate text-[13.5px] font-medium text-fg">{q.title}</p>
                           <p className="text-[12.5px] text-fg-3">{q.kind}</p>
                         </div>
-                        <ConfidenceMeter level={q.confidence} />
+                        <ConfidenceMeter level={q.confidenceLevel} />
                       </Link>
                     </li>
                   ))}
                 </ul>
               )}
-              {queue.length > 6 && (
-                <p className="border-t border-line px-5 py-3 text-[12.5px] text-fg-3">and {queue.length - 6} more in the drill.</p>
+              {dueCount > queue.length && (
+                <p className="border-t border-line px-5 py-3 text-[12.5px] text-fg-3">and {dueCount - queue.length} more in the drill.</p>
               )}
             </Panel>
           </Reveal>
@@ -293,8 +293,8 @@ export default function Dashboard() {
                       value={spotlightType}
                       onChange={setSpotlightType}
                       options={[
-                        { value: 'technical', label: 'Technical', count: stories.length },
-                        { value: 'behavioral', label: 'STAR', count: behavioralStories.length },
+                        { value: 'technical', label: 'Technical', count: totalTechnical },
+                        { value: 'behavioral', label: 'STAR', count: totalBehavioral },
                       ]}
                     />
                     {spotlightCount > 1 && (
@@ -389,10 +389,10 @@ export default function Dashboard() {
             <Panel>
               <PanelHeader
                 title="Pipeline"
-                description={`${applications.length} ${applications.length === 1 ? 'application' : 'applications'} tracked.`}
+                description={`${totalApplications} ${totalApplications === 1 ? 'application' : 'applications'} tracked.`}
                 actions={<Button variant="ghost" size="sm" to="/applications" iconRight={<ArrowRight size={14} />}>Open</Button>}
               />
-              {applications.length === 0 ? (
+              {totalApplications === 0 ? (
                 <EmptyState title="No applications yet." action={<Button variant="secondary" size="sm" onClick={() => navigate('/applications', { state: { openNewForm: true } })}>Add application</Button>} />
               ) : (
                 <>

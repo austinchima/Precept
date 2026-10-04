@@ -9,8 +9,44 @@ namespace Precept.Api.Services;
 /// <summary>
 /// Service implementation for calculating and compiling dashboard statistics.
 /// </summary>
-public class DashboardService(PreceptDbContext dbContext, ILogger<DashboardService> logger) : IDashboardService
+public class DashboardService(PreceptDbContext dbContext, TimeProvider time, ILogger<DashboardService> logger) : IDashboardService
 {
+    public const int MaxQueueLimit = 50;
+
+    public async Task<ReviewQueueResponse> GetReviewQueueAsync(string userId, int limit)
+    {
+        limit = Math.Clamp(limit, 1, MaxQueueLimit);
+        var now = time.GetUtcNow().UtcDateTime;
+
+        var technical = dbContext.Stories.Where(s => s.UserId == userId && (s.NextReviewAt == null || s.NextReviewAt <= now));
+        var behavioral = dbContext.BehavioralStories.Where(s => s.UserId == userId && (s.NextReviewAt == null || s.NextReviewAt <= now));
+
+        // Weakest first (Panic is the lowest enum value), then the longest overdue (never-scheduled first),
+        // then oldest story, with the ID only as a final stable tie-break.
+        var technicalItems = await technical
+            .OrderBy(s => s.ConfidenceLevel).ThenBy(s => s.NextReviewAt != null).ThenBy(s => s.NextReviewAt).ThenBy(s => s.CreatedAt).ThenBy(s => s.Id)
+            .Take(limit)
+            .Select(s => new ReviewQueueItem { Id = s.Id, Title = s.Title, Kind = "Technical", ConfidenceLevel = s.ConfidenceLevel, NextReviewAt = s.NextReviewAt, CreatedAt = s.CreatedAt })
+            .ToListAsync();
+        var behavioralItems = await behavioral
+            .OrderBy(s => s.ConfidenceLevel).ThenBy(s => s.NextReviewAt != null).ThenBy(s => s.NextReviewAt).ThenBy(s => s.CreatedAt).ThenBy(s => s.Id)
+            .Take(limit)
+            .Select(s => new ReviewQueueItem { Id = s.Id, Title = s.Title, Kind = "Behavioral", ConfidenceLevel = s.ConfidenceLevel, NextReviewAt = s.NextReviewAt, CreatedAt = s.CreatedAt })
+            .ToListAsync();
+
+        return new ReviewQueueResponse
+        {
+            Total = await technical.CountAsync() + await behavioral.CountAsync(),
+            Items = technicalItems.Concat(behavioralItems)
+                .OrderBy(i => i.ConfidenceLevel)
+                .ThenBy(i => i.NextReviewAt ?? DateTime.MinValue)
+                .ThenBy(i => i.CreatedAt)
+                .ThenBy(i => i.Id)
+                .Take(limit)
+                .ToList(),
+        };
+    }
+
     public async Task<DashboardStatsResponse> GetDashboardStatsAsync(string userId)
     {
         logger.DashboardStatsRetrieved(userId);
@@ -36,9 +72,14 @@ public class DashboardService(PreceptDbContext dbContext, ILogger<DashboardServi
         var totalReviewed = await dbContext.Stories
             .CountAsync(s => s.UserId == userId && s.LastReviewedAt != null);
 
-        var needsReview = await dbContext.Stories
-            .CountAsync(s => s.UserId == userId &&
-                (s.LastReviewedAt == null || s.ConfidenceLevel == ConfidenceLevel.Panic || s.ConfidenceLevel == ConfidenceLevel.Shaky));
+        // Due means the scheduler says so: no next review set yet, or the next review time has passed.
+        // Both story kinds count, matching the review queue.
+        var now = time.GetUtcNow().UtcDateTime;
+        var needsReview =
+            await dbContext.Stories.CountAsync(s => s.UserId == userId && (s.NextReviewAt == null || s.NextReviewAt <= now))
+            + await dbContext.BehavioralStories.CountAsync(s => s.UserId == userId && (s.NextReviewAt == null || s.NextReviewAt <= now));
+
+        var totalBehavioralStories = await dbContext.BehavioralStories.CountAsync(s => s.UserId == userId);
 
         // Compile confidence breakdown dictionary with all enum values initialized to 0
         var confidenceBreakdown = Enum.GetValues<ConfidenceLevel>()
@@ -62,7 +103,8 @@ public class DashboardService(PreceptDbContext dbContext, ILogger<DashboardServi
             ConfidenceBreakdown = confidenceBreakdown,
             CategoryBreakdown = categoryBreakdown,
             TotalReviewed = totalReviewed,
-            NeedsReview = needsReview
+            NeedsReview = needsReview,
+            TotalBehavioralStories = totalBehavioralStories
         };
 
         // ─────────────────────────────────────────────────────────────
@@ -118,6 +160,8 @@ public class DashboardService(PreceptDbContext dbContext, ILogger<DashboardServi
             StatusBreakdown = statusBreakdown,
             InterviewingCount = interviewingCount,
             OffersCount = offersCount,
+            ActiveApplications = await dbContext.Applications.CountAsync(a => a.UserId == userId &&
+                (a.Status == ApplicationStatus.Applied || a.Status == ApplicationStatus.PhoneScreen || a.Status == ApplicationStatus.Interviewing)),
             RejectionRate = rejectionRate,
             ResponseRate = responseRate
         };

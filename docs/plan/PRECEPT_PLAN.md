@@ -1,6 +1,6 @@
 # Precept implementation plan
 
-Version 1.0, written 2026-10-02. Source material: `docs/research/precept-market-and-product-strategy.md` (market and competitor research plus a codebase audit of the working copy on 2026-10-02). Track progress in `docs/plan/PLAN_STATUS.md`. Run the work with the prompt in `docs/plan/AGENT_ORCHESTRATOR_PROMPT.md`. The S-tier layer in `docs/plan/S_TIER_PLAN.md` (added 2026-10-03) extends these milestones with signature features and quality bars without changing their order.
+Version 1.0, written 2026-10-02. Source material: `docs/research/precept-market-and-product-strategy.md` (market and competitor research plus a codebase audit of the working copy on 2026-10-02). Track progress in `docs/plan/PLAN_STATUS.md`. Run the work with the prompt in `docs/plan/AGENT_ORCHESTRATOR_PROMPT.md`. The S-tier layer in `docs/plan/S_TIER_PLAN.md` (added 2026-10-03) extends these milestones with signature features and quality bars without changing their order. `docs/plan/IMPLEMENTATION_GUIDE.md` (added 2026-10-04) gives per-feature build steps against the current code.
 
 File paths in this plan come from a read-only audit that could not build, run tests or use git. Every implementer must confirm a path exists before editing it and must treat the audit as a map, not ground truth.
 

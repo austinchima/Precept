@@ -186,4 +186,44 @@ public class MockInterviewServiceTests : IAsyncLifetime
         evaluation.Score.Should().Be(0);
         llmFactory.ReceivedCalls().Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("I led the migration and we cut p99 latency from 900 ms to 300 ms across 12 services, which improved checkout reliability for every region we served.")]
+    [InlineData("we fixed it")]
+    public async Task EvaluateAnswerAsync_WhenLlmFails_ReturnsLabelledHeuristic_WithNoInventedNumbers(string transcript)
+    {
+        var userId = Guid.NewGuid().ToString();
+        await using var db = MakeDb(userId);
+
+        var llmClient = Substitute.For<ILlmClient>();
+        llmClient.ProviderName.Returns("OpenAI-Compatible");
+        llmClient.GenerateCompletionAsync(Arg.Any<LlmUsageContext>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Throws(new HttpRequestException("provider down"));
+        var llmFactory = Substitute.For<ILlmClientFactory>();
+        llmFactory.GetClient().Returns(llmClient);
+
+        var service = new MockInterviewService(llmFactory, Substitute.For<IDemoAccountService>(), db, NullLogger<MockInterviewService>.Instance);
+        var result = await service.EvaluateAnswerAsync(new EvaluateMockAnswerRequest
+        {
+            Question = "Tell me about a time you improved a slow system.",
+            AnswerTranscript = transcript
+        }, userId);
+
+        result.IsHeuristic.Should().BeTrue();
+        result.ModelAnswer.Should().BeEmpty("the offline check cannot write an answer without inventing details");
+
+        var outputText = string.Join(" ", new[]
+        {
+            result.DeliveryFeedback, result.StarBreakdown.Situation, result.StarBreakdown.Task,
+            result.StarBreakdown.Action, result.StarBreakdown.Result,
+        }.Concat(result.Strengths).Concat(result.AreasForImprovement));
+        var transcriptNumbers = System.Text.RegularExpressions.Regex.Matches(transcript, @"\d+").Select(m => m.Value).ToHashSet();
+        var wordCount = transcript.Split((char[])[' ', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries).Length.ToString();
+        foreach (System.Text.RegularExpressions.Match number in System.Text.RegularExpressions.Regex.Matches(outputText, @"\d+"))
+        {
+            // Allowed: numbers from the transcript, the measured word count, and the fixed guidance range for answer length.
+            var allowed = transcriptNumbers.Contains(number.Value) || number.Value == wordCount || number.Value is "80" or "90" or "120";
+            allowed.Should().BeTrue($"'{number.Value}' in the heuristic output must come from the transcript or a stated rule");
+        }
+    }
 }

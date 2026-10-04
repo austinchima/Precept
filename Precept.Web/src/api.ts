@@ -133,6 +133,21 @@ export const api = {
     return res.json() as Promise<T>;
   },
 
+  /**
+   * Reads every page of a paginated list endpoint (largest page size the API allows), so
+   * counts and charts never stop at the first page. `maxPages` guards against a runaway loop.
+   */
+  async getAll<T>(url: string, maxPages = 50): Promise<T[]> {
+    const items: T[] = [];
+    const sep = url.includes('?') ? '&' : '?';
+    for (let page = 1; page <= maxPages; page++) {
+      const res = await api.get<{ items: T[]; hasNextPage: boolean }>(`${url}${sep}page=${page}&pageSize=100`);
+      items.push(...(res.items ?? []));
+      if (!res.hasNextPage) break;
+    }
+    return items;
+  },
+
   async post<T, TBody = unknown>(url: string, body?: TBody, options?: RequestOptions): Promise<T> {
     const res = await apiFetch(url, {
       ...options,

@@ -188,13 +188,17 @@ export interface DashboardStats {
     confidenceBreakdown: Record<string, number>;
     categoryBreakdown: Record<string, number>;
     totalReviewed: number;
+    /** Technical and STAR stories with no next review set, or due now. */
     needsReview: number;
+    totalBehavioralStories: number;
   };
   applicationStats: {
     totalApplications: number;
     statusBreakdown: Record<string, number>;
     interviewingCount: number;
     offersCount: number;
+    /** Applied, PhoneScreen or Interviewing. */
+    activeApplications: number;
     rejectionRate: number;
     responseRate: number;
   };
@@ -202,6 +206,19 @@ export interface DashboardStats {
     totalJobDescriptions: number;
     averageMatchScore: number;
   };
+}
+
+export interface ReviewQueueItem {
+  id: string;
+  title: string;
+  kind: 'Technical' | 'Behavioral';
+  confidenceLevel: ConfidenceLevel;
+  nextReviewAt: string | null;
+}
+
+export interface ReviewQueue {
+  total: number;
+  items: ReviewQueueItem[];
 }
 
 export interface SessionInfo {
@@ -233,6 +250,8 @@ export interface MockInterviewEvaluation {
   strengths: string[];
   areasForImprovement: string[];
   modelAnswer: string;
+  /** True when no AI provider answered and an offline keyword check produced this. */
+  isHeuristic?: boolean;
   deliveryFeedback: string;
   isDemoSample?: boolean;
 }

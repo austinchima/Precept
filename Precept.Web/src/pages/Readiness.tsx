@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Gauge, Layers } from 'lucide-react';
 import { api } from '../api';
-import { PagedResponse, Skill, Story } from '../types';
+import { Skill, Story } from '../types';
 import { computeSkillAxes, computeStoryAxes, formatCategoryName, READINESS_TARGET, SkillAxis } from '../lib/skills';
 import SkillRadar from '../components/SkillRadar';
 import PageShell from '../components/PageShell';
@@ -45,14 +45,15 @@ export default function Readiness() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [skillsRes, storiesRes, jdRes] = await Promise.all([
-          api.get<PagedResponse<Skill>>('/api/skill'),
-          api.get<PagedResponse<Story>>('/api/story'),
-          api.get<PagedResponse<JobDescriptionResponse>>('/api/jobdescription'),
+        // Every page, so readiness percentages are not computed from the first 25 rows only.
+        const [allSkills, allStories, allJds] = await Promise.all([
+          api.getAll<Skill>('/api/skill'),
+          api.getAll<Story>('/api/story'),
+          api.getAll<JobDescriptionResponse>('/api/jobdescription'),
         ]);
-        setSkills(skillsRes.items ?? []);
-        setStories(storiesRes.items ?? []);
-        setJds(jdRes.items ?? []);
+        setSkills(allSkills);
+        setStories(allStories);
+        setJds(allJds);
       } catch (err) {
         console.error('Failed to load readiness data:', err);
       } finally {

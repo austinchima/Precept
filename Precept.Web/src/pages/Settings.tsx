@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bookmark, Check, Download, Monitor, Moon, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
-import { PagedResponse, Skill, SKILL_CATEGORIES, SkillProficiency } from '../types';
+import { Skill, SKILL_CATEGORIES, SkillProficiency } from '../types';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -115,8 +115,8 @@ export default function Settings() {
 
   useEffect(() => {
     api
-      .get<PagedResponse<Skill>>('/api/skill')
-      .then((data) => setSkills(data.items ?? []))
+      .getAll<Skill>('/api/skill')
+      .then(setSkills)
       .catch((err) => console.error('Failed to load skills:', err))
       .finally(() => setIsLoading(false));
   }, []);
